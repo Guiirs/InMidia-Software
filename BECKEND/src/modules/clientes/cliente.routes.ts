@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { body, param } from 'express-validator';
 import logger from '@shared/container/logger';
 import { handleValidationErrors } from '@modules/auth/authValidator';
-import { validarCNPJ } from '../../../src/utils/validators';
+import { validarCNPJ } from '../../utils/validators';
 import { ClienteController } from './controllers/cliente.controller';
 import { ClienteService } from './services/cliente.service';
 import { ClienteRepository } from './repositories/cliente.repository';
