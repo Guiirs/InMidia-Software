@@ -1,0 +1,27 @@
+{
+  "name": "inmidiav3-fullstack",
+  "version": "1.0.0",
+  "description": "InMidia V3 - Sistema completo Frontend + Backend",
+  "main": "start-dev.js",
+  "scripts": {
+    "dev": "node start-dev.js",
+    "start": "node start-dev.js",
+    "backend": "cd BECKEND && npm run dev",
+    "frontend": "cd REACT && npm run dev",
+    "install:all": "npm install && cd BECKEND && npm install && cd ../REACT && npm install",
+    "test": "cd BECKEND && npm test"
+  },
+  "keywords": [
+    "inmidiav3",
+    "fullstack",
+    "react",
+    "nodejs",
+    "express"
+  ],
+  "author": "InMidia",
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "axios": "^1.13.2"
+  }
+}

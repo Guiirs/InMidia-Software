@@ -1,0 +1,74 @@
+http:
+  routers:
+    api-router:
+      rule: "Host(`api.yourdomain.com`)"
+      service: api-backend
+      entryPoints:
+        - web
+      middlewares:
+        - rate-limit
+        - cors-headers
+        - security-headers
+
+    metrics-router:
+      rule: "Host(`api.yourdomain.com`) && Path(`/metrics`)"
+      service: api-backend
+      entryPoints:
+        - web
+      middlewares:
+        - metrics-auth
+        - internal-only
+
+    health-router:
+      rule: "Host(`api.yourdomain.com`) && Path(`/api/v1/health`)"
+      service: api-backend
+      entryPoints:
+        - web
+
+  services:
+    api-backend:
+      loadBalancer:
+        servers:
+          - url: "http://api-backend-service:80"
+
+  middlewares:
+    rate-limit:
+      rateLimit:
+        burst: 100
+        average: 50
+
+    cors-headers:
+      headers:
+        accessControlAllowOriginList:
+          - "https://your-frontend-domain.com"
+        accessControlAllowMethods:
+          - "GET"
+          - "POST"
+          - "PUT"
+          - "DELETE"
+          - "OPTIONS"
+        accessControlAllowHeaders:
+          - "Content-Type"
+          - "Authorization"
+          - "x-api-key"
+        accessControlAllowCredentials: true
+
+    security-headers:
+      headers:
+        customResponseHeaders:
+          X-Frame-Options: "DENY"
+          X-Content-Type-Options: "nosniff"
+          X-XSS-Protection: "1; mode=block"
+          Strict-Transport-Security: "max-age=31536000; includeSubDomains"
+
+    metrics-auth:
+      basicAuth:
+        users:
+          - "prometheus:$2y$10$..."  # Generate with: htpasswd -nb prometheus password
+
+    internal-only:
+      ipWhiteList:
+        sourceRange:
+          - "10.0.0.0/8"
+          - "172.16.0.0/12"
+          - "192.168.0.0/16"

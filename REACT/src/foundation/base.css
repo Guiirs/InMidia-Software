@@ -1,0 +1,64 @@
+/* Safe base classes for gradual adoption, no global reset overrides. */
+.fdn-root {
+  color: var(--fdn-color-text-strong);
+  font-family: var(--fdn-font-sans);
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  text-rendering: geometricPrecision;
+}
+
+.fdn-root *,
+.fdn-root *::before,
+.fdn-root *::after {
+  box-sizing: border-box;
+}
+
+.fdn-root button,
+.fdn-root input,
+.fdn-root select,
+.fdn-root textarea {
+  font: inherit;
+}
+
+.fdn-typography {
+  font-family: var(--fdn-font-sans);
+  line-height: 1.4;
+  color: var(--fdn-color-text-strong);
+}
+
+.fdn-title-xl {
+  margin: 0;
+  font-size: clamp(20px, 2vw, 28px);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+
+.fdn-title-lg {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+.fdn-title-sm {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 500;
+}
+
+.fdn-text {
+  margin: 0;
+  font-size: 12px;
+  color: var(--fdn-color-text);
+}
+
+.fdn-text-muted {
+  color: var(--fdn-color-text-muted);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fdn-root * {
+    transition-timing-function: var(--fdn-ease-standard);
+  }
+}

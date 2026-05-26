@@ -1,0 +1,38 @@
+.v4-table-cell {
+  border-bottom: 1px solid rgba(156, 170, 194, 0.075);
+  color: var(--text-1, #eef0fa);
+  font-size: 11px;
+  height: var(--v4-row-height, 36px);
+  line-height: 1.28;
+  padding: var(--v4-cell-padding-y, 0) var(--v4-cell-padding-x, 9px);
+  vertical-align: middle;
+}
+
+.v4-table-cell--align-left {
+  text-align: left;
+}
+
+.v4-table-cell--align-center {
+  text-align: center;
+}
+
+.v4-table-cell--align-right,
+.v4-table-cell--numeric {
+  text-align: right;
+}
+
+.v4-table-cell--id {
+  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.v4-table-cell--nowrap {
+  white-space: nowrap;
+}
+
+.v4-table-cell--truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

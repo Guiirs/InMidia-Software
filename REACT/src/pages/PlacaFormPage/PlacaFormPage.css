@@ -1,0 +1,274 @@
+/* InMidia/frontend/pages/PlacaFormPage/PlacaFormPage.css */
+
+.placa-form-page {
+    max-width: 800px; /* Mantido em px */
+    margin: 3rem auto; /* Adicionado margem superior/inferior */
+    background-color: var(--bg-secondary-color);
+    padding: 3rem; /* Ajustado */
+    border-radius: var(--border-radius);
+    border: 1px solid var(--input-border);
+}
+
+.placa-form-page__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2.4rem; /* Ajustado */
+}
+
+.placa-form-page__input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem; /* Ajustado */
+}
+
+.placa-form-page__input-group--full {
+    grid-column: 1 / -1;
+}
+
+.placa-form-page__label {
+    font-weight: 500;
+    color: var(--text-color-light);
+    font-size: 1.4rem; /* Tamanho da label */
+    margin-bottom: 0.4rem; /* Espaço extra */
+}
+
+.placa-form-page__input,
+.placa-form-page__select {
+    background-color: var(--bg-color);
+    border: 1px solid var(--input-border);
+    border-radius: 1rem; /* Ajustado */
+    padding: 1.2rem 1.5rem; /* Ajustado */
+    color: var(--text-color);
+    font-size: 1.5rem; /* Ajustado */
+    width: 100%;
+    box-sizing: border-box;
+}
+/* Estilos :focus para inputs e selects */
+.placa-form-page__input:focus,
+.placa-form-page__select:focus {
+    outline: none;
+    border-color: var(--accent-green);
+}
+
+.placa-form-page__actions {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1.5rem; /* Ajustado */
+    margin-top: 3rem; /* Ajustado */
+    padding-top: 2rem; /* Ajustado */
+    border-top: 1px solid var(--input-border);
+}
+
+.placa-form-page__button {
+    padding: 1.2rem 2.4rem; /* Ajustado */
+    border-radius: 1rem; /* Ajustado */
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    font-size: 1.5rem; /* Ajustado */
+    transition: background-color 0.3s ease; /* Adiciona transição */
+}
+
+.placa-form-page__button--cancel {
+    background-color: var(--input-border);
+    color: var(--text-color);
+}
+.placa-form-page__button--cancel:hover {
+    background-color: var(--accent-gray); /* Cor de hover para cancelar */
+    color: white;
+}
+
+.placa-form-page__button--confirm {
+    background-color: var(--accent-green);
+    color: white;
+}
+.placa-form-page__button--confirm:hover {
+    background-color: #1a9c4a; /* Verde mais escuro no hover */
+}
+/* Estilo para botões desabilitados */
+.placa-form-page__button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.placa-form-page__image-preview-container {
+    position: relative; /* Necessário para o position: absolute do botão */
+    width: 100%;
+    height: 20rem; /* Ajustado (era 200px) */
+    border: 2px dashed var(--input-border);
+    border-radius: 1rem; /* Ajustado */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--bg-color);
+    color: var(--text-color-light);
+    margin-top: 0.8rem; /* Ajustado */
+    overflow: hidden; /* Garante que a imagem não saia dos cantos arredondados */
+    font-size: 1.4rem; /* Tamanho do texto placeholder */
+}
+
+.placa-form-page__image-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Garante que a imagem cubra a área sem distorcer */
+}
+
+.placa-form-page__image-preview--hidden {
+    display: none; /* Esconde a imagem se não houver nenhuma */
+}
+
+.placa-form-page__remove-image-button {
+    position: absolute; /* Posiciona sobre a preview */
+    bottom: 1rem; /* Ajustado (era 10px) */
+    right: 1rem; /* Ajustado (era 10px) */
+    background-color: rgba(244, 67, 54, 0.8); /* Vermelho com transparência */
+    color: white;
+    border: none;
+    padding: 0.8rem 1.2rem; /* Ajustado */
+    border-radius: 0.8rem; /* Ajustado */
+    cursor: pointer;
+    font-size: 1.2rem; /* Ajustado */
+    transition: background-color 0.3s ease;
+    z-index: 10; /* Garante que fica sobre a imagem */
+    display: flex; /* Para alinhar ícone */
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.placa-form-page__remove-image-button:hover {
+    background-color: rgba(244, 67, 54, 1); /* Vermelho sólido no hover */
+}
+
+.placa-form-page__remove-image-button--hidden {
+    display: none; /* Esconde o botão por padrão */
+}
+
+/* Mensagem de erro já estilizada em base.css */
+/* .modal-form__error-message { ... } */
+
+/* Estilo para input inválido (herdado de base.css ou definido aqui se necessário) */
+/* .placa-form-page__input.input-error,
+.placa-form-page__select.input-error {
+    border-color: var(--accent-red);
+} */
+
+/* Responsividade */
+@media (max-width: 600px) {
+    .placa-form-page__grid {
+        grid-template-columns: 1fr; /* Coluna única em telas menores */
+    }
+    .placa-form-page {
+        padding: 2rem; /* Reduz padding em telas menores */
+    }
+    .placa-form-page__actions {
+        margin-top: 2rem;
+    }
+}
+/* ─── Plate Core Registry V4.1 ─────────────────────────────────────────── */
+
+.placa-form-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.6rem;
+  margin-bottom: 2.4rem;
+  flex-wrap: wrap;
+}
+
+.placa-form-page__title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary-color);
+  margin: 0;
+}
+
+.plate-health-badge {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.8rem 1.2rem;
+  border: 2px solid;
+  border-radius: 0.8rem;
+  background: var(--bg-secondary-color);
+  min-width: 18rem;
+}
+
+.plate-health-badge__score {
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.plate-health-badge__issues {
+  margin: 0;
+  padding: 0 0 0 1.2rem;
+  font-size: 1.1rem;
+  color: var(--text-secondary-color);
+}
+
+.plate-lock-warning {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  color: #92400e;
+  padding: 1rem 1.6rem;
+  border-radius: 0.6rem;
+  font-size: 1.3rem;
+  margin-bottom: 2rem;
+}
+
+.placa-commercial-state {
+  border: 1px solid var(--input-border);
+  border-radius: 0.8rem;
+  padding: 1.6rem;
+  margin-bottom: 2rem;
+  background: var(--bg-color);
+}
+
+.placa-commercial-state h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1.6rem;
+  color: var(--text-color);
+}
+
+.placa-commercial-state p {
+  margin: 0 0 1.2rem;
+  color: var(--text-color-light);
+  font-size: 1.3rem;
+}
+
+.placa-commercial-state dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.2rem;
+  margin: 0;
+}
+
+.placa-commercial-state dt {
+  color: var(--text-color-light);
+  font-size: 1.2rem;
+  margin-bottom: 0.3rem;
+}
+
+.placa-commercial-state dd {
+  margin: 0;
+  color: var(--text-color);
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.placa-form-page__textarea {
+  min-height: 8rem;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.placa-form-page__image-placeholder {
+  color: var(--text-secondary-color);
+  font-size: 1.2rem;
+}
+
+.required {
+  color: #ef4444;
+  margin-left: 0.2rem;
+}

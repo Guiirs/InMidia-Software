@@ -1,0 +1,44 @@
+.v4-inline-metric {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+}
+.v4-inline-metric--sm {
+  gap: 2px;
+}
+.v4-inline-metric--md {
+  gap: 3px;
+}
+.v4-inline-metric--lg {
+  gap: 4px;
+}
+.v4-inline-metric__label {
+  font-size: 11px;
+  color: var(--text-2, #8890ae);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.v4-inline-metric--sm .v4-inline-metric__label {
+  font-size: 11px;
+}
+.v4-inline-metric--lg .v4-inline-metric__label {
+  font-size: 12px;
+}
+.v4-inline-metric__value {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-1, #eef0fa);
+}
+.v4-inline-metric--sm .v4-inline-metric__value {
+  font-size: 12px;
+}
+.v4-inline-metric--lg .v4-inline-metric__value {
+  font-size: 17px;
+}
+.v4-inline-metric__unit {
+  font-size: 11px;
+  color: var(--text-2, #8890ae);
+  margin-left: 2px;
+}

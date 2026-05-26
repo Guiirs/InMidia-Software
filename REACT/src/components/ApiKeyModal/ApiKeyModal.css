@@ -1,0 +1,45 @@
+/* src/components/ApiKeyModal.css - Baseado em base.css */
+.apikey-modal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.7); display: flex;
+    justify-content: center; align-items: center; z-index: 3000;
+    backdrop-filter: blur(5px); padding: 1.5rem; box-sizing: border-box;
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+.apikey-modal--visible { opacity: 1; visibility: visible; }
+
+.apikey-modal__content {
+    background-color: var(--bg-secondary-color); padding: 3rem;
+    border-radius: var(--border-radius); text-align: center; max-width: 500px;
+    width: 100%; border: 1px solid var(--input-border); box-shadow: var(--box-shadow);
+    transform: scale(0.95); transition: transform 0.3s ease;
+    max-height: 90vh; overflow-y: auto;
+}
+.apikey-modal--visible .apikey-modal__content { transform: scale(1); }
+
+.apikey-modal__icon { font-size: 3rem; color: var(--accent-yellow); margin-bottom: 1.5rem; }
+.apikey-modal__title { font-size: 2rem; font-weight: 600; margin: 0 0 0.8rem; color: var(--text-color); }
+.apikey-modal__message { font-size: 1.4rem; color: var(--text-color-light); margin: 0 0 2rem; line-height: 1.6; }
+.apikey-modal__key-wrapper { position: relative; display: flex; margin-bottom: 2rem; }
+.apikey-modal__key-input {
+    background-color: var(--bg-color); border: 1px solid var(--input-border);
+    border-radius: 0.8rem; padding: 1.2rem 4.5rem 1.2rem 1.5rem;
+    font-size: 1.4rem; font-family: 'Courier New', Courier, monospace;
+    color: var(--text-color); width: 100%; box-sizing: border-box;
+}
+.apikey-modal__copy-btn {
+    position: absolute; right: 0.6rem; top: 0.6rem; bottom: 0.6rem;
+    background-color: var(--input-border); color: var(--text-color-light);
+    border: none; border-radius: 0.5rem; cursor: pointer;
+    width: 4rem; transition: background-color 0.2s ease; font-size: 1.6rem;
+    display: flex; align-items: center; justify-content: center; /* Centraliza ícone */
+}
+.apikey-modal__copy-btn:hover { background-color: var(--sidebar-active-bg); color: var(--text-color); }
+.apikey-modal__close-btn {
+    background-color: var(--accent-green); color: white; padding: 1.2rem 2rem;
+    border: none; border-radius: 0.8rem; cursor: pointer; font-weight: 600;
+    font-family: 'Poppins', sans-serif; transition: background-color 0.2s ease; width: 100%;
+    font-size: 1.6rem;
+}
+.apikey-modal__close-btn:hover { background-color: #1a9c4a; }

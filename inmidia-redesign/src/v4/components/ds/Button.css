@@ -1,0 +1,22 @@
+.v4-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--r-sm, 6px);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 8px 18px;
+  cursor: pointer;
+  background: var(--accent, #6366f1);
+  color: #fff;
+  transition: background 0.18s;
+}
+.v4-btn--primary { background: var(--accent, #6366f1); }
+.v4-btn--secondary { background: var(--bg-input, #1b1e2e); color: var(--text-1, #eef0fa); }
+.v4-btn--danger { background: var(--danger, #ef4444); }
+.v4-btn--success { background: var(--success, #22c55e); }
+.v4-btn--md { font-size: 15px; padding: 8px 18px; }
+.v4-btn--sm { font-size: 13px; padding: 6px 12px; }
+.v4-btn--lg { font-size: 17px; padding: 12px 28px; }
+.v4-btn:active { filter: brightness(0.95); }

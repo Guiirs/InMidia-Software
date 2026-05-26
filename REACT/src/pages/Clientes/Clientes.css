@@ -1,0 +1,124 @@
+/* pages/Clientes/Clientes.css */
+/* (Reutiliza muitos estilos da página de Regiões/AdminUsers) */
+
+.clientes-page__controls {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 3rem; /* Ajustado */
+}
+
+.clientes-page__add-button {
+    background-color: var(--accent-green);
+    color: white;
+    padding: 1.2rem 2rem; /* Ajustado (era 0.75rem, 1.5rem * 1.6) */
+    border-radius: 1rem; /* Ajustado (era 10px) */
+    text-decoration: none;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem; /* Ajustado */
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    font-size: 1.4rem; /* Tamanho da fonte */
+}
+.clientes-page__add-button:hover {
+    background-color: #1a9c4a;
+}
+.clientes-page__add-button i {
+    font-size: 1.4rem; /* Tamanho do ícone */
+}
+
+.clientes-page__table-wrapper {
+    background-color: var(--bg-secondary-color);
+    border: 1px solid var(--input-border);
+    border-radius: var(--border-radius);
+    overflow: hidden; /* Garante que os cantos da tabela fiquem arredondados */
+    overflow-x: auto; /* Adiciona scroll horizontal se a tabela for muito larga */
+}
+
+.clientes-page__table {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--text-color);
+    font-size: 1.4rem; /* Tamanho base da fonte da tabela */
+}
+
+.clientes-page__table th,
+.clientes-page__table td {
+    padding: 1.5rem 2rem; /* Ajustado (era 1.25rem, 1.5rem * 1.25) */
+    text-align: left;
+    border-bottom: 1px solid var(--input-border);
+    vertical-align: middle; /* Alinha verticalmente no meio */
+    white-space: nowrap; /* Evita quebra de linha por padrão */
+}
+
+/* Permite quebra de linha na coluna do nome se necessário */
+.clientes-page__table td:nth-child(2) {
+    white-space: normal;
+}
+
+
+.clientes-page__table thead {
+    background-color: var(--card-background);
+}
+
+.clientes-page__table th {
+    font-weight: 600;
+    color: var(--text-color-light);
+    text-transform: uppercase;
+    font-size: 1.2rem; /* Ajustado (era 0.8rem * 1.5) */
+    letter-spacing: 0.05rem; /* Ajustado */
+}
+
+.clientes-page__table tbody tr:last-child td {
+    border-bottom: none; /* Remove a borda da última linha */
+}
+
+.clientes-page__table tbody tr:hover {
+    background-color: var(--sidebar-active-bg);
+}
+
+.clientes-page__logo-cell {
+    width: 8rem; /* Ajustado (era 80px) */
+    padding-top: 1rem; /* Ajuste fino */
+    padding-bottom: 1rem; /* Ajuste fino */
+}
+
+.clientes-page__logo-img {
+    width: 5rem; /* Ajustado (era 50px) */
+    height: 5rem; /* Ajustado (era 50px) */
+    object-fit: contain; /* Mantém proporção */
+    border-radius: 0.8rem; /* Ajustado (era 8px) */
+    background-color: var(--bg-color); /* Fundo caso a imagem seja transparente */
+    display: block; /* Remove espaço extra abaixo da imagem */
+}
+
+.clientes-page__actions {
+    display: flex;
+    gap: 1rem; /* Mantido */
+}
+
+.clientes-page__action-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.6rem; /* Ajustado (era 1rem * 1.6) */
+    padding: 0.8rem; /* Ajustado (era 0.5rem * 1.6) */
+    border-radius: 0.5rem; /* Ajustado (era 5px) */
+    transition: background-color 0.2s ease, color 0.2s ease;
+    width: 3.2rem; /* Ajustado (para consistência com PlacaCard) */
+    height: 3.2rem; /* Ajustado (para consistência com PlacaCard) */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.clientes-page__action-button--edit { color: var(--accent-yellow); }
+.clientes-page__action-button--edit:hover { background-color: rgba(255, 181, 114, 0.1); } /* Cor de fundo mais suave */
+.clientes-page__action-button--delete { color: var(--accent-red); }
+.clientes-page__action-button--delete:hover { background-color: rgba(244, 67, 54, 0.1); } /* Cor de fundo mais suave */
+
+/* Mensagens centradas (reutilizadas) */
+.text-center { text-align: center; }
+.error-message { color: var(--accent-red); }

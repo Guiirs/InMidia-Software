@@ -1,0 +1,32 @@
+.v4-metric-card {
+  background: var(--bg-card, #141720);
+  border-radius: var(--r-md, 10px);
+  box-shadow: var(--shadow-sm, 0 1px 4px rgba(0,0,0,0.28));
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 180px;
+}
+.v4-metric-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.v4-metric-card__icon {
+  font-size: 20px;
+}
+.v4-metric-card__title {
+  font-size: 14px;
+  color: var(--text-2, #8890ae);
+  font-weight: 500;
+}
+.v4-metric-card__value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-1, #eef0fa);
+}
+.v4-metric-card__delta {
+  font-size: 13px;
+  color: var(--success, #22c55e);
+}

@@ -1,0 +1,11 @@
+.v4-divider {
+  background: var(--border, #23263a);
+}
+.v4-divider--horizontal {
+  height: 1px;
+  width: 100%;
+}
+.v4-divider--vertical {
+  width: 1px;
+  height: 100%;
+}

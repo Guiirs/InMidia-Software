@@ -1,0 +1,47 @@
+:root {
+  --fdn-font-sans: 'Poppins', 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  --fdn-font-mono: 'Fira Code', 'JetBrains Mono', 'Courier New', monospace;
+
+  --fdn-color-page: #0d121c;
+  --fdn-color-shell: #0f1521;
+  --fdn-color-surface: #141b29;
+  --fdn-color-surface-hover: #172133;
+  --fdn-color-input: #111927;
+
+  --fdn-color-border: rgba(156, 170, 194, 0.14);
+  --fdn-color-border-soft: rgba(156, 170, 194, 0.09);
+
+  --fdn-color-text-strong: #f4f7fb;
+  --fdn-color-text: #b0bdd0;
+  --fdn-color-text-muted: #8390a6;
+
+  --fdn-color-accent: #7485ff;
+  --fdn-color-accent-soft: rgba(116, 133, 255, 0.13);
+  --fdn-color-success: #38c78f;
+  --fdn-color-warning: #e3b456;
+  --fdn-color-danger: #f47474;
+
+  --fdn-radius-sm: 5px;
+  --fdn-radius-md: 7px;
+  --fdn-radius-lg: 8px;
+
+  --fdn-space-1: 4px;
+  --fdn-space-2: 8px;
+  --fdn-space-3: 12px;
+  --fdn-space-4: 16px;
+  --fdn-space-5: 20px;
+  --fdn-space-6: 24px;
+
+  --fdn-shadow-card: 0 6px 14px rgba(0, 0, 0, 0.1);
+  --fdn-shadow-card-hover: 0 8px 18px rgba(0, 0, 0, 0.14);
+  --fdn-shadow-shell: 0 10px 24px rgba(0, 0, 0, 0.14);
+
+  --fdn-duration-fast: 120ms;
+  --fdn-duration-base: 180ms;
+  --fdn-ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Optional alias for theme scoping without touching legacy tokens */
+[data-ui-theme='v4-foundation'] {
+  --fdn-theme-active: 1;
+}

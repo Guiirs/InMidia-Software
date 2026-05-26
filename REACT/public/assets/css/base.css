@@ -1,0 +1,117 @@
+/* --- Importação da fonte Poppins --- */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+/* --- TEMA ESCURO (PADRÃO) --- */
+:root {
+    --bg-color: #1F1D2B;
+    --bg-secondary-color: #252836;
+    --card-background: #252836;
+    --text-color: #FFFFFF;
+    --text-color-light: #929292;
+    --input-border: #393C49;
+    --box-shadow: 0 0.8rem 2.4rem rgba(0,0,0,0.2); /* Ajustado para rem (era px) */
+    --transition-speed: 0.3s;
+    --border-radius: 1.2rem; /* Ajustado para rem (era 11.2px) */
+    --accent-green: #22C55E;
+    --accent-yellow: #FFB572;
+    --accent-pink: #F872F8;
+    --accent-red: #F44336;
+    --accent-gray: #6c757d;
+    --sidebar-active-bg: #393C49;
+
+    
+
+    /* -- LARGURA DA SIDEBAR AJUSTADA PARA REM -- */
+    --sidebar-width-expanded: 26rem; /* Ajustado para rem (era 182px) */
+    --sidebar-width-collapsed: 10rem;  /* Ajustado para rem (era 70px) */
+}
+
+/* --- TEMA CLARO --- */
+body.light-theme {
+    --bg-color: #F7F8FC;
+    --bg-secondary-color: #FFFFFF;
+    --card-background: #FFFFFF;
+    --text-color: #1F1D2B;
+    --text-color-light: #6c757d;
+    --input-border: #E0E0E0;
+    --box-shadow: 0 0.6rem 1.7rem rgba(0,0,0,0.08); /* Ajustado para rem (era px) */
+    --sidebar-active-bg: #E9ECEF;
+}
+
+/* --- AJUSTE DE ESCALA GLOBAL --- */
+html {
+    /* Define a base para 1rem = 10px (16px * 62.5%) */
+    font-size: 45%; /* Correção: Era 45% */
+}
+
+/* --- Estilos Gerais da Aplicação --- */
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--bg-color);
+    margin: 0;
+    color: var(--text-color);
+    transition: background-color var(--transition-speed), color var(--transition-speed);
+    font-size: 1.6rem; /* Define a fonte base do body para 16px (1.6 * 10px) */
+    line-height: 1.6; /* Boa prática para legibilidade */
+}
+
+/* --- Regras de Layout Principal (Sidebar e Conteúdo) ATUALIZADAS --- */
+.main-content {
+    margin-left: var(--sidebar-width-expanded); /* Usa a variável ajustada */
+    padding: 2rem; /* Ajustado para rem (era 1.4rem * 10 / 7) */
+    width: calc(100% - var(--sidebar-width-expanded)); /* Usa a variável ajustada */
+    box-sizing: border-box;
+    transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+body.sidebar-collapsed .main-content {
+    margin-left: var(--sidebar-width-collapsed); /* Usa a variável ajustada */
+    width: calc(100% - var(--sidebar-width-collapsed)); /* Usa a variável ajustada */
+}
+
+main {
+    width: 100%;
+    min-height: auto;
+    padding: 0;
+    display: block;
+}
+
+/* Tamanhos de cabeçalho ajustados (em 'rem' para escalar com 'html') */
+h1, h2, h3 {
+    color: var(--text-color);
+    font-weight: 600;
+    margin-top: 0; /* Boa prática */
+    margin-bottom: 1rem; /* Espaçamento padrão */
+}
+h1 { font-size: 2.4rem; line-height: 1.3; } /* Ajustado (era 2.2rem * 10 / 7) */
+h2 { font-size: 2rem; line-height: 1.4; }   /* Ajustado (era 1.8rem * 10 / 7) */
+h3 { font-size: 1.8rem; line-height: 1.5; } /* Ajustado (era 1.5rem * 10 / 7) */
+
+
+/* --- Correção para Páginas de Autenticação --- */
+body.auth-page-active .sidebar {
+    display: none;
+}
+body.auth-page-active .main-content {
+    margin-left: 0;
+    width: 100%;
+    padding: 0;
+}
+
+/* --- Estilos Genéricos --- */
+.text-center { text-align: center; }
+.error-message { color: var(--accent-red); }
+.input-error {
+  border-color: var(--accent-red) !important;
+  /* box-shadow removido para simplicidade, pode adicionar de volta se preferir */
+}
+
+/* Ajuste fino para mensagens de erro dentro de forms */
+/* Esta regra pode sobrepor a de .modal-form__error-message se for mais específica */
+/* Mantida aqui por segurança, mas idealmente seria definida apenas onde usada (no modal.css, etc.) */
+.modal-form__error-message {
+    font-size: 1.2rem; /* Ajustado */
+    color: var(--accent-red);
+    min-height: 1.5rem; /* Ajustado */
+    margin-top: 0.4rem; /* Ajustado */
+}

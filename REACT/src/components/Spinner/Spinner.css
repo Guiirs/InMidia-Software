@@ -1,0 +1,35 @@
+/* InMidia/frontend/components/Spinner/Spinner.css */
+
+.loading-spinner {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 3rem; /* Mantido */
+    gap: 1.5rem; /* Ajustado */
+    color: var(--text-color-light);
+    grid-column: 1 / -1; /* Garante que ocupe a grelha inteira */
+    background-color: var(--bg-secondary-color);
+    border-radius: var(--border-radius);
+    font-size: 1.4rem; /* Tamanho do texto */
+}
+
+.spinner {
+    width: 4.8rem; /* Ajustado (era 48px) */
+    height: 4.8rem; /* Ajustado (era 48px) */
+    border: 0.5rem solid var(--input-border); /* Ajustado (era 5px) */
+    border-bottom-color: var(--accent-green);
+    border-radius: 50%;
+    display: inline-block;
+    box-sizing: border-box;
+    animation: rotation 1s linear infinite;
+}
+
+@keyframes rotation {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}

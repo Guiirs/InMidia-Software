@@ -1,0 +1,6 @@
+.v4-panel-body {
+  flex: 1;
+}
+.v4-panel-body--padded {
+  padding: 20px;
+}

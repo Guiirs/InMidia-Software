@@ -1,0 +1,246 @@
+# =============================================================================
+# INMIDIA MONOREPO — Enterprise .gitignore
+# Ambientes cobertos: / (root)  |  REACT/  |  BECKEND/
+# =============================================================================
+
+# ─── DEPENDÊNCIAS ─────────────────────────────────────────────────────────────
+node_modules/
+**/node_modules/
+.pnp
+.pnp.js
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnpm-store/
+
+# ─── BUILD / DIST ─────────────────────────────────────────────────────────────
+dist/
+build/
+docs/
+out/
+.output/
+**/dist/
+**/build/
+**/out/
+dist-ssr/
+storybook-static/
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# ─── VARIÁVEIS DE AMBIENTE ────────────────────────────────────────────────────
+# NUNCA commitar credenciais reais — apenas .env.example é permitido
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+*.local
+**/*.local
+
+# ─── LOGS ─────────────────────────────────────────────────────────────────────
+logs/
+**/logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+access.log
+combined.log
+error.log
+all.log
+
+# ─── RUNTIME / PIDS ───────────────────────────────────────────────────────────
+pids/
+**/pids/
+*.pid
+*.pid.lock
+*.seed
+*.heapsnapshot
+.lock-wscript
+
+# ─── CACHES ───────────────────────────────────────────────────────────────────
+.cache/
+**/.cache/
+.vite/
+**/.vite/
+.turbo/
+**/.turbo/
+.eslintcache
+**/.eslintcache
+.stylelintcache
+.parcel-cache
+**/.parcel-cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+.npm/
+.node_repl_history
+.rollup.cache/
+
+# ─── ARTEFATOS DE TESTE ───────────────────────────────────────────────────────
+coverage/
+**/coverage/
+.nyc_output/
+**/.nyc_output/
+test-results/
+**/test-results/
+playwright-report/
+**/playwright-report/
+playwright/.cache/
+**/playwright/.cache/
+cypress/screenshots/
+cypress/videos/
+cypress/downloads/
+**/cypress/screenshots/
+**/cypress/videos/
+**/cypress/downloads/
+__snapshots__/
+
+# ─── BANCOS DE DADOS / DUMPS ──────────────────────────────────────────────────
+*.rdb
+dump.rdb
+**/dump.rdb
+*.db
+*.sqlite
+*.sqlite3
+*.db3
+db/database/*.db3
+
+# ─── REDIS ────────────────────────────────────────────────────────────────────
+redis-new/
+**/redis-new/
+redis-data/
+**/redis-data/
+
+# ─── UPLOADS / MÍDIA TEMPORÁRIA ───────────────────────────────────────────────
+uploads/
+**/uploads/
+public/uploads/
+tmp-uploads/
+**/tmp-uploads/
+media-tmp/
+
+# ─── WHATSAPP / whatsapp-web.js ───────────────────────────────────────────────
+.wwebjs_cache/
+**/.wwebjs_cache/
+.wwebjs_auth/
+**/.wwebjs_auth/
+whatsapp-session/
+whatsapp-sessions/
+**/whatsapp-session/
+**/whatsapp-sessions/
+auth_info_multi/
+auth_info_baileys/
+
+# ─── SESSÕES ──────────────────────────────────────────────────────────────────
+sessions/
+**/sessions/
+.session/
+**/.session/
+
+# ─── ARQUIVOS TEMPORÁRIOS ─────────────────────────────────────────────────────
+tmp/
+temp/
+**/tmp/
+**/temp/
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# ─── BACKUPS ──────────────────────────────────────────────────────────────────
+backup-*/
+backups/
+**/backup-*/
+**/backups/
+_old_*/
+**/old_*/
+*_backup/
+*_bak/
+
+# ─── SEGURANÇA — NUNCA COMMITAR ───────────────────────────────────────────────
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cert
+*.der
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+*.keystore
+*.jks
+secrets.json
+secrets.yaml
+secrets.yml
+**/secrets.json
+**/secrets.yaml
+**/secrets.yml
+
+# ─── IDE — VSCODE ─────────────────────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+*.code-workspace
+
+# ─── IDE — JETBRAINS ──────────────────────────────────────────────────────────
+.idea/
+*.iws
+*.iml
+*.ipr
+*.editorconfig.local
+
+# ─── OS — WINDOWS / MACOS / LINUX ────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ─── DOCKER — OVERRIDES LOCAIS ────────────────────────────────────────────────
+docker-compose.override.yml
+.docker-volumes/
+docker-volumes/
+
+# ─── MONITORAMENTO — DADOS LOCAIS ─────────────────────────────────────────────
+grafana-data/
+**/grafana-data/
+prometheus-data/
+**/prometheus-data/
+
+# ─── SSE / RUNTIME TEMP ───────────────────────────────────────────────────────
+sse-clients/
+**/sse-clients/
+socket-data/
+**/socket-data/
+
+# ─── CLAUDE AI — ESTADO LOCAL ─────────────────────────────────────────────────
+.claude/
+
+# ─── ARQUIVOS GRANDES / ACIDENTAIS ───────────────────────────────────────────
+*.pack
+*.tar
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.zip
+*.7z
+*.rar
+*.exe
+*.dmg
+*.iso
+*.img

@@ -1,0 +1,91 @@
+/* src/components/PIModalForm/css/PIModalForm.css */
+/* Estilos que eram do PIFormSteps.css */
+
+.pi-form-steps {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    width: 100%;
+    max-width: 600px; /* Limita a largura do stepper */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.pi-form-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    flex-grow: 1;
+    color: var(--text-light);
+}
+
+.pi-form-step__bubble {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: var(--color-light-gray);
+    border: 2px solid var(--color-light-gray);
+    color: var(--text-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+    z-index: 2;
+}
+
+.pi-form-step > span {
+    font-size: 1.6rem;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+/* Linha de conexão */
+.pi-form-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 15px; /* Metade da altura da bolha */
+    left: 50%;
+    width: 100%;
+    height: 2px;
+    background-color: var(--color-light-gray);
+    transition: background-color 0.3s ease;
+    z-index: 1;
+}
+
+/* Estado Ativo */
+.pi-form-step.active .pi-form-step__bubble {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #fff;
+    transform: scale(1.1);
+}
+.pi-form-step.active > span {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+/* Estado Completo */
+.pi-form-step.completed .pi-form-step__bubble {
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+    color: #fff;
+}
+.pi-form-step.completed > span {
+    color: var(--text-dark);
+}
+/* Linha de conexão completa */
+.pi-form-step.completed::after {
+    background-color: var(--success-color);
+}
+
+/* Garante que o grid do formulário ocupe o espaço */
+.pi-form__step-content {
+    width: 100%;
+    /* O modal-form__grid já está definido em /public/assets/css/style.css */
+}

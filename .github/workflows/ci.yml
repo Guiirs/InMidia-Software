@@ -1,0 +1,121 @@
+name: CI — Contracts & Type Safety
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  # ─── Gate 1: Contratos + Integração ────────────────────────────────────────
+  contracts:
+    name: Contract & Integration Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: BECKEND
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: BECKEND/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Gate @ts-nocheck (anti-regressão)
+        run: npm run check:ts-nocheck
+
+      - name: Full backend type-check
+        run: npm run typecheck
+
+      - name: Run contract tests (DTOs)
+        run: npm run test:contracts
+
+      - name: Run integration tests (HTTP + MongoDB in-memory)
+        run: npm run test:integration
+
+  # ─── Gate 2: Type-check dos módulos ativos ─────────────────────────────────
+  typecheck:
+    name: TypeScript Active Modules
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: BECKEND
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: BECKEND/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check active modules
+        # Usa tsconfig.active.json — verifica apenas módulos usados pelas rotas.
+        # Não falha por dívida legacy (arquivos com @ts-nocheck).
+        run: npm run typecheck:active
+
+      - name: Backend npm audit
+        run: npm audit --audit-level=high
+
+  # ─── Gate 3: Frontend build ────────────────────────────────────────────────
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: REACT
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: REACT/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Frontend tests
+        run: npm test
+
+      - name: Build frontend
+        run: npm run build
+        env:
+          # Variável necessária para o Vite não falhar no CI
+          VITE_API_URL: http://localhost:3000
+
+      - name: Frontend npm audit
+        run: npm audit --audit-level=high
+
+  # ─── Sumário ────────────────────────────────────────────────────────────────
+  summary:
+    name: CI Summary
+    needs: [contracts, typecheck, frontend-build]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check all jobs
+        run: |
+          echo "contracts: ${{ needs.contracts.result }}"
+          echo "typecheck: ${{ needs.typecheck.result }}"
+          echo "frontend-build: ${{ needs.frontend-build.result }}"
+          if [[ "${{ needs.contracts.result }}" != "success" || "${{ needs.typecheck.result }}" != "success" || "${{ needs.frontend-build.result }}" != "success" ]]; then
+            echo "::error::One or more CI gates failed"
+            exit 1
+          fi
+          echo "All gates passed"

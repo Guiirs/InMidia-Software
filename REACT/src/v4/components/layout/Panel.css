@@ -1,0 +1,7 @@
+.v4-panel {
+  background: var(--bg-card, #141720);
+  border: 1px solid var(--border, #23263a);
+  border-radius: var(--r-md, 10px);
+  display: flex;
+  flex-direction: column;
+}

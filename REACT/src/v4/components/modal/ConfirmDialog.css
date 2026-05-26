@@ -1,0 +1,105 @@
+/* ConfirmDialog — Confirmation modal with buttons */
+
+.v4-confirm-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.v4-confirm-dialog__header {
+  padding: 20px 20px 0 20px;
+}
+
+.v4-confirm-dialog__title {
+  margin: 0;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-1, #0d0e11);
+  line-height: 1.4;
+}
+
+.v4-confirm-dialog__body {
+  padding: 0 20px;
+}
+
+.v4-confirm-dialog__message {
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+  color: var(--text-2, #64748b);
+  line-height: 1.6;
+}
+
+.v4-confirm-dialog__footer {
+  display: flex;
+  gap: 8px;
+  padding: 0 20px 20px 20px;
+  justify-content: flex-end;
+}
+
+.v4-confirm-dialog__btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--r-sm, 4px);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.v4-confirm-dialog__btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.v4-confirm-dialog__btn--cancel {
+  background: var(--bg-subtle, #f1f5f9);
+  color: var(--text-1, #0d0e11);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+}
+
+.v4-confirm-dialog__btn--cancel:hover:not(:disabled) {
+  background: var(--bg-input, #eef0f6);
+}
+
+.v4-confirm-dialog__btn--confirm {
+  background: var(--accent, #6366f1);
+  color: white;
+  border: 1px solid var(--accent, #6366f1);
+}
+
+.v4-confirm-dialog__btn--confirm:hover:not(:disabled) {
+  background: var(--accent-hover, #4f46e5);
+  border-color: var(--accent-hover, #4f46e5);
+}
+
+.v4-confirm-dialog__btn--destructive {
+  background: var(--danger, #ef4444);
+  border: 1px solid var(--danger, #ef4444);
+  color: white;
+}
+
+.v4-confirm-dialog__btn--destructive:hover:not(:disabled) {
+  background: var(--danger-hover, #dc2626);
+  border-color: var(--danger-hover, #dc2626);
+}
+
+@media (max-width: 768px) {
+  .v4-confirm-dialog {
+    max-width: 100%;
+  }
+
+  .v4-confirm-dialog__footer {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .v4-confirm-dialog__btn {
+    flex: 1;
+    min-width: 100px;
+  }
+}

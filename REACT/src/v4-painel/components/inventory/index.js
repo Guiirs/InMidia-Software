@@ -1,0 +1,11 @@
+export { default as InventoryTable }         from './InventoryTable.jsx';
+export { default as BoardOperationalCard }   from './BoardOperationalCard.jsx';
+export { default as InventoryFilters }       from './InventoryFilters.jsx';
+export { default as OccupancyDistribution }  from './OccupancyDistribution.jsx';
+export { default as BoardDetailsPanel }      from './BoardDetailsPanel.jsx';
+export { default as BoardStatusBadge }       from './BoardStatusBadge.jsx';
+export { default as InventoryViewToggle }    from './InventoryViewToggle.jsx';
+export { default as BoardEditPanel }         from './BoardEditPanel.jsx';
+export { default as BoardGeoPanel }          from './BoardGeoPanel.jsx';
+export { default as BoardContractsHistory }  from './BoardContractsHistory.jsx';
+export { default as BoardActivityHistory }   from './BoardActivityHistory.jsx';

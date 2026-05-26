@@ -1,0 +1,45 @@
+.v4-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+}
+
+.v4-page-container--padded {
+  padding: 12px 10px 14px;
+}
+
+.v4-page-container--sm {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.v4-page-container--md {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.v4-page-container--lg {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.v4-page-container--xl {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.v4-page-container--full {
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .v4-page-container--padded {
+    padding: 12px 8px 14px;
+  }
+
+  .v4-page-container--lg,
+  .v4-page-container--xl {
+    max-width: 100%;
+  }
+}

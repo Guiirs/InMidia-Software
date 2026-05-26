@@ -1,0 +1,148 @@
+@import '../../components/page/PageShell.css';
+@import '../../components/page/PageHeader.css';
+@import '../../components/page/PageContainer.css';
+@import '../../components/page/PageSection.css';
+@import '../../components/grid/KPIGrid.css';
+@import '../../components/cards/KPICard.css';
+@import '../../components/filters/index.css';
+@import '../../components/actions/index.css';
+@import '../../components/states/EmptyState.css';
+@import '../../components/states/LoadingState.css';
+@import '../../components/states/ErrorState.css';
+@import '../../components/ds/StatusBadge.css';
+
+.v4-inventory-v4 {
+  background:
+    radial-gradient(circle at 12% -18%, rgba(20, 184, 166, 0.12) 0%, rgba(16, 23, 36, 0.9) 42%, var(--bg-page, #0d121c) 100%),
+    linear-gradient(135deg, rgba(116, 133, 255, 0.025), rgba(20, 184, 166, 0.035));
+  min-height: 100%;
+}
+
+.v4-inventory-v4 .v4-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  padding-top: 6px;
+}
+
+.v4-inventory-v4__button {
+  background: var(--bg-input, #1b1e2e);
+  border: 1px solid var(--border, rgba(156, 170, 194, 0.14));
+  border-radius: var(--r-sm, 6px);
+  color: var(--text-1, #eef0fa);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  height: 25px;
+  padding: 0 8px;
+  transition: border-color 0.16s ease, background-color 0.16s ease;
+}
+
+.v4-inventory-v4__button--primary {
+  background: rgba(20, 184, 166, 0.14);
+  border-color: rgba(20, 184, 166, 0.3);
+}
+
+.v4-inventory-v4__button:hover {
+  background: var(--bg-card-hover, #172133);
+  border-color: rgba(156, 170, 194, 0.24);
+}
+
+.v4-inventory-v4__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.v4-inventory-v4__status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.v4-inventory-v4__status-pill {
+  align-items: center;
+  background: rgba(20, 27, 41, 0.74);
+  border: 1px solid var(--border-soft, rgba(156, 170, 194, 0.09));
+  border-radius: 999px;
+  color: var(--text-1, #e2e8f0);
+  display: inline-flex;
+  font-size: 11px;
+  gap: 6px;
+  padding: 5px 10px;
+}
+
+.v4-inventory-v4__status-count {
+  color: var(--text-2, #b0bdd0);
+  font-weight: 600;
+}
+
+.v4-inventory-v4__critical-wrap {
+  display: grid;
+  gap: 9px;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.v4-inventory-v4__future-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.v4-inventory-v4__state-banner {
+  margin-bottom: 8px;
+}
+
+.v4-inventory-v4__pagination-wrap {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.v4-inventory-v4__pagination-pages {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.v4-inventory-v4__page-button {
+  background: var(--bg-input, #111927);
+  border: 1px solid var(--border, rgba(156, 170, 194, 0.14));
+  border-radius: var(--r-sm, 6px);
+  color: var(--text-1, #eef0fa);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 34px;
+  padding: 6px 10px;
+}
+
+.v4-inventory-v4__page-button--active,
+.v4-inventory-v4__page-button:disabled {
+  background: rgba(20, 184, 166, 0.16);
+  border-color: rgba(20, 184, 166, 0.34);
+  cursor: default;
+}
+
+.v4-inventory-v4__pagination-meta {
+  color: var(--text-3, #8390a6);
+  font-size: 12px;
+  margin: 8px 0 0;
+}
+
+@media (max-width: 800px) {
+  .v4-inventory-v4__pagination-wrap {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .v4-inventory-v4__future-actions {
+    width: 100%;
+  }
+
+  .v4-inventory-v4__future-actions .v4-inventory-v4__button {
+    flex: 1;
+    min-width: 120px;
+  }
+}

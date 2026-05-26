@@ -1,0 +1,15 @@
+.v4-surface-card {
+  background: var(--bg-card, #141720);
+  border-radius: var(--r-md, 10px);
+}
+.v4-surface-card--default {
+  border: 1px solid var(--border, #23263a);
+}
+.v4-surface-card--elevated {
+  border: 1px solid var(--border, #23263a);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+.v4-surface-card--flat {
+  border: none;
+  background: var(--bg-input, #1b1e2e);
+}

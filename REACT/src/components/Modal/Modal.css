@@ -1,0 +1,335 @@
+/* src/components/Modal/Modal.css */
+
+/* --- Estilos Base do Componente Modal com BEM --- */
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7); /* Fundo escuro semi-transparente */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000; /* Garante que fica acima da maioria dos conteúdos */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    padding: 1.5rem; /* Evita que o modal toque nas bordas */
+    box-sizing: border-box;
+    backdrop-filter: blur(5px); /* Efeito de desfoque (opcional) */
+}
+
+.modal--visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal__content {
+    background-color: var(--bg-secondary-color);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--input-border);
+    padding: 3rem;
+    width: 100%;
+    max-width: 800px; /* Largura máxima padrão, pode ser sobrescrita */
+    box-shadow: var(--box-shadow);
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+    max-height: 90vh; /* Limita altura */
+    overflow-y: none; /* Adiciona scroll se necessário */
+}
+
+.modal--visible .modal__content {
+    transform: scale(1); /* Animação de entrada */
+}
+
+.modal__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--input-border);
+}
+
+.modal__title {
+    font-size: 2rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-color); /* Garante cor do texto do tema */
+}
+
+.modal__close-btn {
+    background: none;
+    border: none;
+    color: var(--text-color-light);
+    font-size: 2.4rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+.modal__close-btn:hover {
+    color: var(--text-color); /* Melhora feedback no hover */
+}
+
+.modal__body {
+    /* Estilos para o corpo do modal, se necessário (ex: espaçamento padrão) */
+    /* Exemplo: display: flex; flex-direction: column; gap: 2rem; */
+    /* O conteúdo específico (formulário, texto) definirá seu próprio layout interno */
+}
+
+/* --- Estilos para Formulários DENTRO de Modais (Genéricos) --- */
+/* Estes estilos podem ser usados por qualquer formulário dentro de um modal */
+
+.modal-form__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+.modal-form__input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    margin-bottom: 1rem; /* Adicionado um pequeno espaço inferior */
+}
+
+.modal-form__input-group--full {
+    grid-column: 1 / -1;
+}
+
+.modal-form__label {
+    font-weight: 500;
+    color: var(--text-color-light);
+    font-size: 1.4rem;
+}
+
+.modal-form__input,
+.modal-form__select {
+    background-color: var(--bg-color);
+    border: 1px solid var(--input-border);
+    border-radius: 1rem;
+    padding: 1.2rem 1.5rem;
+    color: var(--text-color);
+    font-size: 1.5rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.modal-form__input:focus,
+.modal-form__select:focus {
+    outline: none;
+    border-color: var(--accent-green); /* Foco padrão verde */
+}
+
+/* Herda de base.css ou define aqui */
+.modal-form__error-message {
+    font-size: 1.2rem;
+    color: var(--accent-red);
+    min-height: 1.5rem;
+    margin-top: 0.4rem;
+}
+.modal-form__input.input-error,
+.modal-form__select.input-error {
+  border-color: var(--accent-red) !important;
+}
+
+.modal-form__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1.5rem;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--input-border);
+}
+
+/* Botões genéricos do formulário modal */
+.modal-form__button {
+    padding: 1.2rem 2.4rem;
+    border-radius: 1rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    font-size: 1.5rem;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+.modal-form__button:hover:not(:disabled) {
+    transform: translateY(-2px);
+}
+.modal-form__button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Estilos padrão para botões de Cancelar e Confirmar */
+.modal-form__button--cancel {
+    background-color: var(--input-border);
+    color: var(--text-color);
+}
+.modal-form__button--cancel:hover:not(:disabled) {
+    background-color: var(--accent-gray);
+    color: white;
+}
+
+.modal-form__button--confirm {
+    background-color: var(--accent-green);
+    color: white;
+}
+.modal-form__button--confirm:hover:not(:disabled) {
+     background-color: #1a9c4a; /* Verde mais escuro */
+}
+
+/* ... (estilos existentes de .modal, .modal__content, .modal-form__input-group, etc.) ... */
+
+
+/* --- Estilos para o Seletor Múltiplo Customizado (Adicionar ao final) --- */
+.modal-form__multi-select-wrapper {
+    /* Este grupo não precisa de 'margin-bottom' pois os inputs internos já dão o 'gap' */
+    margin-bottom: 0; 
+}
+
+.modal-form__multi-select-wrapper label {
+    /* Sobrescreve o estilo da label para ficar alinhada com os outros campos */
+    margin-bottom: 0; 
+}
+
+.modal-form__multi-select-list {
+    background-color: var(--bg-color);
+    border: 1px solid var(--input-border);
+    border-radius: 1rem;
+    padding: 0.5rem;
+    height: 15rem; /* Altura fixa (similar ao size="6") */
+    overflow-y: auto;
+    font-size: 1.4rem; /* Tamanho de fonte menor para as opções */
+    margin-top: 0.8rem; /* Espaço após o input de busca */
+}
+
+/* Destaque no foco (acessibilidade) */
+.modal-form__multi-select-list:focus-within {
+     border-color: var(--accent-green);
+}
+
+.modal-form__multi-select-option {
+    padding: 1rem 1.2rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-color); /* Garante a cor do texto padrão */
+}
+
+.modal-form__multi-select-option:hover {
+    background-color: var(--sidebar-active-bg);
+}
+
+/* Estilo da opção selecionada */
+.modal-form__multi-select-option--selected {
+    background-color: var(--accent-green);
+    color: white;
+    font-weight: 500;
+}
+
+.modal-form__multi-select-option--selected:hover {
+    background-color: #1a9c4a; /* Verde mais escuro */
+}
+
+/* --- Fim dos estilos customizados --- */
+
+.modal-form__multi-select-wrapper {
+    margin-bottom: 0; 
+}
+.modal-form__multi-select-wrapper label {
+    margin-bottom: 0; 
+}
+
+/* Lista de Placas DISPONÍVEIS */
+.modal-form__multi-select-list {
+    background-color: var(--bg-color);
+    border: 1px solid var(--input-border);
+    border-radius: 1rem;
+    padding: 0.5rem;
+    height: 15rem; /* Altura fixa */
+    overflow-y: auto;
+    font-size: 1.4rem; 
+    margin-top: 0.8rem; 
+}
+.modal-form__multi-select-list:focus-within {
+     border-color: var(--accent-green);
+}
+.modal-form__multi-select-option {
+    padding: 1rem 1.2rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-color); 
+}
+.modal-form__multi-select-option:hover {
+    background-color: var(--sidebar-active-bg);
+}
+/* (Fim dos estilos da lista disponível) */
+
+
+/* --- NOVOS ESTILOS: Lista de Placas SELECIONADAS --- */
+.modal-form__selected-list {
+    background-color: var(--bg-color);
+    border: 1px solid var(--input-border);
+    border-radius: 1rem;
+    padding: 0.8rem;
+    min-height: 4rem; /* Altura mínima */
+    max-height: 12rem; /* Altura máxima antes de rolar */
+    overflow-y: auto;
+    margin-top: 0.8rem; /* Espaço abaixo da label "Placas Selecionadas" */
+    margin-bottom: 1.5rem; /* Espaço antes da "Placas Disponíveis" */
+}
+
+.modal-form__selected-empty {
+    display: block;
+    padding: 0.5rem 0.5rem;
+    color: var(--text-color-light);
+    font-style: italic;
+    font-size: 1.3rem;
+}
+
+.modal-form__selected-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--sidebar-active-bg);
+    color: var(--text-color);
+    font-size: 1.4rem;
+    padding: 0.8rem 1.2rem;
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem; /* Espaço entre itens */
+}
+.modal-form__selected-item:last-child {
+    margin-bottom: 0;
+}
+
+.modal-form__selected-item span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 1rem;
+}
+
+.modal-form__selected-remove-btn {
+    background: none;
+    border: none;
+    color: var(--accent-red);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 0.3rem;
+    line-height: 1;
+    transition: background-color 0.2s ease;
+}
+.modal-form__selected-remove-btn:hover {
+    background-color: rgba(244, 67, 54, 0.1); /* Fundo vermelho suave */
+}
+/* --- Fim dos novos estilos --- */

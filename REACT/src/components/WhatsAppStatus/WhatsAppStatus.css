@@ -1,0 +1,39 @@
+/* src/components/WhatsAppStatus/WhatsAppStatus.css */
+.whatsapp-status {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.status-display {
+  display: flex;
+  justify-content: center;
+}
+
+.qr-code-container {
+  display: flex;
+  justify-content: center;
+  padding: 2rem;
+  background: var(--card-bg);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--input-border);
+  margin: 1rem 0;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .qr-code-container {
+    padding: 1rem;
+  }
+
+  .qr-code-container svg {
+    width: 150px !important;
+    height: 150px !important;
+  }
+}

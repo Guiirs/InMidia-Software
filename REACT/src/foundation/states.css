@@ -1,0 +1,76 @@
+.fdn-loading-state {
+  display: flex;
+  align-items: center;
+  gap: var(--fdn-space-2);
+  color: var(--fdn-color-text);
+  font-size: 12px;
+  padding: 18px 0;
+}
+
+.fdn-loading-state__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--fdn-color-accent);
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: fdn-spin 0.8s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+@keyframes fdn-spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.fdn-empty-state,
+.fdn-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 22px 0;
+  gap: 6px;
+}
+
+.fdn-empty-state {
+  color: var(--fdn-color-text);
+}
+
+.fdn-error-state {
+  color: var(--fdn-color-danger);
+}
+
+.fdn-empty-state__icon,
+.fdn-error-state__icon {
+  font-size: 24px;
+  margin-bottom: 5px;
+}
+
+.fdn-empty-state__title,
+.fdn-error-state__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.fdn-empty-state__title {
+  color: var(--fdn-color-text-strong);
+}
+
+.fdn-error-state__title {
+  color: var(--fdn-color-danger);
+}
+
+.fdn-empty-state__desc,
+.fdn-error-state__desc {
+  margin: 0;
+  font-size: 12px;
+  color: var(--fdn-color-text);
+}
+
+.fdn-empty-state__action,
+.fdn-error-state__action {
+  margin-top: 8px;
+}

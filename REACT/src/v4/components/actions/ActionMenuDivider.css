@@ -1,0 +1,4 @@
+.v4-action-menu-divider {
+  border-top: 1px solid var(--border, #23263a);
+  margin: 6px 2px;
+}

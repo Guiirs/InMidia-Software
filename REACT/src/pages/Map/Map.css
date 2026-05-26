@@ -1,0 +1,58 @@
+/* --- Estilos da Página do Mapa com BEM --- */
+
+/* Bloco Principal */
+.map-page {
+    width: 100%;
+    /* Altura pode ser ajustada via JS ou mantida alta por padrão */
+    height: calc(100vh - 16rem); /* Exemplo: Altura da viewport menos header/padding */
+    min-height: 50rem; /* Altura mínima */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Elementos do Bloco */
+.map-page__container {
+    flex-grow: 1; /* Faz o mapa ocupar todo o espaço disponível */
+    border-radius: var(--border-radius);
+    overflow: hidden; /* Essencial para que o border-radius funcione no mapa */
+    border: 1px solid var(--input-border);
+    background-color: var(--bg-secondary-color); /* Cor de fundo enquanto o mapa carrega */
+}
+
+/* O Leaflet injeta as suas próprias classes, mas podemos estilizar o nosso contentor */
+.map-page__leaflet-container {
+    width: 100%;
+    height: 100%;
+}
+
+/* Estilos para os popups do Leaflet (opcional, para manter a consistência visual) */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+    background-color: var(--bg-secondary-color) !important;
+    color: var(--text-color) !important;
+    box-shadow: var(--box-shadow) !important;
+    border-radius: 0.8rem !important; /* Ajusta border-radius */
+}
+
+.leaflet-popup-content {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.4rem; /* Tamanho base do popup */
+    padding: 1rem; /* Padding interno */
+    line-height: 1.6;
+}
+
+.leaflet-popup-content h4 {
+    font-weight: 600;
+    margin: 0 0 0.8rem 0; /* Ajustado */
+    color: var(--text-color);
+    font-size: 1.6rem; /* Tamanho do título */
+}
+
+.leaflet-popup-content p {
+    margin: 0;
+    color: var(--text-color-light);
+}
+
+.leaflet-a { /* Link dentro do popup */
+    color: var(--accent-green) !important;
+}

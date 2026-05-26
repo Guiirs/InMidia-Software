@@ -1,0 +1,40 @@
+.access-denied {
+  align-items: center;
+  background: var(--bg-secondary-color);
+  border: 1px solid var(--input-border);
+  border-radius: var(--border-radius);
+  color: var(--text-color);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 4rem auto;
+  max-width: 48rem;
+  padding: 3rem;
+  text-align: center;
+}
+
+.access-denied__icon {
+  align-items: center;
+  background: rgba(255, 193, 7, 0.12);
+  border-radius: 50%;
+  color: #ffc107;
+  display: flex;
+  height: 4.8rem;
+  justify-content: center;
+  width: 4.8rem;
+}
+
+.access-denied h2 {
+  margin: 0;
+}
+
+.access-denied p {
+  color: var(--text-color-light);
+  margin: 0;
+}
+
+.access-denied__link {
+  color: var(--accent-green);
+  font-weight: 600;
+  text-decoration: none;
+}

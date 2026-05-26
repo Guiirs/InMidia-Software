@@ -1,0 +1,125 @@
+import { randomUUID } from 'crypto';
+
+export const OPERATIONAL_EVENT_CATEGORIES = {
+  INVENTORY: 'inventory',
+  CONTRACTS: 'contracts',
+  COMMERCIAL: 'commercial',
+  OPERATIONS: 'operations',
+  ALERTS: 'alerts',
+  REPORTS: 'reports',
+  SYSTEM: 'system',
+} as const;
+
+export type OperationalEventCategory =
+  typeof OPERATIONAL_EVENT_CATEGORIES[keyof typeof OPERATIONAL_EVENT_CATEGORIES];
+
+export const OPERATIONAL_EVENT_TYPES = {
+  PLACA_CREATED: 'PLACA_CREATED',
+  PLACA_UPDATED: 'PLACA_UPDATED',
+  PLACA_STATUS_CHANGED: 'PLACA_STATUS_CHANGED',
+  PLACA_IMAGE_UPDATED: 'PLACA_IMAGE_UPDATED',
+
+  CONTRACT_CREATED: 'CONTRACT_CREATED',
+  CONTRACT_UPDATED: 'CONTRACT_UPDATED',
+  CONTRACT_STATUS_CHANGED: 'CONTRACT_STATUS_CHANGED',
+  CONTRACT_CANCELLED: 'CONTRACT_CANCELLED',
+  CONTRACT_EXPIRING: 'CONTRACT_EXPIRING',
+  CONTRACT_RENEWED: 'CONTRACT_RENEWED',
+
+  COMMERCIAL_OPPORTUNITY_CREATED: 'COMMERCIAL_OPPORTUNITY_CREATED',
+  REGION_CRITICAL: 'REGION_CRITICAL',
+  LOW_OCCUPANCY_DETECTED: 'LOW_OCCUPANCY_DETECTED',
+
+  SUMMARY_REFRESHED: 'SUMMARY_REFRESHED',
+  OPERATIONS_HEALTH_CHANGED: 'OPERATIONS_HEALTH_CHANGED',
+  DATA_INCONSISTENCY_DETECTED: 'DATA_INCONSISTENCY_DETECTED',
+
+  ALERT_CREATED: 'ALERT_CREATED',
+  ALERT_RESOLVED: 'ALERT_RESOLVED',
+  ALERT_SEVERITY_CHANGED: 'ALERT_SEVERITY_CHANGED',
+
+  REPORT_UPDATED: 'REPORT_UPDATED',
+  EXPORT_FINISHED: 'EXPORT_FINISHED',
+
+  SYSTEM_STATUS_CHANGED: 'SYSTEM_STATUS_CHANGED',
+} as const;
+
+export type OperationalEventType =
+  typeof OPERATIONAL_EVENT_TYPES[keyof typeof OPERATIONAL_EVENT_TYPES];
+
+export type OperationalEventSeverity = 'info' | 'warning' | 'critical';
+
+export interface OperationalEvent {
+  id: string;
+  type: OperationalEventType;
+  category: OperationalEventCategory;
+  entityType: string;
+  entityId: string;
+  severity: OperationalEventSeverity;
+  companyId: string;
+  timestamp: string;
+  payload: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+}
+
+export interface CreateOperationalEventInput {
+  type: OperationalEventType;
+  category?: OperationalEventCategory;
+  entityType: string;
+  entityId: string;
+  severity?: OperationalEventSeverity;
+  companyId: string;
+  payload?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  timestamp?: string;
+}
+
+const CATEGORY_BY_TYPE: Partial<Record<OperationalEventType, OperationalEventCategory>> = {
+  PLACA_CREATED: OPERATIONAL_EVENT_CATEGORIES.INVENTORY,
+  PLACA_UPDATED: OPERATIONAL_EVENT_CATEGORIES.INVENTORY,
+  PLACA_STATUS_CHANGED: OPERATIONAL_EVENT_CATEGORIES.INVENTORY,
+  PLACA_IMAGE_UPDATED: OPERATIONAL_EVENT_CATEGORIES.INVENTORY,
+
+  CONTRACT_CREATED: OPERATIONAL_EVENT_CATEGORIES.CONTRACTS,
+  CONTRACT_UPDATED: OPERATIONAL_EVENT_CATEGORIES.CONTRACTS,
+  CONTRACT_STATUS_CHANGED: OPERATIONAL_EVENT_CATEGORIES.CONTRACTS,
+  CONTRACT_CANCELLED: OPERATIONAL_EVENT_CATEGORIES.CONTRACTS,
+  CONTRACT_EXPIRING: OPERATIONAL_EVENT_CATEGORIES.CONTRACTS,
+  CONTRACT_RENEWED: OPERATIONAL_EVENT_CATEGORIES.CONTRACTS,
+
+  COMMERCIAL_OPPORTUNITY_CREATED: OPERATIONAL_EVENT_CATEGORIES.COMMERCIAL,
+  REGION_CRITICAL: OPERATIONAL_EVENT_CATEGORIES.COMMERCIAL,
+  LOW_OCCUPANCY_DETECTED: OPERATIONAL_EVENT_CATEGORIES.COMMERCIAL,
+
+  SUMMARY_REFRESHED: OPERATIONAL_EVENT_CATEGORIES.OPERATIONS,
+  OPERATIONS_HEALTH_CHANGED: OPERATIONAL_EVENT_CATEGORIES.OPERATIONS,
+  DATA_INCONSISTENCY_DETECTED: OPERATIONAL_EVENT_CATEGORIES.OPERATIONS,
+
+  ALERT_CREATED: OPERATIONAL_EVENT_CATEGORIES.ALERTS,
+  ALERT_RESOLVED: OPERATIONAL_EVENT_CATEGORIES.ALERTS,
+  ALERT_SEVERITY_CHANGED: OPERATIONAL_EVENT_CATEGORIES.ALERTS,
+
+  REPORT_UPDATED: OPERATIONAL_EVENT_CATEGORIES.REPORTS,
+  EXPORT_FINISHED: OPERATIONAL_EVENT_CATEGORIES.REPORTS,
+
+  SYSTEM_STATUS_CHANGED: OPERATIONAL_EVENT_CATEGORIES.SYSTEM,
+};
+
+export function resolveEventCategory(type: OperationalEventType): OperationalEventCategory {
+  return CATEGORY_BY_TYPE[type] ?? OPERATIONAL_EVENT_CATEGORIES.SYSTEM;
+}
+
+export function createOperationalEvent(input: CreateOperationalEventInput): OperationalEvent {
+  return {
+    id: randomUUID(),
+    type: input.type,
+    category: input.category ?? resolveEventCategory(input.type),
+    entityType: input.entityType,
+    entityId: input.entityId,
+    severity: input.severity ?? 'info',
+    companyId: input.companyId,
+    timestamp: input.timestamp ?? new Date().toISOString(),
+    payload: input.payload ?? {},
+    metadata: input.metadata ?? {},
+  };
+}

@@ -1,0 +1,33 @@
+{
+  "title": "Sync Layer Overview",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "tags": ["sync", "comm-10"],
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "query": "label_values(sync_instance_health_info, instanceId)",
+        "refresh": 1,
+        "includeAll": true
+      }
+    ]
+  },
+  "panels": [
+    { "id": 1, "type": "stat", "title": "SSE clients connected", "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 }, "targets": [{ "expr": "sum(sync_sse_clients_connected)" }] },
+    { "id": 2, "type": "stat", "title": "Redis connected", "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 }, "targets": [{ "expr": "min(sync_redis_connected)" }] },
+    { "id": 3, "type": "stat", "title": "Transport degraded", "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 }, "targets": [{ "expr": "max(sync_transport_degraded)" }] },
+    { "id": 4, "type": "stat", "title": "Latest lag ms", "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 }, "targets": [{ "expr": "max(sync_stream_lag_latest_ms)" }] },
+    { "id": 5, "type": "timeseries", "title": "Average lag ms", "gridPos": { "x": 0, "y": 4, "w": 12, "h": 7 }, "targets": [{ "expr": "avg(sync_stream_lag_average_ms)" }] },
+    { "id": 6, "type": "timeseries", "title": "Throughput per minute", "gridPos": { "x": 12, "y": 4, "w": 12, "h": 7 }, "targets": [{ "expr": "sum(rate(sync_events_published_total[1m]) * 60)", "legendFormat": "published/min" }, { "expr": "sum(rate(sync_events_delivered_sse_total[1m]) * 60)", "legendFormat": "sse/min" }, { "expr": "sum(rate(sync_events_delivered_polling_total[1m]) * 60)", "legendFormat": "polling/min" }] },
+    { "id": 7, "type": "timeseries", "title": "Replay failures", "gridPos": { "x": 0, "y": 11, "w": 8, "h": 7 }, "targets": [{ "expr": "sum(increase(sync_replay_failures_total[5m]))" }] },
+    { "id": 8, "type": "timeseries", "title": "Snapshot recoveries", "gridPos": { "x": 8, "y": 11, "w": 8, "h": 7 }, "targets": [{ "expr": "sum(increase(sync_snapshot_recoveries_total[5m]))" }] },
+    { "id": 9, "type": "timeseries", "title": "Duplicate events ignored", "gridPos": { "x": 16, "y": 11, "w": 8, "h": 7 }, "targets": [{ "expr": "sum(increase(sync_duplicate_events_ignored_total[5m]))" }] },
+    { "id": 10, "type": "timeseries", "title": "Reconnect attempts", "gridPos": { "x": 0, "y": 18, "w": 12, "h": 7 }, "targets": [{ "expr": "sum(increase(sync_reconnect_attempts_total[5m]))" }] },
+    { "id": 11, "type": "table", "title": "Instance health", "gridPos": { "x": 12, "y": 18, "w": 12, "h": 7 }, "targets": [{ "expr": "sync_instance_health_info", "format": "table", "instant": true }] }
+  ]
+}

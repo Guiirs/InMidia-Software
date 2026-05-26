@@ -1,0 +1,45 @@
+.v4-status-badge {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.052);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--text-1, #eef0fa);
+  display: inline-flex;
+  font-size: 10px;
+  font-weight: 500;
+  height: 19px;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  padding: 0 8px;
+  text-transform: uppercase;
+}
+
+.v4-status-badge--success {
+  background: rgba(56, 199, 143, 0.12);
+  border-color: rgba(56, 199, 143, 0.28);
+  color: #86efac;
+}
+
+.v4-status-badge--warning {
+  background: rgba(227, 180, 86, 0.13);
+  border-color: rgba(227, 180, 86, 0.28);
+  color: #fcd34d;
+}
+
+.v4-status-badge--error {
+  background: rgba(244, 116, 116, 0.13);
+  border-color: rgba(244, 116, 116, 0.28);
+  color: #fca5a5;
+}
+
+.v4-status-badge--info {
+  background: rgba(116, 133, 255, 0.13);
+  border-color: rgba(116, 133, 255, 0.28);
+  color: #93c5fd;
+}
+
+.v4-status-badge--default {
+  background: rgba(156, 170, 194, 0.12);
+  border-color: rgba(156, 170, 194, 0.24);
+  color: #cbd5e1;
+}

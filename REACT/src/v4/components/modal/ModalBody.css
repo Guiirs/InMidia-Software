@@ -1,0 +1,51 @@
+/* ModalBody — Content section with flexible padding */
+
+.v4-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg-card, #ffffff);
+}
+
+.v4-modal-body--padding-sm {
+  padding: 12px;
+}
+
+.v4-modal-body--padding-md {
+  padding: 20px;
+}
+
+.v4-modal-body--padding-lg {
+  padding: 24px;
+}
+
+/* Typography inside modal body */
+.v4-modal-body h1,
+.v4-modal-body h2,
+.v4-modal-body h3,
+.v4-modal-body h4,
+.v4-modal-body h5,
+.v4-modal-body h6 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: var(--text-1, #0d0e11);
+}
+
+.v4-modal-body p {
+  margin: 0 0 12px 0;
+  color: var(--text-2, #64748b);
+  line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+  .v4-modal-body--padding-sm {
+    padding: 12px;
+  }
+
+  .v4-modal-body--padding-md {
+    padding: 12px;
+  }
+
+  .v4-modal-body--padding-lg {
+    padding: 12px;
+  }
+}

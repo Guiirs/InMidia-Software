@@ -1,0 +1,331 @@
+/* pages/Dashboard/Dashboard.css */
+
+.dashboard-page {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    color: var(--fdn-color-text-strong, var(--text-color));
+}
+
+.dashboard-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.dashboard-card {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.018) 0%, rgba(255, 255, 255, 0) 100%),
+      var(--fdn-color-surface, var(--bg-secondary-color));
+    border: 1px solid var(--fdn-color-border-soft, var(--input-border));
+    border-radius: var(--fdn-radius-md, var(--border-radius));
+    box-shadow: var(--fdn-shadow-card, var(--box-shadow));
+    padding: 1rem;
+}
+
+.dashboard-section__title {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: var(--fdn-color-text-strong, var(--text-color));
+    line-height: 1.2;
+}
+
+/* Resumo (Cards Superiores) */
+.dashboard-page__summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.7rem;
+}
+
+.dashboard-summary-card {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.016) 0%, rgba(255, 255, 255, 0) 100%),
+      rgba(20, 27, 41, 0.94);
+    border-radius: var(--fdn-radius-md, var(--border-radius));
+    padding: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    border: 1px solid var(--fdn-color-border-soft, var(--input-border));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    min-height: 74px;
+}
+
+.dashboard-summary-card__icon {
+    width: 2.8rem;
+    height: 2.8rem;
+    border-radius: 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    color: var(--fdn-color-accent, #7485ff);
+    flex-shrink: 0;
+    background: rgba(116, 133, 255, 0.12);
+    border: 1px solid rgba(116, 133, 255, 0.24);
+}
+
+.dashboard-summary-card__info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.dashboard-summary-card__value {
+    font-size: clamp(1.65rem, 1.8vw, 2rem);
+    font-weight: 600;
+    color: var(--fdn-color-text-strong, var(--text-color));
+    margin: 0;
+    line-height: 1.05;
+}
+
+.dashboard-summary-card__label {
+    font-size: 1.05rem;
+    color: var(--fdn-color-text, var(--text-color-light));
+    letter-spacing: 0.02em;
+}
+
+.dashboard-page__grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+}
+
+.dashboard-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--fdn-color-border-soft, var(--input-border));
+    border-radius: var(--fdn-radius-sm, 0.6rem);
+}
+
+.dashboard-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 780px;
+    background: rgba(17, 24, 38, 0.42);
+}
+
+.dashboard-table th,
+.dashboard-table td {
+    text-align: left;
+    border-bottom: 1px solid var(--fdn-color-border-soft, var(--input-border));
+    padding: 0.62rem 0.72rem;
+    font-size: 1.13rem;
+    line-height: 1.3;
+}
+
+.dashboard-table th {
+    font-size: 1.05rem;
+    color: var(--fdn-color-text-muted, var(--text-color-light));
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 500;
+    background: rgba(148, 163, 184, 0.04);
+}
+
+.dashboard-table tbody tr:hover td {
+    background: rgba(116, 133, 255, 0.07);
+}
+
+.quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.55rem;
+}
+
+.quick-actions__item {
+    border: 1px solid var(--fdn-color-border-soft, var(--input-border));
+    border-radius: var(--fdn-radius-sm, 0.6rem);
+    padding: 0.66rem 0.72rem;
+    color: var(--fdn-color-text-strong, var(--text-color));
+    text-decoration: none;
+    background: rgba(17, 25, 40, 0.56);
+    font-weight: 500;
+    font-size: 1.15rem;
+    transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
+}
+
+.quick-actions__item:hover {
+    border-color: rgba(116, 133, 255, 0.32);
+    background: rgba(17, 25, 40, 0.8);
+    transform: translateY(-1px);
+}
+
+.funnel-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.55rem;
+}
+
+.funnel-card {
+    border: 1px solid var(--fdn-color-border-soft, var(--input-border));
+    border-radius: var(--fdn-radius-sm, 0.6rem);
+    padding: 0.75rem;
+    background: rgba(17, 25, 40, 0.52);
+}
+
+.funnel-card--highlight {
+    border-color: rgba(116, 133, 255, 0.32);
+    background: rgba(116, 133, 255, 0.12);
+}
+
+.funnel-card__label {
+    margin: 0;
+    color: var(--fdn-color-text, var(--text-color-light));
+    font-size: 1.02rem;
+}
+
+.funnel-card__value {
+    margin: 0.35rem 0 0;
+    font-size: 1.7rem;
+    font-weight: 600;
+    color: var(--fdn-color-text-strong, var(--text-color));
+}
+
+.dashboard-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.dashboard-list__item {
+    border: 1px solid var(--fdn-color-border-soft, var(--input-border));
+    border-radius: var(--fdn-radius-sm, 0.6rem);
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    background: rgba(17, 25, 40, 0.52);
+}
+
+.dashboard-list__item p {
+    margin: 0.22rem 0 0;
+    font-size: 1.1rem;
+    color: var(--fdn-color-text, var(--text-color-light));
+}
+
+.dashboard-list__hint {
+    margin: 0;
+    color: var(--fdn-color-text, var(--text-color-light));
+    font-size: 1.02rem;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.18rem 0.58rem;
+    font-size: 0.94rem;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+
+.status-pill--success {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+.status-pill--warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+.status-pill--danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.status-pill--info {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+}
+
+/* Mensagem de erro (reutilizada) */
+.dashboard-page__error {
+    text-align: left;
+    padding: 0.9rem 1rem;
+    color: var(--fdn-color-danger, var(--accent-red));
+    font-style: normal;
+    background: rgba(244, 116, 116, 0.12);
+    border-radius: var(--fdn-radius-sm, var(--border-radius));
+    border: 1px solid rgba(244, 116, 116, 0.34);
+    font-size: 1.2rem;
+}
+
+.dashboard-state {
+    margin: 0;
+    border-radius: var(--fdn-radius-sm, 0.6rem);
+    border: 1px dashed var(--fdn-color-border, var(--input-border));
+    background: rgba(148, 163, 184, 0.06);
+    padding: 0.8rem;
+    font-size: 1.08rem;
+    color: var(--fdn-color-text, var(--text-color-light));
+}
+
+.dashboard-state--loading {
+    color: var(--fdn-color-text-strong, var(--text-color));
+}
+
+.dashboard-state--empty {
+    color: var(--fdn-color-text, var(--text-color-light));
+}
+
+body.light-theme:not(.foundation-theme) .dashboard-summary-card,
+body.light-theme:not(.foundation-theme) .dashboard-list__item,
+body.light-theme:not(.foundation-theme) .quick-actions__item,
+body.light-theme:not(.foundation-theme) .funnel-card,
+body.light-theme:not(.foundation-theme) .dashboard-table {
+    background: rgba(255, 255, 255, 0.88);
+}
+
+body.foundation-theme .dashboard-card,
+body.foundation-theme .dashboard-summary-card,
+body.foundation-theme .dashboard-list__item,
+body.foundation-theme .quick-actions__item,
+body.foundation-theme .funnel-card,
+body.foundation-theme .dashboard-table {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.016) 0%, rgba(255, 255, 255, 0) 100%),
+      var(--fdn-color-surface, rgba(20, 27, 41, 0.94));
+}
+
+body.foundation-theme .dashboard-table th {
+    background: rgba(148, 163, 184, 0.04);
+}
+
+body.light-theme:not(.foundation-theme) .dashboard-table th {
+    background: rgba(148, 163, 184, 0.08);
+}
+
+@media (max-width: 992px) {
+    .dashboard-page__grid-2 {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-page__summary {
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    }
+
+    .dashboard-table {
+        min-width: 680px;
+    }
+}
+
+@media (max-width: 640px) {
+    .dashboard-card {
+        padding: 0.8rem;
+    }
+
+    .dashboard-section__title {
+        font-size: 1.24rem;
+    }
+
+    .quick-actions {
+        grid-template-columns: 1fr;
+    }
+}

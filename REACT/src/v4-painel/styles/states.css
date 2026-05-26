@@ -1,0 +1,128 @@
+/* ─── ESTADOS OPERACIONAIS — V4 PAINEL ───────────────────────── */
+
+/* ── healthy ─────────────────────────────────────────────────── */
+.v4p-state-healthy          { color: var(--v4p-success); }
+.v4p-state-healthy-bg       { background: var(--v4p-success-xsoft); }
+.v4p-state-healthy-border   { border-color: var(--v4p-success-border); }
+.v4p-state-healthy-dot::before {
+  content: '';
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--v4p-success);
+  margin-right: 6px;
+  box-shadow: 0 0 0 3px var(--v4p-success-xsoft);
+}
+
+/* ── warning ─────────────────────────────────────────────────── */
+.v4p-state-warning          { color: var(--v4p-warning); }
+.v4p-state-warning-bg       { background: var(--v4p-warning-xsoft); }
+.v4p-state-warning-border   { border-color: var(--v4p-warning-border); }
+.v4p-state-warning-dot::before {
+  content: '';
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--v4p-warning);
+  margin-right: 6px;
+  animation: v4p-pulse-warning 2s infinite;
+}
+
+/* ── critical ────────────────────────────────────────────────── */
+.v4p-state-critical         { color: var(--v4p-danger); }
+.v4p-state-critical-bg      { background: var(--v4p-danger-xsoft); }
+.v4p-state-critical-border  { border-color: var(--v4p-danger-border); }
+.v4p-state-critical-dot::before {
+  content: '';
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--v4p-danger);
+  margin-right: 6px;
+  animation: v4p-pulse-danger 1.4s infinite;
+}
+
+/* ── degraded ────────────────────────────────────────────────── */
+.v4p-state-degraded         { color: var(--v4p-warning); }
+.v4p-state-degraded-bg      { background: rgba(227, 180, 86, 0.06); }
+.v4p-state-degraded-border  { border-color: rgba(227, 180, 86, 0.20); }
+
+/* ── pending ─────────────────────────────────────────────────── */
+.v4p-state-pending          { color: var(--v4p-text-3); }
+.v4p-state-pending-bg       { background: rgba(131, 144, 166, 0.08); }
+.v4p-state-pending-border   { border-color: rgba(131, 144, 166, 0.20); }
+
+/* ── syncing ─────────────────────────────────────────────────── */
+.v4p-state-syncing          { color: var(--v4p-accent); }
+.v4p-state-syncing-bg       { background: var(--v4p-accent-xsoft); }
+.v4p-state-syncing-border   { border-color: rgba(116, 133, 255, 0.25); }
+.v4p-state-syncing-dot::before {
+  content: '';
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--v4p-accent);
+  margin-right: 6px;
+  animation: v4p-pulse-sync 1s infinite;
+}
+
+/* ── readonly ────────────────────────────────────────────────── */
+.v4p-state-readonly         { color: var(--v4p-info); }
+.v4p-state-readonly-bg      { background: var(--v4p-info-soft); }
+
+/* ── offline ─────────────────────────────────────────────────── */
+.v4p-state-offline          { color: var(--v4p-text-4); }
+.v4p-state-offline-bg       { background: rgba(61, 80, 112, 0.15); }
+.v4p-state-offline-border   { border-color: rgba(61, 80, 112, 0.25); }
+
+/* ── ANIMAÇÕES ───────────────────────────────────────────────── */
+@keyframes v4p-pulse-warning {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(227,180,86,0.6); }
+  50%       { opacity: 0.8; box-shadow: 0 0 0 4px rgba(227,180,86,0); }
+}
+
+@keyframes v4p-pulse-danger {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(244,116,116,0.7); }
+  50%       { opacity: 0.85; box-shadow: 0 0 0 5px rgba(244,116,116,0); }
+}
+
+@keyframes v4p-pulse-sync {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+@keyframes v4p-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes v4p-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes v4p-slide-in-left {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Utilitários de interação */
+.v4p-interactive {
+  cursor: pointer;
+  transition: background var(--v4p-t-fast) var(--v4p-ease),
+              border-color var(--v4p-t-fast) var(--v4p-ease),
+              box-shadow var(--v4p-t-fast) var(--v4p-ease);
+}
+
+.v4p-interactive:hover  { background: var(--v4p-bg-card-hover); }
+.v4p-interactive:active { background: var(--v4p-bg-card-active); }
+
+.v4p-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+.v4p-animate-in {
+  animation: v4p-fade-in var(--v4p-t-base) var(--v4p-ease) both;
+}

@@ -1,0 +1,55 @@
+/* Drawer — Slide-in modal from side */
+
+.v4-drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0);
+  z-index: 1000;
+  transition: background 0.3s ease;
+}
+
+.v4-drawer-overlay--open {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.v4-drawer {
+  position: fixed;
+  top: 0;
+  height: 100vh;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border, #e0e0e0);
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+}
+
+.v4-drawer-overlay--open .v4-drawer {
+  transform: translateX(0);
+}
+
+.v4-drawer--right {
+  right: 0;
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.12);
+}
+
+.v4-drawer--left {
+  left: 0;
+  transform: translateX(-100%);
+  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.12);
+}
+
+.v4-drawer-overlay--open .v4-drawer--left {
+  transform: translateX(0);
+}
+
+@media (max-width: 768px) {
+  .v4-drawer {
+    width: 100%;
+  }
+}

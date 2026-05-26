@@ -1,0 +1,38 @@
+/* src/components/ToastNotification.css */
+/* Estilos baseados em ui.js e base.css */
+.toast-notification {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  padding: 1.5rem 2rem;
+  border-radius: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  z-index: 9999;
+  opacity: 0;
+  transform: translateY(2rem);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  background-color: #333; /* Cor base */
+  color: white;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  font-size: 1.4rem;
+}
+
+.toast-notification.toast--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast-notification i {
+   font-size: 1.8rem;
+}
+
+/* Tipos */
+.toast--info { background-color: #2196F3; }
+.toast--success { background-color: var(--accent-green, #4CAF50); }
+.toast--error { background-color: var(--accent-red, #F44336); }
+.toast--warning { background-color: var(--accent-yellow, #FFC107); color: #333;}
+
+/* Ícones (Certifique-se que FontAwesome está linkado no index.html) */
+/* .fas { ... } */

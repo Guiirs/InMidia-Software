@@ -1,0 +1,12 @@
+export { aluguelSchema } from './aluguel.schema';
+export { biWeekSchema } from './bi-week.schema';
+export { clienteSchema } from './cliente.schema';
+export { contratoSchema } from './contrato.schema';
+export { empresaSchema, IApiKeyHistory } from './empresa.schema';
+export { mediaAssetSchema } from './mediaAsset.schema';
+export { piGenJobSchema } from './pi-gen-job.schema';
+export { placaSchema } from './placa.schema';
+export { propostaInternaSchema } from './proposta-interna.schema';
+export { regiaoSchema } from './regiao.schema';
+export { userSchema } from './user.schema';
+export { webhookSchema } from './webhook.schema';

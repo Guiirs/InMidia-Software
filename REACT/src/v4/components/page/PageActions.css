@@ -1,0 +1,26 @@
+.v4-page-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 0;
+}
+
+.v4-page-actions--sticky {
+  position: sticky;
+  bottom: 0;
+  padding: 12px 20px;
+  background: var(--bg-card, #ffffff);
+  border-top: 1px solid var(--border, #e0e0e0);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+  z-index: 10;
+}
+
+@media (max-width: 768px) {
+  .v4-page-actions {
+    gap: 8px !important;
+  }
+
+  .v4-page-actions--sticky {
+    padding: 12px 16px;
+  }
+}

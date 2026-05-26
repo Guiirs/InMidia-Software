@@ -1,0 +1,447 @@
+/* ═══════════════════════════════════════════════════════════════
+   INMIDIA V4 PAINEL — DESIGN TOKENS
+   Fundação visual enterprise premium dark
+   Não alterar valores diretamente — edite via variáveis semânticas
+═══════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;550;600;650;700&display=swap');
+
+:root,
+.v4p-root {
+  /* ── PRIMITIVAS DE COR ───────────────────────────────────────── */
+  --p-slate-950: #020617;
+  --p-slate-900: #0b1120;
+  --p-slate-850: #0d121c;
+  --p-slate-800: #0f1521;
+  --p-slate-750: #111927;
+  --p-slate-700: #141b29;
+  --p-slate-650: #172133;
+  --p-slate-600: #1e2a3e;
+  --p-slate-500: #2a3a54;
+  --p-slate-400: #3d5070;
+  --p-slate-300: #8390a6;
+  --p-slate-200: #b0bdd0;
+  --p-slate-100: #d4dcea;
+  --p-slate-50:  #f4f7fb;
+
+  --p-blue-600:  #4361ee;
+  --p-blue-500:  #5b78f5;
+  --p-blue-400:  #7485ff;
+  --p-blue-300:  #9eaaff;
+  --p-blue-100:  rgba(116, 133, 255, 0.13);
+  --p-blue-50:   rgba(116, 133, 255, 0.07);
+
+  --p-green-600: #22a86a;
+  --p-green-500: #2ec47e;
+  --p-green-400: #38c78f;
+  --p-green-100: rgba(56, 199, 143, 0.14);
+  --p-green-50:  rgba(56, 199, 143, 0.07);
+
+  --p-amber-600: #c98d20;
+  --p-amber-500: #d9a030;
+  --p-amber-400: #e3b456;
+  --p-amber-100: rgba(227, 180, 86, 0.14);
+  --p-amber-50:  rgba(227, 180, 86, 0.07);
+
+  --p-red-600:   #c84040;
+  --p-red-500:   #d95555;
+  --p-red-400:   #f47474;
+  --p-red-100:   rgba(244, 116, 116, 0.14);
+  --p-red-50:    rgba(244, 116, 116, 0.07);
+
+  --p-cyan-500:  #06b6d4;
+  --p-cyan-400:  #22d3ee;
+  --p-cyan-100:  rgba(6, 182, 212, 0.14);
+
+  --p-violet-500: #7c3aed;
+  --p-violet-400: #8b5cf6;
+  --p-violet-100: rgba(124, 58, 237, 0.14);
+
+  /* ── SUPERFÍCIES ─────────────────────────────────────────────── */
+  --v4p-bg-page:        var(--p-slate-850);
+  --v4p-bg-shell:       var(--p-slate-800);
+  --v4p-bg-sidebar:     var(--p-slate-900);
+  --v4p-bg-topbar:      var(--p-slate-800);
+  --v4p-bg-card:        var(--p-slate-700);
+  --v4p-bg-card-hover:  var(--p-slate-650);
+  --v4p-bg-card-active: var(--p-slate-600);
+  --v4p-bg-input:       var(--p-slate-750);
+  --v4p-bg-overlay:     rgba(2, 6, 23, 0.72);
+  --v4p-bg-tooltip:     var(--p-slate-600);
+
+  /* Visual model aliases: command-center dark theme extracted from modern-frontend-idea.
+     These tokens keep the Vite/React app independent from Next, Tailwind and shadcn. */
+  --v4p-model-bg:             var(--p-slate-850);
+  --v4p-model-bg-deep:        var(--p-slate-950);
+  --v4p-model-card:           rgba(17, 25, 39, 0.78);
+  --v4p-model-card-hover:     rgba(20, 30, 46, 0.84);
+  --v4p-model-secondary:      rgba(255, 255, 255, 0.04);
+  --v4p-model-secondary-hover: rgba(255, 255, 255, 0.07);
+  --v4p-model-muted:          rgba(176, 189, 208, 0.58);
+  --v4p-model-border:         rgba(148, 163, 184, 0.10);
+  --v4p-model-border-strong:  rgba(148, 163, 184, 0.16);
+  --v4p-model-primary:        var(--p-blue-400);
+  --v4p-model-primary-strong: var(--p-blue-500);
+  --v4p-model-brand-start:    var(--p-blue-400);
+  --v4p-model-brand-end:      var(--p-cyan-400);
+  --v4p-model-grid-line:      rgba(148, 163, 184, 0.035);
+  --v4p-model-shell-glow:     rgba(34, 211, 238, 0.07);
+  --v4p-model-card-glow:      rgba(34, 211, 238, 0.09);
+  --v4p-model-danger:         var(--v4p-danger);
+  --v4p-model-success:        var(--v4p-success);
+  --v4p-model-warning:        var(--v4p-warning);
+
+  /* ── BORDAS ──────────────────────────────────────────────────── */
+  --v4p-border:         rgba(156, 170, 194, 0.12);
+  --v4p-border-soft:    rgba(156, 170, 194, 0.07);
+  --v4p-border-strong:  rgba(156, 170, 194, 0.22);
+  --v4p-border-accent:  rgba(116, 133, 255, 0.35);
+  --v4p-border-success: rgba(56, 199, 143, 0.30);
+  --v4p-border-warning: rgba(227, 180, 86, 0.30);
+  --v4p-border-danger:  rgba(244, 116, 116, 0.30);
+
+  /* ── TIPOGRAFIA ──────────────────────────────────────────────── */
+  --v4p-font:           'Poppins', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --v4p-font-mono:      'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+  --v4p-fs-2xs:         9px;
+  --v4p-fs-xs:          10px;
+  --v4p-fs-sm:          11px;
+  --v4p-fs-base:        12px;
+  --v4p-fs-md:          13px;
+  --v4p-fs-lg:          14px;
+  --v4p-fs-xl:          16px;
+  --v4p-fs-2xl:         20px;
+  --v4p-fs-3xl:         24px;
+  --v4p-fs-hero:        36px;
+  --v4p-lh-tight:       1.12;
+  --v4p-lh-title:       1.22;
+  --v4p-lh-body:        1.48;
+  --v4p-track-label:    0.055em;
+
+  --v4p-density-scale:  0.80;
+  --v4p-density-gap:    10px;
+  --v4p-density-gap-sm: 6px;
+  --v4p-density-gap-xs: 4px;
+  --v4p-density-section-gap: 14px;
+  --v4p-page-pad-x:     clamp(14px, 1.05vw, 18px);
+  --v4p-page-pad-y:     clamp(12px, 0.95vw, 16px);
+  --v4p-card-pad:       10px;
+  --v4p-card-pad-lg:    14px;
+  --v4p-card-pad-sm:    8px;
+  --v4p-panel-gap:      10px;
+  --v4p-pill-h:         19px;
+  --v4p-pill-h-sm:      18px;
+  --v4p-pill-h-lg:      21px;
+  --v4p-pill-pad-x:     7px;
+  --v4p-pill-pad-x-sm:  6px;
+  --v4p-pill-pad-x-lg:  8px;
+  --v4p-table-row-h:    36px;
+  --v4p-table-cell-y:   5px;
+  --v4p-table-cell-x:   8px;
+  --v4p-table-head-fs:  var(--v4p-fs-2xs);
+  --v4p-table-body-fs:  var(--v4p-fs-sm);
+  --v4p-control-h:      30px;
+  --v4p-control-h-sm:   26px;
+  --v4p-control-h-lg:   34px;
+  --v4p-icon-size:      16px;
+  --v4p-icon-size-sm:   13px;
+  --v4p-icon-size-lg:   20px;
+  --v4p-map-min-h:      380px;
+  --v4p-map-compact-h:  260px;
+  --v4p-map-expanded-h: minmax(410px, 62vh);
+  --v4p-chart-h:        136px;
+  --v4p-chart-h-sm:     108px;
+  --v4p-chart-h-lg:     184px;
+
+  --v4p-text-1:         var(--p-slate-50);
+  --v4p-text-2:         var(--p-slate-200);
+  --v4p-text-3:         var(--p-slate-300);
+  --v4p-text-4:         var(--p-slate-400);
+  --v4p-text-disabled:  rgba(179, 189, 208, 0.38);
+  --v4p-text-inverse:   var(--p-slate-900);
+
+  /* ── ACENTO PRIMÁRIO ─────────────────────────────────────────── */
+  --v4p-accent:         var(--p-blue-400);
+  --v4p-accent-hover:   var(--p-blue-300);
+  --v4p-accent-soft:    var(--p-blue-100);
+  --v4p-accent-xsoft:   var(--p-blue-50);
+  --v4p-accent-text:    var(--p-blue-400);
+
+  /* ── ESTADOS SEMÂNTICOS ──────────────────────────────────────── */
+  --v4p-success:        var(--p-green-400);
+  --v4p-success-soft:   var(--p-green-100);
+  --v4p-success-xsoft:  var(--p-green-50);
+  --v4p-success-border: var(--v4p-border-success);
+
+  --v4p-warning:        var(--p-amber-400);
+  --v4p-warning-soft:   var(--p-amber-100);
+  --v4p-warning-xsoft:  var(--p-amber-50);
+  --v4p-warning-border: var(--v4p-border-warning);
+
+  --v4p-danger:         var(--p-red-400);
+  --v4p-danger-soft:    var(--p-red-100);
+  --v4p-danger-xsoft:   var(--p-red-50);
+  --v4p-danger-border:  var(--v4p-border-danger);
+
+  --v4p-info:           var(--p-cyan-400);
+  --v4p-info-soft:      var(--p-cyan-100);
+
+  --v4p-intelligence:   var(--p-violet-400);
+  --v4p-intelligence-soft: var(--p-violet-100);
+
+  /* ── ESPAÇAMENTO ─────────────────────────────────────────────── */
+  --v4p-sp-1:   4px;
+  --v4p-sp-2:   8px;
+  --v4p-sp-3:   12px;
+  --v4p-sp-4:   16px;
+  --v4p-sp-5:   20px;
+  --v4p-sp-6:   24px;
+  --v4p-sp-8:   32px;
+  --v4p-sp-10:  40px;
+  --v4p-sp-12:  48px;
+  --v4p-sp-16:  64px;
+  --v4p-sp-20:  80px;
+
+  /* ── RAIO DE BORDA ───────────────────────────────────────────── */
+  --v4p-r-xs:   3px;
+  --v4p-r-sm:   5px;
+  --v4p-r-md:   7px;
+  --v4p-r-lg:   10px;
+  --v4p-r-xl:   14px;
+  --v4p-r-2xl:  20px;
+  --v4p-r-full: 9999px;
+
+  /* ── SOMBRAS ─────────────────────────────────────────────────── */
+  --v4p-shadow-xs:     0 1px 2px rgba(0,0,0,0.12);
+  --v4p-shadow-sm:     0 2px 6px rgba(0,0,0,0.16);
+  --v4p-shadow-md:     0 4px 12px rgba(0,0,0,0.20);
+  --v4p-shadow-lg:     0 8px 24px rgba(0,0,0,0.26);
+  --v4p-shadow-xl:     0 16px 40px rgba(0,0,0,0.32);
+  --v4p-shadow-card:   0 2px 8px rgba(0,0,0,0.18), 0 0 0 1px var(--v4p-border);
+  --v4p-shadow-premium-card: 0 16px 44px rgba(2, 6, 23, 0.22);
+  --v4p-shadow-premium-shell: 16px 0 42px rgba(0, 0, 0, 0.22);
+  --v4p-shadow-glow:   0 0 0 3px var(--v4p-accent-soft);
+  --v4p-shadow-danger: 0 0 0 3px var(--v4p-danger-soft);
+
+  /* ── TRANSIÇÕES ──────────────────────────────────────────────── */
+  --v4p-ease:           cubic-bezier(0.2, 0.8, 0.2, 1);
+  --v4p-ease-in:        cubic-bezier(0.4, 0, 1, 1);
+  --v4p-ease-out:       cubic-bezier(0, 0, 0.2, 1);
+  --v4p-t-fast:         120ms;
+  --v4p-t-base:         200ms;
+  --v4p-t-slow:         320ms;
+
+  /* ── MOTION (aliases semânticos) ─────────────────────────────── */
+  --v4p-motion-fast:    var(--v4p-t-fast);
+  --v4p-motion-normal:  var(--v4p-t-base);
+  --v4p-motion-slow:    var(--v4p-t-slow);
+
+  /* ── Z-INDEX ─────────────────────────────────────────────────── */
+  --v4p-z-base:     0;
+  --v4p-z-card:     10;
+  --v4p-z-sidebar:  100;
+  --v4p-z-topbar:   110;
+  --v4p-z-overlay:  200;
+  --v4p-z-modal:    300;
+  --v4p-z-toast:    400;
+  --v4p-z-tooltip:  500;
+
+  /* ── DIMENSÕES DO SHELL ──────────────────────────────────────── */
+  --v4p-sidebar-width:          220px;
+  --v4p-sidebar-collapsed-width: 64px;
+  --v4p-topbar-height:          50px;
+  --v4p-shell-sidebar-width:    var(--v4p-sidebar-width);
+  --v4p-shell-sidebar-collapsed: var(--v4p-sidebar-collapsed-width);
+  --v4p-shell-topbar-height:    var(--v4p-topbar-height);
+  --v4p-content-max-width:      1680px;
+
+  /* ── TOKENS DE PÁGINA ────────────────────────────────────────── */
+  /* Gap entre seções de página */
+  --v4p-page-section-gap:       var(--v4p-density-gap);
+  /* Padding interno dos headers/heroes de página */
+  --v4p-page-hero-pad:          var(--v4p-card-pad-lg);
+  /* Border-radius dos heroes de página */
+  --v4p-page-hero-radius:       var(--v4p-r-xl);
+
+  /* ── TOKENS DE TIPOGRAFIA DE PÁGINA ─────────────────────────── */
+  /* Eyebrow (rótulo de seção / breadcrumb label) */
+  --v4p-eyebrow-fs:             var(--v4p-fs-2xs);
+  --v4p-eyebrow-ls:             0.08em;
+  --v4p-eyebrow-weight:         700;
+  /* Título principal de página (h1) */
+  --v4p-page-title-fs:          clamp(20px, 2vw, 24px);
+  --v4p-page-title-weight:      700;
+  --v4p-page-title-ls:          -0.04em;
+  --v4p-page-title-lh:          1.05;
+  /* Subtítulo de página */
+  --v4p-page-sub-fs:            var(--v4p-fs-sm);
+  --v4p-page-sub-lh:            1.45;
+  /* Label de seção */
+  --v4p-section-label-fs:       var(--v4p-fs-2xs);
+  --v4p-section-label-ls:       0.08em;
+  --v4p-section-label-weight:   800;
+  --v4p-section-label-mb:       9px;
+
+  /* ── TOKENS DE KPI / MÉTRICAS ────────────────────────────────── */
+  /* Valor grande de KPI */
+  --v4p-kpi-value-fs:           var(--v4p-fs-2xl);
+  --v4p-kpi-value-ls:           -0.035em;
+  --v4p-kpi-value-weight:       650;
+  /* Valor médio (hero stats) */
+  --v4p-hero-stat-value-fs:     var(--v4p-fs-xl);
+  --v4p-hero-stat-value-weight: 700;
+  /* Label de KPI */
+  --v4p-kpi-label-fs:           var(--v4p-fs-sm);
+
+  /* ── TOKENS DE HERO STATS ────────────────────────────────────── */
+  --v4p-hero-stat-min-w:        108px;
+  --v4p-hero-stat-pad:          7px 10px;
+  --v4p-hero-stat-radius:       var(--v4p-r-lg);
+  --v4p-hero-stat-border:       rgba(148, 163, 184, 0.10);
+  --v4p-hero-stat-bg:           rgba(255, 255, 255, 0.035);
+
+  /* ── TOKENS DE TOPLINE / SOURCE BADGE ───────────────────────── */
+  --v4p-topline-h:              28px;
+  --v4p-source-h:               24px;
+  --v4p-source-pad-x:           10px;
+  --v4p-source-radius:          var(--v4p-r-full);
+
+  /* ── TOKENS DE HEADER DE PAINEL ─────────────────────────────── */
+  --v4p-panel-header-gap:       var(--v4p-density-gap);
+  --v4p-panel-header-pb:        10px;
+  --v4p-panel-header-mb:        12px;
+  --v4p-panel-title-fs:         var(--v4p-fs-lg);
+  --v4p-panel-title-weight:     600;
+  --v4p-panel-sub-fs:           var(--v4p-fs-sm);
+
+  /* ── TOKENS DE CARD OPERACIONAL ─────────────────────────────── */
+  --v4p-card-title-fs:          var(--v4p-fs-base);
+  --v4p-card-title-weight:      600;
+  --v4p-card-sub-fs:            var(--v4p-fs-xs);
+  --v4p-card-metric-fs:         var(--v4p-fs-base);
+  --v4p-card-metric-label-fs:   var(--v4p-fs-2xs);
+  --v4p-card-gap:               var(--v4p-density-gap);
+
+  /* ── FOCUS / ACESSIBILIDADE ──────────────────────────────────── */
+  --v4p-focus-ring:             0 0 0 2px var(--v4p-bg-page), 0 0 0 4px var(--v4p-accent);
+  --v4p-focus-ring-offset:      2px;
+  --v4p-focus-ring-color:       var(--v4p-accent);
+  --v4p-focus-ring-danger:      0 0 0 2px var(--v4p-bg-page), 0 0 0 4px var(--v4p-danger);
+
+  /* ── STATUS SEMÂNTICOS COMPOSTOS ─────────────────────────────── */
+  /* success */
+  --v4p-status-success-bg:      var(--v4p-success-soft);
+  --v4p-status-success-border:  var(--v4p-success-border);
+  --v4p-status-success-text:    var(--v4p-success);
+  --v4p-status-success-icon:    var(--v4p-success);
+  /* warning */
+  --v4p-status-warning-bg:      var(--v4p-warning-soft);
+  --v4p-status-warning-border:  var(--v4p-warning-border);
+  --v4p-status-warning-text:    var(--v4p-warning);
+  --v4p-status-warning-icon:    var(--v4p-warning);
+  /* danger */
+  --v4p-status-danger-bg:       var(--v4p-danger-soft);
+  --v4p-status-danger-border:   var(--v4p-danger-border);
+  --v4p-status-danger-text:     var(--v4p-danger);
+  --v4p-status-danger-icon:     var(--v4p-danger);
+  /* info */
+  --v4p-status-info-bg:         var(--v4p-info-soft);
+  --v4p-status-info-border:     rgba(6, 182, 212, 0.30);
+  --v4p-status-info-text:       var(--v4p-info);
+  --v4p-status-info-icon:       var(--v4p-info);
+  /* neutral */
+  --v4p-status-neutral-bg:      rgba(156, 170, 194, 0.08);
+  --v4p-status-neutral-border:  var(--v4p-border);
+  --v4p-status-neutral-text:    var(--v4p-text-3);
+  --v4p-status-neutral-icon:    var(--v4p-text-3);
+
+  /* ── ELEVAÇÃO / SUPERFÍCIES ──────────────────────────────────── */
+  --v4p-surface-1:      var(--v4p-bg-card);
+  --v4p-surface-2:      var(--v4p-bg-card-hover);
+  --v4p-surface-3:      var(--v4p-bg-card-active);
+  --v4p-surface-page:   var(--v4p-bg-page);
+  --v4p-surface-shell:  var(--v4p-bg-shell);
+  --v4p-surface-overlay: var(--v4p-bg-overlay);
+
+  /* ── INTERAÇÃO (overlays sobre superfícies) ──────────────────── */
+  --v4p-interaction-hover:    rgba(255, 255, 255, 0.035);
+  --v4p-interaction-active:   rgba(255, 255, 255, 0.06);
+  --v4p-interaction-disabled: rgba(255, 255, 255, 0.04);
+  --v4p-interaction-focus:    rgba(116, 133, 255, 0.12);
+
+  /* ── DENSITY SEMÂNTICA ───────────────────────────────────────── */
+  --v4p-density-compact-gap:    var(--v4p-density-gap-sm);
+  --v4p-density-compact-pad:    var(--v4p-card-pad-sm);
+  --v4p-density-normal-gap:     var(--v4p-density-gap);
+  --v4p-density-normal-pad:     var(--v4p-card-pad);
+  --v4p-density-comfortable-gap: var(--v4p-density-gap);
+  --v4p-density-comfortable-pad: var(--v4p-card-pad-lg);
+
+  /* ── BRAND PRIMITIVAS ADICIONAIS ─────────────────────────────── */
+  --p-cyan-300:  #9eeeff;
+  --p-cyan-200:  #cffafe;
+  --p-white:     #ffffff;
+  --p-dark-ink:  #041016;
+
+  /* ── BORDER SEMÂNTICO ADICIONAL ──────────────────────────────── */
+  --v4p-border-info:         rgba(6, 182, 212, 0.30);
+  --v4p-border-input-focus:  var(--v4p-accent);
+  --v4p-border-input:        var(--v4p-border-strong);
+  --v4p-border-divider:      var(--v4p-border-soft);
+}
+
+@media (max-width: 1440px) and (min-width: 901px) {
+  :root,
+  .v4p-root {
+    --v4p-density-scale: 0.84;
+    --v4p-page-pad-x: clamp(14px, 1.1vw, 18px);
+    --v4p-page-pad-y: clamp(12px, 1vw, 16px);
+    --v4p-card-pad: 11px;
+    --v4p-card-pad-lg: 15px;
+    --v4p-table-row-h: 38px;
+    --v4p-table-cell-y: 6px;
+    --v4p-control-h: 30px;
+    --v4p-topbar-height: 52px;
+    --v4p-shell-topbar-height: var(--v4p-topbar-height);
+  }
+}
+
+@media (max-width: 900px) {
+  :root,
+  .v4p-root {
+    --v4p-density-scale: 1;
+    --v4p-page-pad-x: 16px;
+    --v4p-page-pad-y: 16px;
+    --v4p-card-pad: 14px;
+    --v4p-card-pad-lg: 18px;
+    --v4p-table-row-h: 46px;
+    --v4p-control-h: 34px;
+    --v4p-topbar-height: 64px;
+    --v4p-shell-topbar-height: var(--v4p-topbar-height);
+  }
+}
+
+/* ── PREFERS-REDUCED-MOTION ──────────────────────────────────────
+   Usuários com preferência por movimento reduzido: zeramos durações
+   de transição e animação para toda a árvore V4.
+──────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  .v4p-root {
+    --v4p-motion-fast:   0ms;
+    --v4p-motion-normal: 0ms;
+    --v4p-motion-slow:   0ms;
+    --v4p-t-fast:        0ms;
+    --v4p-t-base:        0ms;
+    --v4p-t-slow:        0ms;
+  }
+  .v4p-root *,
+  .v4p-root *::before,
+  .v4p-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

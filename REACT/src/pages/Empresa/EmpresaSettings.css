@@ -1,0 +1,155 @@
+/* --- Estilos da Página de Configurações da Empresa (Agora como Layout/HUB) --- */
+
+/* Bloco Principal */
+.empresa-settings-page {
+    max-width: 1000px; /* Aumenta a largura para o layout de hub */
+    margin: 3rem auto;
+    display: flex;
+    flex-direction: column;
+    gap: 3rem; 
+}
+
+/* [MELHORIA] Barra de Navegação Interna (Abas) */
+.empresa-settings-page__nav {
+    display: flex;
+    gap: 1rem;
+    border-bottom: 1px solid var(--input-border);
+}
+
+.empresa-settings-page__nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 1.2rem 2rem;
+    border-bottom: 2px solid transparent; /* Linha de inativo */
+    margin-bottom: -1px; /* Puxa para cima da borda principal */
+    
+    color: var(--text-color-light);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 1.5rem;
+    transition: all 0.2s ease;
+}
+.empresa-settings-page__nav-link:hover {
+    color: var(--text-color);
+}
+.empresa-settings-page__nav-link.active {
+    /* Estado ativo */
+    color: var(--accent-green);
+    border-bottom-color: var(--accent-green);
+}
+.empresa-settings-page__nav-link i {
+    font-size: 1.4rem;
+}
+
+
+/* [MELHORIA] Container para o conteúdo das sub-páginas (Outlet) */
+.empresa-settings-page__content {
+    /* O conteúdo (Outlet) será renderizado aqui */
+}
+
+
+/* --- Estilos Reutilizáveis para os CARDS das Sub-páginas --- */
+/* (Movidos do CSS antigo) */
+
+.empresa-settings-card {
+    background-color: var(--bg-secondary-color);
+    padding: 3rem;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--input-border);
+}
+
+.empresa-settings-card__header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding-bottom: 1.5rem;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--input-border);
+}
+
+.empresa-settings-card__icon {
+    font-size: 2.4rem;
+    color: var(--accent-green);
+    width: 3rem;
+    text-align: center;
+}
+
+.empresa-settings-card__title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.empresa-settings-card__info-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    margin-bottom: 1.5rem;
+}
+.empresa-settings-card > .empresa-settings-card__info-group:last-of-type {
+    margin-bottom: 0;
+}
+
+.empresa-settings-card__info-label {
+    font-weight: 500;
+    color: var(--text-color-light);
+    font-size: 1.4rem;
+}
+
+.empresa-settings-card__info-value {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1.5rem;
+    background-color: var(--bg-color);
+    padding: 1.2rem 1.5rem;
+    border-radius: 0.8rem;
+    color: var(--text-color);
+    word-break: break-all;
+    line-height: 1.4;
+}
+
+.empresa-settings-card__status {
+    display: inline-block;
+    padding: 0.5rem 1.2rem;
+    border-radius: 2rem;
+    font-weight: 600;
+    font-size: 1.3rem;
+    line-height: 1;
+}
+.empresa-settings-card__status--active {
+    background-color: rgba(34, 197, 94, 0.1);
+    color: var(--accent-green);
+}
+.empresa-settings-card__status--inactive {
+    background-color: rgba(244, 67, 54, 0.1);
+    color: var(--accent-red);
+}
+
+.empresa-settings-card__actions {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--input-border);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.empresa-settings-card__button--regenerate {
+    background-color: var(--accent-yellow);
+    color: var(--bg-color); 
+    padding: 1.2rem 2.4rem;
+    border-radius: 1rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    font-size: 1.5rem;
+}
+.empresa-settings-card__button--regenerate i {
+    font-size: 1.4rem;
+}
+.empresa-settings-card__button--regenerate:hover {
+    background-color: #ffc99a;
+}

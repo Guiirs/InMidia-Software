@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-config
+  labels:
+    app: api-backend
+data:
+  NODE_ENV: "production"
+  CORS_ORIGIN: "https://your-frontend-domain.com"
+  LOG_LEVEL: "info"
+  WHATSAPP_ENABLED: "true"
+  RATE_LIMIT_WINDOW_MS: "900000"
+  RATE_LIMIT_MAX_REQUESTS: "1000"
+  UPLOAD_MAX_SIZE: "10485760"
+  SESSION_TIMEOUT: "3600000"

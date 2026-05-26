@@ -1,0 +1,63 @@
+/* ─── ESPAÇAMENTO — V4 PAINEL ────────────────────────────────── */
+
+/* Padding interno de seções */
+.v4p-p-0  { padding: 0; }
+.v4p-p-1  { padding: var(--v4p-sp-1); }
+.v4p-p-2  { padding: var(--v4p-sp-2); }
+.v4p-p-3  { padding: var(--v4p-sp-3); }
+.v4p-p-4  { padding: var(--v4p-sp-4); }
+.v4p-p-5  { padding: var(--v4p-sp-5); }
+.v4p-p-6  { padding: var(--v4p-sp-6); }
+.v4p-p-8  { padding: var(--v4p-sp-8); }
+
+.v4p-px-2 { padding-left: var(--v4p-sp-2); padding-right: var(--v4p-sp-2); }
+.v4p-px-3 { padding-left: var(--v4p-sp-3); padding-right: var(--v4p-sp-3); }
+.v4p-px-4 { padding-left: var(--v4p-sp-4); padding-right: var(--v4p-sp-4); }
+.v4p-px-5 { padding-left: var(--v4p-sp-5); padding-right: var(--v4p-sp-5); }
+.v4p-px-6 { padding-left: var(--v4p-sp-6); padding-right: var(--v4p-sp-6); }
+
+.v4p-py-2 { padding-top: var(--v4p-sp-2); padding-bottom: var(--v4p-sp-2); }
+.v4p-py-3 { padding-top: var(--v4p-sp-3); padding-bottom: var(--v4p-sp-3); }
+.v4p-py-4 { padding-top: var(--v4p-sp-4); padding-bottom: var(--v4p-sp-4); }
+
+/* Gap em grid/flex */
+.v4p-gap-1 { gap: var(--v4p-sp-1); }
+.v4p-gap-2 { gap: var(--v4p-sp-2); }
+.v4p-gap-3 { gap: var(--v4p-sp-3); }
+.v4p-gap-4 { gap: var(--v4p-sp-4); }
+.v4p-gap-5 { gap: var(--v4p-sp-5); }
+.v4p-gap-6 { gap: var(--v4p-sp-6); }
+
+/* Grids de alta densidade */
+.v4p-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); }
+.v4p-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); }
+.v4p-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); }
+.v4p-grid-auto { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.v4p-grid-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+
+.v4p-density-stack { gap: var(--v4p-density-gap); }
+.v4p-density-card-pad { padding: var(--v4p-card-pad); }
+.v4p-density-page-pad { padding: var(--v4p-page-pad-y) var(--v4p-page-pad-x); }
+
+/* Flex helpers */
+.v4p-flex        { display: flex; }
+.v4p-flex-col    { display: flex; flex-direction: column; }
+.v4p-flex-center { display: flex; align-items: center; justify-content: center; }
+.v4p-flex-between { display: flex; align-items: center; justify-content: space-between; }
+.v4p-items-center { align-items: center; }
+.v4p-flex-1      { flex: 1; }
+.v4p-flex-none   { flex: none; }
+
+/* Divisor */
+.v4p-divider {
+  height: 1px;
+  background: var(--v4p-border);
+  margin: 0;
+  border: none;
+}
+
+.v4p-divider-v {
+  width: 1px;
+  background: var(--v4p-border);
+  align-self: stretch;
+}

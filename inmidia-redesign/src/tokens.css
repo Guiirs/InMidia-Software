@@ -1,0 +1,169 @@
+/* ═══════════════════════════════════════════════════════════
+   CAIM · Design Tokens
+   Lifted from app/src/index.css ("Premium Design System v3/v4")
+   Dark-only, indigo-accented SaaS dashboard.
+   ═══════════════════════════════════════════════════════════ */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
+:root {
+  /* ── Surfaces ────────────────────────────────────────────── */
+  --bg:          #0b0d14;   /* page */
+  --bg-raised:   #0f1119;   /* sidebar, sticky chrome */
+  --bg-card:     #141720;   /* cards */
+  --bg-input:    #1b1e2e;   /* form fields, ghost buttons */
+  --bg-hover:    #22253a;
+  --bg-active:   #2a2e46;
+  --bg-elevated: #181b28;   /* dropdowns, popovers */
+  --bg-overlay:  rgba(5, 5, 12, 0.70);
+
+  /* ── Borders (alpha on dark) ─────────────────────────────── */
+  --border-faint:  rgba(255, 255, 255, 0.038);
+  --border-subtle: rgba(255, 255, 255, 0.062);
+  --border:        rgba(255, 255, 255, 0.090);
+  --border-strong: rgba(255, 255, 255, 0.145);
+
+  /* ── Text ────────────────────────────────────────────────── */
+  --text-1: #eef0fa;   /* primary  */
+  --text-2: #8890ae;   /* secondary, body */
+  --text-3: #50587a;   /* muted, labels */
+  --text-4: #313855;   /* faint, dividers */
+
+  /* ── Accent (indigo) ─────────────────────────────────────── */
+  --accent:        #6366f1;
+  --accent-light:  #818cf8;
+  --accent-dim:    rgba(99, 102, 241, 0.12);
+  --accent-glow:   rgba(99, 102, 241, 0.28);
+  --accent-border: rgba(99, 102, 241, 0.28);
+  --accent-soft:   rgba(99, 102, 241, 0.10);
+
+  /* ── Brand mark gradient (favicon / sidebar avatar) ─────── */
+  --brand-violet: #863bff;
+  --brand-purple: #7e14ff;
+  --brand-mauve:  #ede6ff;
+  --brand-sky:    #47bfff;
+  --brand-gradient: linear-gradient(135deg, var(--accent) 0%, #a855f7 100%);
+
+  /* ── Status palette ──────────────────────────────────────── */
+  --success: #22c55e;  --success-on: #4ade80;
+  --warning: #eab308;  --warning-on: #facc15;
+  --danger:  #ef4444;  --danger-on:  #f87171;
+  --info:    #3b82f6;  --info-on:    #93c5fd;
+  --pink:    #ec4899;
+  --purple:  #a855f7;
+  --blue:    #3b82f6;
+
+  --status-online-dim:      rgba(34, 197, 94,  0.12);
+  --status-online-border:   rgba(34, 197, 94,  0.25);
+  --status-degraded-dim:    rgba(234, 179, 8,  0.12);
+  --status-degraded-border: rgba(234, 179, 8,  0.25);
+  --status-offline-dim:     rgba(239, 68,  68, 0.12);
+  --status-offline-border:  rgba(239, 68,  68, 0.25);
+  --status-info-dim:        rgba(59, 130, 246, 0.12);
+  --status-info-border:     rgba(59, 130, 246, 0.25);
+
+  /* ── Spacing scale ───────────────────────────────────────── */
+  --s1:  4px;   --s2:  8px;   --s3:  12px;
+  --s4:  16px;  --s5:  20px;  --s6:  24px;
+  --s7:  32px;  --s8:  40px;  --s9:  48px;
+  --s10: 64px;
+
+  /* ── Radii ───────────────────────────────────────────────── */
+  --r-sm:   6px;
+  --r-md:  10px;
+  --r-lg:  14px;
+  --r-xl:  18px;
+  --r-2xl: 24px;
+  --r-full: 9999px;
+
+  /* ── Shadows / elevation ─────────────────────────────────── */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.20);
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.03);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.38), 0 1px 3px rgba(0, 0, 0, 0.20);
+  --shadow-lg: 0 16px 56px rgba(0, 0, 0, 0.55), 0 4px 14px rgba(0, 0, 0, 0.32);
+  --shadow-focus: 0 0 0 3px var(--accent-glow);
+
+  /* ── Motion ──────────────────────────────────────────────── */
+  --t1: 100ms;
+  --t2: 170ms;
+  --t3: 280ms;
+  --ease:        cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ── Type families ───────────────────────────────────────── */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* ── Type ramp (semantic) ────────────────────────────────── */
+  --fs-display: 30px; --lh-display: 1.10; --ls-display: -0.04em;  /* metric values */
+  --fs-h1:      22px; --lh-h1:      1.20; --ls-h1:      -0.02em;  /* server page H1 */
+  --fs-h2:      18px; --lh-h2:      1.25; --ls-h2:      -0.02em;
+  --fs-h3:      15px; --lh-h3:      1.30; --ls-h3:      -0.02em;  /* page title, modal title */
+  --fs-h4:      13.5px; --lh-h4:    1.30; --ls-h4:      -0.02em;  /* card title */
+  --fs-body:    14px; --lh-body:    1.55; --ls-body:     0;
+  --fs-body-sm: 13px; --lh-body-sm: 1.50; --ls-body-sm: -0.01em;  /* button labels, nav items */
+  --fs-caption: 12px; --lh-caption: 1.40; --ls-caption:  0;       /* subtitles, hints */
+  --fs-meta:    11px; --lh-meta:    1.40; --ls-meta:     0.03em;  /* badges, deltas */
+  --fs-eyebrow: 11px; --lh-eyebrow: 1.40; --ls-eyebrow:  0.07em;  /* uppercase labels */
+  --fs-micro:   10px; --lh-micro:   1.30; --ls-micro:    0.12em;  /* section titles */
+}
+
+/* ───────────────────────────────────────────────────────────
+   Element defaults (canonical: anywhere this CSS lands)
+   ─────────────────────────────────────────────────────────── */
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-1);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5 {
+  font-weight: 700;
+  color: var(--text-1);
+  letter-spacing: var(--ls-h2);
+  line-height: 1.25;
+}
+
+h1 { font-size: var(--fs-h1); letter-spacing: var(--ls-h1); line-height: var(--lh-h1); }
+h2 { font-size: var(--fs-h2); }
+h3 { font-size: var(--fs-h3); line-height: var(--lh-h3); }
+h4 { font-size: var(--fs-h4); line-height: var(--lh-h4); }
+
+p { color: var(--text-2); line-height: 1.6; }
+strong { font-weight: 600; color: var(--text-1); }
+
+code, kbd, samp, pre {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* ───────────────────────────────────────────────────────────
+   Utility classes — semantic type
+   ─────────────────────────────────────────────────────────── */
+.caim-display  { font-size: var(--fs-display); line-height: var(--lh-display);
+                 letter-spacing: var(--ls-display); font-weight: 800;
+                 font-variant-numeric: tabular-nums; color: var(--text-1); }
+
+.caim-eyebrow  { font-size: var(--fs-eyebrow); line-height: var(--lh-eyebrow);
+                 letter-spacing: var(--ls-eyebrow); font-weight: 700;
+                 text-transform: uppercase; color: var(--text-3); }
+
+.caim-section-title { font-size: var(--fs-micro); line-height: var(--lh-micro);
+                 letter-spacing: var(--ls-micro); font-weight: 600;
+                 text-transform: uppercase; color: var(--text-4); }
+
+.caim-caption  { font-size: var(--fs-caption); line-height: var(--lh-caption);
+                 color: var(--text-3); }
+
+.caim-meta     { font-size: var(--fs-meta); line-height: var(--lh-meta);
+                 letter-spacing: var(--ls-meta); font-weight: 700;
+                 color: var(--text-3); }
+
+.caim-mono     { font-family: var(--font-mono); }
+.caim-tnum     { font-variant-numeric: tabular-nums; }

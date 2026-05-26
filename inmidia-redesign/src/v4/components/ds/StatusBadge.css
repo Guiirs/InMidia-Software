@@ -1,0 +1,14 @@
+.v4-status-badge {
+  display: inline-block;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.7;
+  background: var(--status-info-dim, #e0e7ff);
+  color: var(--info, #3b82f6);
+}
+.v4-status-badge--success { background: var(--status-online-dim, #dcfce7); color: var(--success, #22c55e); }
+.v4-status-badge--warning { background: var(--status-degraded-dim, #fef9c3); color: var(--warning, #eab308); }
+.v4-status-badge--error { background: var(--status-offline-dim, #fee2e2); color: var(--danger, #ef4444); }
+.v4-status-badge--info { background: var(--status-info-dim, #e0e7ff); color: var(--info, #3b82f6); }

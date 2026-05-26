@@ -1,0 +1,352 @@
+/* pages/Placas/Placas.css */
+
+.placas-page {
+    width: 100%;
+}
+
+/* Controles (Filtros e Botão Adicionar) */
+.placas-page__controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem; /* Reduzido para dar espaço ao status summary */
+    flex-wrap: wrap; /* Permite quebra de linha em telas pequenas */
+    gap: 1.5rem; /* Ajustado */
+}
+
+/* Status Summary */
+.placas-page__status-summary {
+    display: flex;
+    align-items: stretch;
+    gap: 1.2rem;
+    margin-bottom: 2.4rem;
+    flex-wrap: wrap;
+}
+
+.placas-page__status-item {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    padding: 1.4rem 1.8rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--bg-secondary-color);
+    border: 1px solid var(--input-border);
+    border-left: 3px solid transparent;
+    transition: transform var(--transition-fast) ease, border-color var(--transition-fast) ease;
+    flex: 1;
+    min-width: 14rem;
+}
+
+.placas-page__status-item:hover {
+    transform: translateY(-0.2rem);
+}
+
+.placas-page__status-item--disponivel {
+    border-left-color: var(--accent-green);
+}
+
+.placas-page__status-item--disponivel i {
+    color: var(--accent-green);
+    font-size: 1.6rem;
+}
+
+.placas-page__status-item--alugada {
+    border-left-color: var(--accent-red);
+}
+
+.placas-page__status-item--alugada i {
+    color: var(--accent-red);
+    font-size: 1.6rem;
+}
+
+.placas-page__status-item--reservada {
+    border-left-color: var(--accent-blue);
+}
+
+.placas-page__status-item--reservada i {
+    color: var(--accent-blue);
+    font-size: 1.6rem;
+}
+
+.placas-page__status-item--manutencao {
+    border-left-color: var(--accent-yellow);
+}
+
+.placas-page__status-item--manutencao i {
+    color: var(--accent-yellow);
+    font-size: 1.6rem;
+}
+
+.placas-page__status-count {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--text-color);
+    line-height: 1;
+}
+
+.placas-page__status-label {
+    font-size: 1.2rem;
+    color: var(--text-color-light);
+    font-weight: 500;
+    line-height: 1.3;
+}
+
+.placas-page__filters {
+    display: flex;
+    flex-wrap: wrap; /* Permite quebra */
+    gap: 1.5rem; /* Mantido */
+}
+
+.placas-page__filter-select {
+    padding: 1.2rem 2rem; /* Ajustado (era 0.75rem, 1.5rem * 1.6) */
+    border-radius: 1rem; /* Ajustado (era 10px) */
+    border: 1px solid var(--input-border);
+    background-color: var(--bg-secondary-color);
+    color: var(--text-color);
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.4rem; /* Mantido */
+    cursor: pointer;
+    min-width: 15rem; /* Largura mínima para selects */
+}
+.placas-page__filter-select:focus {
+    outline: none;
+    border-color: var(--accent-green);
+    /* box-shadow opcional, pode ser global */
+    /* box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2); */
+}
+
+.placas-page__add-button {
+    background-color: var(--accent-green);
+    color: white;
+    padding: 1.2rem 2rem; /* Ajustado (era 0.75rem, 1.5rem * 1.6) */
+    border-radius: 1rem; /* Ajustado (era 10px) */
+    text-decoration: none;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem; /* Ajustado */
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    font-size: 1.4rem; /* Mantido */
+}
+.placas-page__add-button:hover {
+    background-color: #1a9c4a; /* Cor mais escura no hover */
+}
+.placas-page__add-button i {
+    font-size: 1.4rem; /* Ajustado (era 1rem * 1.4) */
+}
+
+/* Grid de Placas */
+.placas-page__placas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(28rem, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+    align-items: start;
+}
+
+/* Mensagem de erro ou sem resultados */
+.placas-page__error,
+.placas-page__no-results {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 4rem 1.5rem; /* Ajustado */
+    color: var(--text-color-light);
+    font-style: italic;
+    background-color: var(--bg-secondary-color);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--input-border);
+    font-size: 1.6rem; /* Tamanho da fonte da mensagem */
+}
+.placas-page__error {
+    color: var(--accent-red);
+    font-style: normal;
+}
+
+/* Paginação */
+.placas-page__pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap; /* Permite quebra */
+    gap: 1rem; /* Ajustado (era 0.75rem * 1.33) */
+    margin-top: 3rem; /* Ajustado */
+}
+
+.placas-page__pagination-button {
+    background-color: var(--bg-secondary-color);
+    color: var(--text-color-light);
+    border: 1px solid var(--input-border);
+    padding: 1rem 1.5rem; /* Ajustado (era 0.75rem, 1rem * 1.33) */
+    min-width: 4rem; /* Ajustado (era 40px) */
+    height: 4rem; /* Ajustado (era 40px) */
+    border-radius: 0.8rem; /* Ajustado (era 8px) */
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    font-size: 1.4rem; /* Ajustado (era 1rem * 1.4) */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.placas-page__pagination-button:hover:not(:disabled) {
+    background-color: var(--sidebar-active-bg);
+    color: var(--text-color);
+}
+.placas-page__pagination-button--active,
+.placas-page__pagination-button:disabled {
+    background-color: var(--accent-green);
+    color: white;
+    border-color: var(--accent-green);
+    cursor: default;
+    opacity: 1;
+}
+.placas-page__pagination-button:disabled:not(.placas-page__pagination-button--active) {
+     background-color: var(--input-border);
+     opacity: 0.5;
+     cursor: not-allowed;
+     color: var(--text-color-light);
+}
+
+.placas-page__organization-status {
+    margin-bottom: 2rem;
+}
+
+.placas-page__organization-card {
+    display: flex;
+    justify-content: space-between;
+    gap: 1.2rem;
+    align-items: center;
+    padding: 1.2rem 1.4rem;
+    border-radius: 1rem;
+    border: 1px solid var(--input-border);
+    background: var(--bg-secondary-color);
+}
+
+.placas-page__organization-card--ok {
+    border-left: 4px solid var(--accent-green);
+}
+
+.placas-page__organization-card--warn {
+    border-left: 4px solid var(--accent-yellow);
+}
+
+.placas-page__organization-card button {
+    border: none;
+    border-radius: 0.8rem;
+    padding: 0.8rem 1.2rem;
+    background: var(--accent-green);
+    color: #fff;
+    cursor: pointer;
+}
+
+.placas-page__organization-feedback {
+    margin-top: 0.8rem;
+    color: var(--accent-green);
+}
+
+.placas-page__organization-error {
+    margin-top: 0.8rem;
+    color: var(--accent-red);
+}
+
+.placa-org {
+    border: 1px solid var(--input-border);
+    border-radius: 1.2rem;
+    background: var(--bg-secondary-color);
+    padding: 1.6rem;
+    margin-bottom: 2rem;
+}
+
+.placa-org__header h3 {
+    margin: 0;
+}
+
+.placa-org__header p {
+    margin-top: 0.6rem;
+    color: var(--text-color-light);
+}
+
+.placa-org__actions {
+    margin: 1rem 0;
+}
+
+.placa-org__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+    gap: 1rem;
+}
+
+.placa-org__card {
+    border: 1px solid var(--input-border);
+    border-radius: 1rem;
+    padding: 1rem;
+    background: var(--bg-color);
+    cursor: grab;
+}
+
+.placa-org__card-head {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.8rem;
+}
+
+.placa-org__card-title {
+    font-weight: 600;
+}
+
+.placa-org__card-subtitle {
+    color: var(--text-color-light);
+    font-size: 1.3rem;
+}
+
+.placa-org__preview {
+    margin-top: 1.2rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.placa-org__preview h4 {
+    margin: 0 0 0.6rem;
+}
+
+.placa-org__preview ul {
+    margin: 0;
+    padding-left: 1.8rem;
+}
+
+.placa-org__footer {
+    margin-top: 1.4rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+.placa-org__btn {
+    border: none;
+    border-radius: 0.8rem;
+    padding: 0.8rem 1.2rem;
+    cursor: pointer;
+}
+
+.placa-org__btn--primary {
+    background: var(--accent-green);
+    color: #fff;
+}
+
+.placa-org__btn--secondary {
+    background: var(--input-border);
+    color: var(--text-color);
+}
+
+@media (max-width: 900px) {
+    .placa-org__preview {
+        grid-template-columns: 1fr;
+    }
+
+    .placas-page__organization-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

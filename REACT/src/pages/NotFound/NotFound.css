@@ -1,0 +1,57 @@
+/* src/pages/NotFound/NotFound.css */
+.not-found-page {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh; /* Ajuste conforme necessário, pode ser 100vh se não tiver header/footer */
+    text-align: center;
+    padding: 2rem;
+    background-color: var(--bg-color); /* Usa cor de fundo do tema */
+    color: var(--text-color);
+}
+
+.not-found-page__icon {
+    font-size: 6rem; /* Tamanho grande para o ícone */
+    color: var(--accent-red); /* Cor de destaque */
+    margin-bottom: 2rem;
+    animation: pulse 2s infinite ease-in-out; /* Animação sutil */
+}
+
+.not-found-page__title {
+    font-size: 3rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-color);
+}
+
+.not-found-page__message {
+    font-size: 1.6rem;
+    color: var(--text-color-light); /* Cor mais suave */
+    margin-bottom: 3rem;
+    max-width: 400px;
+}
+
+.not-found-page__link {
+    display: inline-block;
+    padding: 1.2rem 2.5rem;
+    background-color: var(--accent-green); /* Botão verde */
+    color: white;
+    text-decoration: none;
+    border-radius: var(--border-radius);
+    font-weight: 500;
+    font-size: 1.5rem;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.not-found-page__link:hover {
+    background-color: #1a9c4a; /* Verde mais escuro no hover */
+    transform: translateY(-2px);
+}
+
+/* Animação de pulso para o ícone */
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.1); opacity: 1; }
+    100% { transform: scale(1); opacity: 0.8; }
+}

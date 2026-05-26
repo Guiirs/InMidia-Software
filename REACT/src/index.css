@@ -1,0 +1,473 @@
+/* ============================================
+   DESIGN SYSTEM - InMidia Backstage
+   ============================================
+
+   Base: 1rem = 10px (62.5%)
+   Nomenclatura: BEM (Block Element Modifier)
+   Unidades: rem (preferencialmente)
+
+   v2 — Premium Enterprise Design System
+   Referências: Linear, Vercel, Stripe, Datadog
+   ============================================ */
+
+/* --- RESET E BASE --- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  /* Base: 62.5% = 10px, logo 1.6rem = 16px */
+  font-size: 62.5%;
+  scroll-behavior: smooth;
+}
+
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 1.6rem; /* 16px */
+  line-height: 1.6;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              color           0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.foundation-theme {
+  background-color: var(--fdn-color-page, #0d121c) !important;
+  color: var(--fdn-color-text-strong, #f4f7fb);
+}
+
+code {
+  font-family: 'Fira Code', 'JetBrains Mono', 'Courier New', monospace;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   VARIÁVEIS CSS — LIGHT MODE (PADRÃO)
+   Premium palette: Linear / Vercel / Stripe
+───────────────────────────────────────────────────────────────────────────── */
+:root {
+  /* === SUPERFÍCIES (light) === */
+  --bg-color:           #F8FAFC;  /* page background */
+  --bg-secondary-color: #FFFFFF;  /* panels, cards */
+  --card-background:    #FFFFFF;
+
+  /* === TEXTO (light) === */
+  --text-color:       #0F172A;
+  --text-color-light: #475569;
+  --text-color-muted: #64748B;
+
+  /* === BORDAS (light) === */
+  --input-border:  #E2E8F0;
+  --border-color:  #E2E8F0;
+
+  /* === SIDEBAR === */
+  --sidebar-active-bg:      #F1F5F9;
+  --sidebar-width-expanded: 26rem;
+  --sidebar-width-collapsed: 10rem;
+
+  /* === SOMBRAS (light — sutis) === */
+  --box-shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --box-shadow:    0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --box-shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.06);
+
+  /* === ACCENT COLORS (brand — iguais em ambos os modos) === */
+  --accent-green:       #16A34A;
+  --accent-green-hover: #15803D;
+  --accent-green-light: rgba(22, 163, 74, 0.10);
+
+  --accent-red:       #DC2626;
+  --accent-red-hover: #B91C1C;
+  --accent-red-light: rgba(220, 38, 38, 0.10);
+
+  --accent-yellow:       #D97706;
+  --accent-yellow-hover: #B45309;
+  --accent-yellow-light: rgba(217, 119, 6, 0.12);
+
+  --accent-pink:       #7C3AED;
+  --accent-pink-hover: #6D28D9;
+  --accent-pink-light: rgba(124, 58, 237, 0.10);
+
+  --accent-blue:       #2563EB;
+  --accent-blue-hover: #1D4ED8;
+  --accent-blue-light: rgba(37, 99, 235, 0.10);
+
+  --accent-gray:       #64748B;
+  --accent-gray-hover: #475569;
+
+  /* ─── DESIGN SYSTEM PREMIUM — Tokens DS ─────────────────────────────────
+     Prefixo --ds- para o novo sistema.
+     Componentes novos devem usar --ds-*, não --bg-color / --text-color.
+  ──────────────────────────────────────────────────────────────────────── */
+
+  /* Superfícies */
+  --ds-bg:               #F8FAFC;
+  --ds-surface:          #FFFFFF;
+  --ds-surface-elevated: #F1F5F9;
+  --ds-border:           #E2E8F0;
+  --ds-border-subtle:    #F1F5F9;
+
+  /* Texto */
+  --ds-text-primary:   #0F172A;
+  --ds-text-secondary: #475569;
+  --ds-text-muted:     #64748B;
+  --ds-text-inverse:   #FFFFFF;
+
+  /* Cores semânticas */
+  --ds-primary:            #2563EB;
+  --ds-primary-hover:      #1D4ED8;
+  --ds-primary-soft:       #DBEAFE;
+  --ds-primary-subtle:     #EFF6FF;
+
+  --ds-success:            #16A34A;
+  --ds-success-hover:      #15803D;
+  --ds-success-soft:       #DCFCE7;
+  --ds-success-subtle:     #F0FDF4;
+
+  --ds-warning:            #D97706;
+  --ds-warning-hover:      #B45309;
+  --ds-warning-soft:       #FEF3C7;
+  --ds-warning-subtle:     #FFFBEB;
+
+  --ds-danger:             #DC2626;
+  --ds-danger-hover:       #B91C1C;
+  --ds-danger-soft:        #FEE2E2;
+  --ds-danger-subtle:      #FFF5F5;
+
+  --ds-info:               #0891B2;
+  --ds-info-hover:         #0E7490;
+  --ds-info-soft:          #CFFAFE;
+  --ds-info-subtle:        #ECFEFF;
+
+  --ds-intelligence:       #7C3AED;
+  --ds-intelligence-hover: #6D28D9;
+  --ds-intelligence-soft:  #EDE9FE;
+  --ds-intelligence-subtle:#F5F3FF;
+
+  /* Sombras DS */
+  --ds-shadow-xs:        0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --ds-shadow-sm:        0 1px 3px 0 rgba(0, 0, 0, 0.10), 0 1px 2px -1px rgba(0, 0, 0, 0.10);
+  --ds-shadow:           0 4px 6px -1px rgba(0, 0, 0, 0.10), 0 2px 4px -2px rgba(0, 0, 0, 0.10);
+  --ds-shadow-md:        0 10px 15px -3px rgba(0, 0, 0, 0.10), 0 4px 6px -4px rgba(0, 0, 0, 0.10);
+  --ds-shadow-lg:        0 20px 25px -5px rgba(0, 0, 0, 0.10), 0 8px 10px -6px rgba(0, 0, 0, 0.10);
+  --ds-shadow-card:      0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --ds-shadow-card-hover:0 4px 12px 0 rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  --ds-shadow-modal:     0 20px 60px -10px rgba(0, 0, 0, 0.20);
+
+  /* === DESIGN TOKENS (inalterados — compat) === */
+  --transition-speed: 0.3s;
+  --transition-fast:  0.15s;
+  --transition-slow:  0.5s;
+
+  /* === BORDER RADIUS === */
+  --radius-sm:  0.4rem;
+  --radius:     0.8rem;
+  --radius-md:  1rem;
+  --radius-lg:  1.2rem;
+  --radius-xl:  2rem;
+  --radius-2xl: 2.4rem;
+  --radius-full: 50%;
+
+  /* Alias */
+  --border-radius: var(--radius-lg);
+
+  /* === ESPAÇAMENTO (Sistema de 4px) === */
+  --space-xs:   0.4rem;
+  --space-sm:   0.8rem;
+  --space-md:   1.2rem;
+  --space-base: 1.6rem;
+  --space-lg:   2.4rem;
+  --space-xl:   3.2rem;
+  --space-2xl:  4rem;
+  --space-3xl:  4.8rem;
+
+  /* === TIPOGRAFIA === */
+  --font-size-xs:   1.2rem;
+  --font-size-sm:   1.4rem;
+  --font-size-base: 1.6rem;
+  --font-size-lg:   1.8rem;
+  --font-size-xl:   2rem;
+  --font-size-2xl:  2.4rem;
+  --font-size-3xl:  3rem;
+  --font-size-4xl:  3.6rem;
+
+  --font-weight-normal:   400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+
+  /* === Z-INDEX === */
+  --z-dropdown:      1000;
+  --z-sticky:        1020;
+  --z-fixed:         1030;
+  --z-modal-backdrop:1040;
+  --z-modal:         1050;
+  --z-popover:       1060;
+  --z-tooltip:       1070;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   DARK MODE
+   Ativado via body.dark-theme (troca automática futura: prefers-color-scheme)
+───────────────────────────────────────────────────────────────────────────── */
+body.dark-theme {
+  /* Superfícies */
+  --bg-color:           #020617;
+  --bg-secondary-color: #0F172A;
+  --card-background:    #0F172A;
+
+  /* Texto */
+  --text-color:       #F8FAFC;
+  --text-color-light: #CBD5E1;
+  --text-color-muted: #94A3B8;
+
+  /* Bordas */
+  --input-border: #334155;
+  --border-color: #334155;
+
+  /* Sidebar */
+  --sidebar-active-bg: #1E293B;
+
+  /* Sombras (dark — mais pronunciadas) */
+  --box-shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.30);
+  --box-shadow:    0 4px 8px -2px rgba(0, 0, 0, 0.40);
+  --box-shadow-lg: 0 20px 40px -8px rgba(0, 0, 0, 0.50);
+
+  /* DS tokens dark */
+  --ds-bg:               #020617;
+  --ds-surface:          #0F172A;
+  --ds-surface-elevated: #1E293B;
+  --ds-border:           #334155;
+  --ds-border-subtle:    #1E293B;
+
+  --ds-text-primary:   #F8FAFC;
+  --ds-text-secondary: #CBD5E1;
+  --ds-text-muted:     #94A3B8;
+  --ds-text-inverse:   #0F172A;
+
+  --ds-shadow-card:      0 1px 3px 0 rgba(0, 0, 0, 0.30);
+  --ds-shadow-card-hover:0 4px 12px 0 rgba(0, 0, 0, 0.40);
+  --ds-shadow-modal:     0 20px 60px -10px rgba(0, 0, 0, 0.60);
+}
+
+/* Alias de retrocompatibilidade — body.light-theme agora é no-op (light é o padrão) */
+body.light-theme {
+  --bg-color:           #F8FAFC;
+  --bg-secondary-color: #FFFFFF;
+  --card-background:    #FFFFFF;
+  --text-color:         #0F172A;
+  --text-color-light:   #475569;
+  --text-color-muted:   #64748B;
+  --input-border:       #E2E8F0;
+  --border-color:       #E2E8F0;
+  --sidebar-active-bg:  #F1F5F9;
+  --box-shadow-sm:      0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --box-shadow:         0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --box-shadow-lg:      0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.06);
+}
+
+/* --- UTILITÁRIOS GLOBAIS --- */
+
+/* Scrollbar customizada (tema escuro) */
+::-webkit-scrollbar {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary-color);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--input-border);
+  border-radius: var(--radius);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-gray);
+}
+
+/* Scrollbar Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--input-border) var(--bg-secondary-color);
+}
+
+/* === CLASSES UTILITÁRIAS === */
+
+/* Texto */
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-left { text-align: left; }
+
+.text-xs { font-size: var(--font-size-xs); }
+.text-sm { font-size: var(--font-size-sm); }
+.text-base { font-size: var(--font-size-base); }
+.text-lg { font-size: var(--font-size-lg); }
+.text-xl { font-size: var(--font-size-xl); }
+.text-2xl { font-size: var(--font-size-2xl); }
+
+.font-normal { font-weight: var(--font-weight-normal); }
+.font-medium { font-weight: var(--font-weight-medium); }
+.font-semibold { font-weight: var(--font-weight-semibold); }
+.font-bold { font-weight: var(--font-weight-bold); }
+
+/* Cores */
+.text-primary { color: var(--text-color); }
+.text-secondary { color: var(--text-color-light); }
+.text-muted { color: var(--text-color-muted); }
+.text-success { color: var(--accent-green); }
+.text-danger { color: var(--accent-red); }
+.text-warning { color: var(--accent-yellow); }
+.text-info { color: var(--accent-blue); }
+
+/* Display */
+.d-none { display: none; }
+.d-block { display: block; }
+.d-flex { display: flex; }
+.d-grid { display: grid; }
+
+/* Flex */
+.flex-row { flex-direction: row; }
+.flex-column { flex-direction: column; }
+.justify-start { justify-content: flex-start; }
+.justify-center { justify-content: center; }
+.justify-end { justify-content: flex-end; }
+.justify-between { justify-content: space-between; }
+.align-start { align-items: flex-start; }
+.align-center { align-items: center; }
+.align-end { align-items: flex-end; }
+.flex-wrap { flex-wrap: wrap; }
+.flex-nowrap { flex-wrap: nowrap; }
+.gap-sm { gap: var(--space-sm); }
+.gap-md { gap: var(--space-md); }
+.gap-lg { gap: var(--space-lg); }
+
+/* Espaçamento */
+.m-0 { margin: 0; }
+.mt-sm { margin-top: var(--space-sm); }
+.mt-md { margin-top: var(--space-md); }
+.mt-lg { margin-top: var(--space-lg); }
+.mb-sm { margin-bottom: var(--space-sm); }
+.mb-md { margin-bottom: var(--space-md); }
+.mb-lg { margin-bottom: var(--space-lg); }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   LEGACY BOUNDARY — Isola estilos V3 do sistema V4.
+   Envolver o V3 em .legacy-root para limitar o escopo dos estilos legados.
+   O V4 opera fora deste escopo sob .v4p-root.
+───────────────────────────────────────────────────────────────────────────── */
+
+/* Estilos globais que APENAS se aplicam dentro de .legacy-root */
+.legacy-root table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.legacy-root button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.legacy-root input,
+.legacy-root select,
+.legacy-root textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* Estilos globais body/html NÃO devem vazar no V4 — o V4 usa .v4p-root */
+
+/* Anotação: elementos body table/button/input SEM .legacy-root ou .v4p-root
+   recebem os estilos do reset do index.css (* { margin: 0; padding: 0; }).
+   Isso é intencional — o reset é neutro e não quebra nada. */
+
+.p-0 { padding: 0; }
+.p-sm { padding: var(--space-sm); }
+.p-md { padding: var(--space-md); }
+.p-lg { padding: var(--space-lg); }
+
+/* Largura */
+.w-full { width: 100%; }
+.w-auto { width: auto; }
+
+/* Overflow */
+.overflow-hidden { overflow: hidden; }
+.overflow-auto { overflow: auto; }
+.overflow-scroll { overflow: scroll; }
+
+/* Cursor */
+.cursor-pointer { cursor: pointer; }
+.cursor-not-allowed { cursor: not-allowed; }
+
+/* Opacidade */
+.opacity-50 { opacity: 0.5; }
+.opacity-75 { opacity: 0.75; }
+
+/* === RESPONSIVIDADE === */
+@media (max-width: 768px) {
+  html {
+    font-size: 56.25%; /* 9px base para mobile */
+  }
+}
+
+@media (max-width: 480px) {
+  html {
+    font-size: 50%; /* 8px base para mobile pequeno */
+  }
+}
+
+/* === ANIMAÇÕES GLOBAIS === */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(2rem);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from { 
+    opacity: 0;
+    transform: translateY(-2rem);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Classes de animação */
+.animate-fadeIn { animation: fadeIn 0.3s ease-in-out; }
+.animate-slideUp { animation: slideUp 0.3s ease-out; }
+.animate-slideDown { animation: slideDown 0.3s ease-out; }
+.animate-spin { animation: spin 1s linear infinite; }
+.animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+/* === TRANSIÇÕES GLOBAIS === */
+.transition-all { transition: all var(--transition-speed) ease; }
+.transition-colors { transition: color var(--transition-speed) ease, background-color var(--transition-speed) ease; }
+.transition-transform { transition: transform var(--transition-speed) ease; }
+.transition-opacity { transition: opacity var(--transition-speed) ease; }

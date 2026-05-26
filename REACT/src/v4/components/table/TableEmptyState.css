@@ -1,0 +1,30 @@
+.v4-table-empty-state {
+  align-items: center;
+  background: var(--bg-card, #141720);
+  border: 1px solid var(--border, #23263a);
+  border-radius: var(--r-md, 8px);
+  color: var(--text-2, #8890ae);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+  min-height: 140px;
+  padding: 20px;
+  text-align: center;
+}
+
+.v4-table-empty-state__title {
+  color: var(--text-1, #eef0fa);
+  font-size: 15px;
+  margin: 0;
+}
+
+.v4-table-empty-state__description {
+  font-size: 13px;
+  margin: 0;
+  max-width: 520px;
+}
+
+.v4-table-empty-state__action {
+  margin-top: 4px;
+}

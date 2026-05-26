@@ -1,0 +1,5 @@
+@import '../pages/inventory/InventoryV4.css';
+
+.v4-inventory-route {
+  min-height: 100%;
+}

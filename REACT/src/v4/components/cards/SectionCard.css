@@ -1,0 +1,44 @@
+.v4-section-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.014) 0%, rgba(255, 255, 255, 0) 100%),
+    var(--bg-card, #141720);
+  border: 1px solid var(--border-soft, rgba(156, 170, 194, 0.09));
+  border-radius: var(--r-md, 8px);
+  box-shadow: var(--shadow-card, 0 8px 18px rgba(0, 0, 0, 0.12)), inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  display: flex;
+  flex-direction: column;
+}
+.v4-section-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 11px 9px;
+  border-bottom: 1px solid var(--border-soft, rgba(156, 170, 194, 0.09));
+}
+.v4-section-card__title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.v4-section-card__title {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--text-1, #eef0fa);
+  margin: 0;
+}
+.v4-section-card__subtitle {
+  font-size: 11px;
+  color: var(--text-2, #8890ae);
+  margin: 0;
+  line-height: 1.35;
+}
+.v4-section-card__actions {
+  display: flex;
+  gap: 6px;
+}
+.v4-section-card__body {
+  padding: 10px 11px 11px;
+  flex: 1;
+}

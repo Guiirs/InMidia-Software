@@ -1,0 +1,11 @@
+.v4-preview-page {
+  display: flex;
+  flex: 1;
+  min-height: 100%;
+}
+
+.v4-preview-page__stage {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}

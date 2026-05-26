@@ -1,0 +1,27 @@
+{
+  "title": "Sync Layer Debug",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "tags": ["sync", "debug", "comm-10"],
+  "annotations": {
+    "list": [
+      {
+        "name": "Diagnostics timeline",
+        "enable": true,
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "expr": "changes(sync_transport_degraded[5m]) > 0",
+        "titleFormat": "transport degraded transition"
+      }
+    ]
+  },
+  "panels": [
+    { "id": 1, "type": "table", "title": "Recent events", "gridPos": { "x": 0, "y": 0, "w": 12, "h": 7 }, "targets": [{ "expr": "sync_instance_health_info", "format": "table", "instant": true }] },
+    { "id": 2, "type": "timeseries", "title": "Replay spikes", "gridPos": { "x": 12, "y": 0, "w": 12, "h": 7 }, "targets": [{ "expr": "sum(increase(sync_replay_requests_total[1m]))", "legendFormat": "requests" }, { "expr": "sum(increase(sync_replay_failures_total[1m]))", "legendFormat": "failures" }] },
+    { "id": 3, "type": "timeseries", "title": "Empresas with highest lag proxy", "gridPos": { "x": 0, "y": 7, "w": 12, "h": 7 }, "targets": [{ "expr": "topk(10, sync_stream_lag_latest_ms)", "legendFormat": "{{instanceId}}" }] },
+    { "id": 4, "type": "table", "title": "Top degradedReasons", "gridPos": { "x": 12, "y": 7, "w": 12, "h": 7 }, "targets": [{ "expr": "count by (degradedReason, transportMode, instanceId) (sync_transport_degraded_info == 1)", "format": "table", "instant": true }] },
+    { "id": 5, "type": "timeseries", "title": "Stream backlog proxy", "gridPos": { "x": 0, "y": 14, "w": 12, "h": 7 }, "targets": [{ "expr": "clamp_min(rate(sync_events_published_total[5m]) - rate(sync_events_delivered_sse_total[5m]), 0)", "legendFormat": "publish minus sse delivery" }] },
+    { "id": 6, "type": "timeseries", "title": "Reconnect timeline", "gridPos": { "x": 12, "y": 14, "w": 12, "h": 7 }, "targets": [{ "expr": "sum(increase(sync_reconnect_attempts_total[1m])) by (instanceId)", "legendFormat": "{{instanceId}}" }] }
+  ]
+}

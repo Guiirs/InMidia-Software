@@ -1,0 +1,208 @@
+.v4p-map-marker {
+  position: absolute;
+  z-index: 5;
+  left: clamp(18px, var(--marker-x), calc(100% - 18px));
+  top: clamp(18px, var(--marker-y), calc(100% - 18px));
+  width: 24px;
+  height: 24px;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+
+.v4p-map-marker.is-warning {
+  z-index: 8;
+}
+
+.v4p-map-marker.is-critical {
+  z-index: 10;
+}
+
+.v4p-map-marker:hover,
+.v4p-map-marker.is-selected {
+  z-index: 30;
+}
+
+.v4p-map-marker__pulse {
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--v4p-marker-color) 18%, transparent);
+  pointer-events: none;
+  transform-origin: center;
+  animation: v4p-map-marker-pulse 2.4s ease-out infinite;
+}
+
+.v4p-map-marker.is-critical .v4p-map-marker__pulse {
+  animation-duration: 1.8s;
+}
+
+.v4p-map-marker__pin {
+  position: absolute;
+  inset: 3px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid rgba(255, 255, 255, 0.62);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.56), transparent 22%),
+    var(--v4p-marker-color);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--v4p-marker-color) 20%, transparent),
+    0 10px 22px rgba(0, 0, 0, 0.32);
+  color: #fff;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    box-shadow 160ms var(--v4p-ease),
+    filter 160ms var(--v4p-ease);
+}
+
+.v4p-map-marker.is-compact .v4p-map-marker__pin {
+  inset: 4px;
+}
+
+.v4p-map-marker.is-critical .v4p-map-marker__pin {
+  inset: 1px;
+}
+
+.v4p-map-marker__pin:hover,
+.v4p-map-marker.is-selected .v4p-map-marker__pin {
+  filter: saturate(1.12) brightness(1.08);
+  box-shadow:
+    0 0 0 5px color-mix(in srgb, var(--v4p-marker-color) 21%, transparent),
+    0 14px 30px rgba(0, 0, 0, 0.38);
+}
+
+.v4p-map-marker__pin span {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.v4p-map-marker__tooltip {
+  position: absolute;
+  z-index: 40;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  width: max-content;
+  min-width: 164px;
+  max-width: 240px;
+  padding: 9px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 12px;
+  background: rgba(8, 13, 23, 0.97);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: v4p-fade-in 120ms var(--v4p-ease) both;
+}
+
+.v4p-map-marker.is-compact .v4p-map-marker__tooltip {
+  min-width: 132px;
+  max-width: 180px;
+  padding: 8px;
+}
+
+.v4p-map-marker.is-near-right .v4p-map-marker__tooltip {
+  right: 0;
+  left: auto;
+  transform: none;
+}
+
+.v4p-map-marker.is-near-left .v4p-map-marker__tooltip {
+  right: auto;
+  left: 0;
+  transform: none;
+}
+
+.v4p-map-marker.is-near-top .v4p-map-marker__tooltip {
+  top: calc(100% + 10px);
+  bottom: auto;
+}
+
+.v4p-map-marker__tooltip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 9px;
+  height: 9px;
+  border-right: 1px solid rgba(148, 163, 184, 0.16);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(8, 13, 23, 0.97);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.v4p-map-marker.is-near-right .v4p-map-marker__tooltip::after {
+  right: 7px;
+  left: auto;
+  transform: rotate(45deg);
+}
+
+.v4p-map-marker.is-near-left .v4p-map-marker__tooltip::after {
+  right: auto;
+  left: 12px;
+  transform: rotate(45deg);
+}
+
+.v4p-map-marker.is-near-top .v4p-map-marker__tooltip::after {
+  top: -5px;
+  bottom: auto;
+  border: 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+  border-left: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.v4p-map-marker__tooltip-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.v4p-map-marker.is-compact .v4p-map-marker__tooltip-top {
+  margin-bottom: 0;
+}
+
+.v4p-map-marker__tooltip-top strong {
+  color: var(--v4p-marker-color);
+  font-size: 11px;
+}
+
+.v4p-map-marker__tooltip-top span {
+  color: var(--v4p-text-4);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.v4p-map-marker__tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 5px;
+  color: var(--v4p-text-4);
+  font-size: 10px;
+}
+
+.v4p-map-marker__tooltip-row strong {
+  color: var(--v4p-success);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+@keyframes v4p-map-marker-pulse {
+  0% {
+    opacity: 0.44;
+    transform: scale(0.78);
+  }
+
+  70% {
+    opacity: 0;
+    transform: scale(1.85);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.85);
+  }
+}

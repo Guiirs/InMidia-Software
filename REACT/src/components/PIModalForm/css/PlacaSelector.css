@@ -1,0 +1,205 @@
+/* src/components/PIModalForm/css/PlacaSelector.css */
+/* Versão completa com SCROLL INTERNO e fontes grandes */
+
+.pi-selector__filters {
+    display: flex;
+    gap: 1rem;
+    width: 100%;
+    margin-bottom: 1.5rem;
+}
+
+.pi-selector__search {
+    flex-grow: 1;
+}
+
+.pi-selector__region-filter {
+    flex-basis: 200px;
+}
+
+/* Filtros (Inputs e Select) com fontes grandes e dropdown preto */
+.pi-selector__input,
+.pi-selector__select {
+    width: 100%;
+    padding: 0.85rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: var(--input-bg); 
+    font-size: 1rem; 
+    color: var(--text-dark); 
+    cursor: pointer;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23FFFFFF'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1em;
+}
+
+.pi-selector__select option {
+    background-color: #000000; 
+    color: #FFFFFF; 
+    font-size: 1rem;
+    padding: 0.5rem;
+}
+
+.pi-selector__select option:checked,
+.pi-selector__select option:hover {
+    background-color: #007bff; 
+    color: #FFFFFF;
+}
+/* --- Fim dos Filtros --- */
+
+
+.pi-selector__list-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    width: 100%;
+    /* Removemos a altura fixa daqui para deixar os filhos controlarem */
+    height: auto; 
+    position: relative;
+}
+
+/* --- ALTERAÇÃO: Scroll Interno das Listas --- */
+.pi-selector__list {
+    border: 1px solid var(--border-color-light);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    
+    /* ESTA É A ALTERAÇÃO PRINCIPAL: */
+    height: 300px; /* Altura fixa para as listas */
+    overflow-y: auto; /* Adiciona o scroll INTERNO */
+    
+    background-color: var(--input-bg-light); 
+}
+/* --- Fim da Alteração --- */
+
+
+/* Título da Lista (Fonte Aumentada) */
+.pi-selector__list > h4 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.75rem;
+    color: var(--text-dark); 
+    font-size: 1.8rem; 
+}
+
+.pi-selector__list ul { list-style: none; padding: 0; margin: 0; }
+.pi-selector__list li { margin-bottom: 0.5rem; }
+
+.pi-selector__empty-list {
+    font-size: 0.9rem;
+    color: var(--text-light); 
+    text-align: center;
+    margin-top: 2rem;
+    font-style: italic;
+}
+
+
+/* ================================================= */
+/* === Itens da Placa (Fontes Aumentadas) === */
+/* ================================================= */
+
+.placa-select-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem;
+    background-color: #ffffff; 
+    border: 1px solid #dee2e6; 
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+}
+
+.placa-select-item__info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex-grow: 1;
+    overflow: hidden; 
+    margin-right: 0.5rem; 
+}
+
+.placa-select-item__codigo {
+    font-weight: 600;
+    color: #007bff; 
+    font-size: 1.1rem; /* Fonte Aumentada */
+}
+
+.placa-select-item__regiao {
+    font-size: 1rem; /* Fonte Aumentada */
+    font-weight: 500;
+    color: #6c757d; 
+}
+
+.placa-select-item__rua {
+    font-size: 1rem; /* Fonte Aumentada */
+    color: #343a40; 
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/* --- Fim das Fontes --- */
+
+
+.placa-select-item__button {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0.5rem;
+    margin-left: 0.5rem;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+    flex-shrink: 0;
+}
+
+.placa-select-item__button--add { color: var(--success-color); }
+.placa-select-item__button--add:hover { background-color: rgba(40, 167, 69, 0.1); }
+.placa-select-item__button--remove { color: var(--danger-color); }
+.placa-select-item__button--remove:hover { background-color: rgba(220, 53, 69, 0.1); }
+.placa-select-item__button:disabled { color: #adb5bd; cursor: not-allowed; }
+
+/* Visual para placas indisponíveis */
+.placa-select-item--unavailable {
+    opacity: 0.75;
+    background-color: #f8f9fa; /* leve shading */
+}
+
+.placa-select-item__badge {
+    display: inline-block;
+    padding: 0.15rem 0.45rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.placa-select-item__badge--unavailable {
+    background-color: #dc3545;
+    color: white;
+}
+
+/* Focus styles for accessibility */
+.placa-select-item:focus {
+    outline: 3px solid rgba(0,123,255,0.25);
+    outline-offset: 2px;
+}
+
+.placa-select-item[tabindex="0"] { cursor: pointer; }
+
+/* Utility: visually hidden (screen-reader only) */
+.sr-only { 
+    position: absolute !important; 
+    height: 1px; width: 1px; 
+    overflow: hidden; 
+    clip: rect(1px, 1px, 1px, 1px); 
+    white-space: nowrap; 
+}

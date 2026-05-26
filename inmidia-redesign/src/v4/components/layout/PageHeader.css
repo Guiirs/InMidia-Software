@@ -1,0 +1,26 @@
+.v4-page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 0 18px 0;
+  border-bottom: 1px solid var(--border, #23263a);
+  margin-bottom: 24px;
+}
+.v4-page-header__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.v4-page-header__title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-1, #eef0fa);
+}
+.v4-page-header__subtitle {
+  font-size: 15px;
+  color: var(--text-2, #8890ae);
+}
+.v4-page-header__actions {
+  display: flex;
+  gap: 8px;
+}

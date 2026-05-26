@@ -1,0 +1,26 @@
+# traefik.yml - Alternative to Nginx using Traefik
+api:
+  dashboard: true
+  insecure: true  # Only for development
+
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+
+providers:
+  file:
+    filename: /etc/traefik/dynamic.yml
+
+# Enable metrics
+metrics:
+  prometheus:
+    entryPoint: web
+
+# Access logs
+accessLog: {}
+
+# Enable API
+api:
+  dashboard: true

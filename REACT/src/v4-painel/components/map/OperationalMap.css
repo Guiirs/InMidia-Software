@@ -1,0 +1,205 @@
+.v4p-operational-map-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  overflow: visible;
+}
+
+.v4p-operational-map-card--compact {
+  gap: 10px;
+  padding: 12px;
+}
+
+.v4p-operational-map__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.v4p-operational-map__header strong {
+  display: block;
+  color: var(--v4p-text-2);
+  font-size: var(--v4p-fs-sm);
+  font-weight: 600;
+}
+
+.v4p-operational-map__header span {
+  display: block;
+  margin-top: 2px;
+  color: var(--v4p-text-4);
+  font-size: var(--v4p-fs-2xs);
+}
+
+.v4p-operational-map__badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+.v4p-operational-map__badges span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: max-content;
+  min-height: 22px;
+  padding: 0 9px;
+  border-radius: var(--v4p-r-full);
+  font-size: var(--v4p-fs-xs);
+  font-weight: 550;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.v4p-operational-map__badges span[data-tone='critical'] {
+  background: var(--v4p-danger-soft);
+  color: var(--v4p-danger);
+}
+
+.v4p-operational-map__badges span[data-tone='warning'] {
+  background: var(--v4p-warning-xsoft);
+  color: var(--v4p-warning);
+}
+
+.v4p-operational-map__viewport {
+  position: relative;
+  min-height: 430px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.10);
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(34, 211, 238, 0.12) 0%, rgba(12, 18, 29, 0.98) 58%, #08111d 100%),
+    linear-gradient(135deg, rgba(34, 211, 238, 0.05), rgba(56, 199, 143, 0.025));
+  isolation: isolate;
+}
+
+.v4p-operational-map-card--compact .v4p-operational-map__viewport {
+  min-height: 320px;
+}
+
+.v4p-operational-map__viewport::before {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border-radius: 16px;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(circle at 50% 48%, black 0%, transparent 72%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.v4p-operational-map__regions,
+.v4p-operational-map__markers {
+  position: absolute;
+  inset: 0;
+}
+
+.v4p-operational-map__regions {
+  z-index: 1;
+}
+
+.v4p-operational-map__markers {
+  z-index: 4;
+  pointer-events: none;
+}
+
+.v4p-operational-map__region {
+  position: absolute;
+  left: calc(var(--region-left) + 2px);
+  top: calc(var(--region-top) + 2px);
+  width: calc(var(--region-width) - 4px);
+  height: calc(var(--region-height) - 4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  overflow: hidden;
+  border: 1px solid rgba(61, 80, 112, 0.15);
+  border-radius: 10px;
+  background: var(--region-bg);
+}
+
+.v4p-operational-map__region.has-data {
+  border-color: color-mix(in srgb, var(--region-color) 28%, transparent);
+}
+
+.v4p-operational-map__region strong {
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.v4p-operational-map-card--compact .v4p-operational-map__region strong {
+  font-size: 11px;
+}
+
+.v4p-operational-map__region:not(.has-data) strong {
+  color: rgba(255, 255, 255, 0.22);
+}
+
+.v4p-operational-map__region span {
+  color: var(--region-color);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.v4p-operational-map__region em {
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 9px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.v4p-operational-map__region i {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--region-color);
+  opacity: 0.78;
+}
+
+.v4p-operational-map__legend {
+  position: absolute;
+  z-index: 8;
+  left: 10px;
+  bottom: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 6px 7px;
+  border: 1px solid rgba(148, 163, 184, 0.08);
+  border-radius: 999px;
+  background: rgba(8, 13, 23, 0.68);
+}
+
+.v4p-operational-map-card--compact .v4p-operational-map__legend {
+  gap: 6px;
+  padding: 5px 6px;
+}
+
+.v4p-operational-map__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: max-content;
+  color: rgba(255, 255, 255, 0.56);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.v4p-operational-map__legend i {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+}

@@ -1,0 +1,201 @@
+import { NAV_ITEM_ID } from '../foundation/navigation.js';
+
+export const PAGE_STATUS = {
+  LIVE: 'live',
+  MOCK: 'mock',
+  COMING_SOON: 'coming_soon',
+  DEPRECATED: 'deprecated',
+};
+
+export const INTEGRATION_STATUS = {
+  NONE: 'none',
+  PARTIAL: 'partial',
+  FULL: 'full',
+  READY: 'ready',
+};
+
+export const PAGE_REGISTRY = [
+  {
+    id: NAV_ITEM_ID.DASHBOARD,
+    label: 'Dashboard Executivo',
+    path: '/v4/dashboard',
+    component: 'DashboardPage',
+    status: PAGE_STATUS.LIVE,
+    integration: INTEGRATION_STATUS.FULL,
+    rolloutPhase: 1,
+    priority: 'critical',
+    description: 'Centro operacional principal via Sync Core e API V4 real.',
+    dataNeeds: ['dashboard.kpis', 'dashboard.overview', 'dashboard.activity', 'dashboard.performance', 'dashboard.alertsSummary'],
+    featureFlag: 'v4_dashboard',
+    mockFile: null,
+    contractFile: null,
+    accessRoles: ['admin', 'manager', 'analyst'],
+  },
+  {
+    id: NAV_ITEM_ID.OPERACOES,
+    label: 'Operacoes',
+    path: '/v4/operacoes',
+    component: 'OperationsPage',
+    status: PAGE_STATUS.LIVE,
+    integration: INTEGRATION_STATUS.FULL,
+    rolloutPhase: 2,
+    priority: 'high',
+    description: 'Central operacional via API V4 real.',
+    dataNeeds: ['operations.timeline', 'operations.summary', 'operations.tasks', 'operations.pending', 'operations.byDomain'],
+    featureFlag: 'v4_operations',
+    mockFile: null,
+    contractFile: null,
+    accessRoles: ['admin', 'manager', 'operator'],
+  },
+  {
+    id: NAV_ITEM_ID.INVENTARIO,
+    label: 'Inventario',
+    path: '/v4/inventario',
+    component: 'InventoryPage',
+    status: PAGE_STATUS.LIVE,
+    integration: INTEGRATION_STATUS.FULL,
+    rolloutPhase: 2,
+    priority: 'high',
+    description: 'Painel de ativos OOH via Sync Core e API V4 real.',
+    dataNeeds: ['inventory.boards', 'inventory.summary', 'inventory.regions'],
+    featureFlag: 'v4_inventory',
+    mockFile: null,
+    contractFile: null,
+    accessRoles: ['admin', 'manager', 'operator', 'analyst'],
+  },
+  {
+    id: NAV_ITEM_ID.COMERCIAL,
+    label: 'Comercial',
+    path: '/v4/comercial',
+    component: 'CommercialPage',
+    status: PAGE_STATUS.LIVE,
+    integration: INTEGRATION_STATUS.FULL,
+    rolloutPhase: 3,
+    priority: 'high',
+    description: 'Pipeline comercial via Sync Core e API V4 real.',
+    dataNeeds: ['commercial.pipeline', 'commercial.opportunities', 'commercial.proposals', 'commercial.conversions', 'commercial.activities'],
+    featureFlag: 'v4_commercial',
+    mockFile: null,
+    contractFile: null,
+    accessRoles: ['admin', 'manager', 'commercial'],
+  },
+  {
+    id: NAV_ITEM_ID.CONTRATOS,
+    label: 'Contratos',
+    path: '/v4/contratos',
+    component: 'ContractsPage',
+    status: PAGE_STATUS.LIVE,
+    integration: INTEGRATION_STATUS.FULL,
+    rolloutPhase: 3,
+    priority: 'high',
+    description: 'Gestao enterprise de contratos via Sync Core e API V4 real.',
+    dataNeeds: ['contracts.summary', 'contracts.list', 'contracts.active', 'contracts.expiring', 'contracts.timeline'],
+    featureFlag: 'v4_contracts',
+    mockFile: null,
+    contractFile: null,
+    accessRoles: ['admin', 'manager', 'commercial'],
+  },
+  {
+    id: NAV_ITEM_ID.RELATORIOS,
+    label: 'Relatorios',
+    path: '/v4/relatorios',
+    component: 'ReportsPage',
+    status: PAGE_STATUS.LIVE,
+    integration: INTEGRATION_STATUS.FULL,
+    rolloutPhase: 4,
+    priority: 'medium',
+    description: 'Analytics executivos via Sync Core e API V4 real.',
+    dataNeeds: ['reports.summary', 'reports.analytics', 'reports.exports', 'reports.byPeriod', 'reports.byDomain'],
+    featureFlag: 'v4_reports',
+    mockFile: null,
+    contractFile: null,
+    accessRoles: ['admin', 'manager', 'analyst'],
+  },
+  {
+    id: NAV_ITEM_ID.REGIOES,
+    label: 'Regioes / Mapa',
+    path: '/v4/regioes',
+    component: 'MapPage',
+    status: PAGE_STATUS.LIVE,
+    integration: INTEGRATION_STATUS.FULL,
+    rolloutPhase: 4,
+    priority: 'medium',
+    description: 'Mapa operacional via inventory.boards, inventory.regions e inventory.summary.',
+    dataNeeds: ['inventory.boards', 'inventory.regions', 'inventory.summary'],
+    featureFlag: 'v4_map',
+    mockFile: null,
+    contractFile: null,
+    accessRoles: ['admin', 'manager', 'analyst', 'operator'],
+  },
+  {
+    id: NAV_ITEM_ID.ALERTAS,
+    label: 'Alertas',
+    path: '/v4/alertas',
+    component: 'AlertsPage',
+    status: PAGE_STATUS.LIVE,
+    integration: INTEGRATION_STATUS.FULL,
+    rolloutPhase: 2,
+    priority: 'high',
+    description: 'Central de alertas via Sync Core e API V4 real.',
+    dataNeeds: ['alerts.list', 'alerts.summary', 'alerts.critical', 'alerts.unread', 'alerts.byDomain'],
+    featureFlag: 'v4_alerts',
+    mockFile: null,
+    contractFile: null,
+    accessRoles: ['admin', 'manager', 'operator'],
+  },
+  {
+    id: NAV_ITEM_ID.CAMPANHAS,
+    label: 'Campanhas',
+    path: '/v4/campanhas',
+    component: 'CampaignsPage',
+    status: PAGE_STATUS.LIVE,
+    integration: INTEGRATION_STATUS.FULL,
+    rolloutPhase: 5,
+    priority: 'medium',
+    description: 'Gestao de campanhas via Sync Core e API V4 real.',
+    dataNeeds: ['campaigns.summary', 'campaigns.list', 'campaigns.active', 'campaigns.scheduled', 'campaigns.performance'],
+    featureFlag: 'v4_campaigns',
+    mockFile: null,
+    contractFile: null,
+    accessRoles: ['admin', 'manager', 'commercial'],
+  },
+  {
+    id: NAV_ITEM_ID.ATIVIDADE,
+    label: 'Atividade',
+    path: '/v4/atividade',
+    component: 'ActivityPage',
+    status: PAGE_STATUS.LIVE,
+    integration: INTEGRATION_STATUS.FULL,
+    rolloutPhase: 5,
+    priority: 'medium',
+    description: 'Timeline global e auditoria via Sync Core e API V4 real.',
+    dataNeeds: ['activity.timeline', 'activity.feed', 'activity.audit', 'activity.byDomain'],
+    featureFlag: 'v4_activity',
+    mockFile: null,
+    contractFile: null,
+    accessRoles: ['admin'],
+  },
+];
+
+export function getPageById(id) {
+  return PAGE_REGISTRY.find(p => p.id === id) ?? null;
+}
+
+export function getPagesByPhase(phase) {
+  return PAGE_REGISTRY.filter(p => p.rolloutPhase === phase);
+}
+
+export function getLivePages() {
+  return PAGE_REGISTRY.filter(p => p.status === PAGE_STATUS.LIVE);
+}
+
+export function getPagesReadyForIntegration() {
+  return PAGE_REGISTRY.filter(p => p.integration === INTEGRATION_STATUS.READY);
+}
+
+export const PAGE_ROLLOUT_SUMMARY = {
+  total: PAGE_REGISTRY.length,
+  live: PAGE_REGISTRY.filter(p => p.status === PAGE_STATUS.LIVE).length,
+  comingSoon: PAGE_REGISTRY.filter(p => p.status === PAGE_STATUS.COMING_SOON).length,
+  readyToIntegrate: PAGE_REGISTRY.filter(p => p.integration === INTEGRATION_STATUS.READY).length,
+};

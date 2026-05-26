@@ -1,0 +1,45 @@
+@import '../../components/page/PageShell.css';
+@import '../../components/page/PageHeader.css';
+@import '../../components/page/PageContainer.css';
+@import '../../components/page/PageSection.css';
+@import '../../components/filters/index.css';
+@import '../../components/actions/index.css';
+@import '../../components/ds/StatusBadge.css';
+@import '../../components/states/EmptyState.css';
+@import '../../components/states/LoadingState.css';
+@import '../../components/states/ErrorState.css';
+
+.v4-boards-preview-v4 {
+  background:
+    radial-gradient(circle at 18% -14%, rgba(116, 133, 255, 0.13) 0%, rgba(15, 22, 35, 0.9) 40%, var(--bg-page, #0d121c) 100%),
+    linear-gradient(135deg, rgba(20, 184, 166, 0.025), rgba(116, 133, 255, 0.035));
+  min-height: 100%;
+}
+
+.v4-boards-preview-v4 .v4-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  padding-top: 6px;
+}
+
+.v4-boards-preview-v4__status-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.v4-boards-preview-v4__status-row .v4-status-badge {
+  background: rgba(20, 27, 41, 0.78);
+  border-color: var(--border-soft, rgba(156, 170, 194, 0.09));
+}
+
+.v4-boards-preview-v4__state-banner {
+  margin-bottom: 8px;
+}
+
+.v4-boards-preview-v4 .v4-board-card-grid {
+  gap: 8px;
+}

@@ -1,0 +1,499 @@
+.v4p-map-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--v4p-density-gap);
+  animation: v4p-fade-in 240ms var(--v4p-ease) both;
+}
+
+.v4p-map-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--v4p-density-gap);
+  padding: var(--v4p-card-pad-lg);
+  border: 1px solid rgba(148, 163, 184, 0.10);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 86% 18%, rgba(34, 211, 238, 0.14), transparent 30%),
+    linear-gradient(135deg, rgba(17, 25, 39, 0.92), rgba(12, 18, 29, 0.92));
+}
+
+.v4p-map-hero span {
+  color: var(--v4p-accent);
+  font-size: var(--v4p-fs-2xs);
+  font-weight: 600;
+  letter-spacing: var(--v4p-track-label);
+  text-transform: uppercase;
+}
+
+.v4p-map-hero h1 {
+  margin: 6px 0 0;
+  color: var(--v4p-text-1);
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: -0.04em;
+  line-height: var(--v4p-lh-title);
+}
+
+.v4p-map-hero p {
+  margin: 9px 0 0;
+  color: var(--v4p-text-4);
+  font-size: var(--v4p-fs-sm);
+  line-height: 1.5;
+}
+
+.v4p-map-hero__metrics {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.v4p-map-hero__metrics article {
+  min-width: 118px;
+  padding: 9px 10px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(148, 163, 184, 0.10);
+}
+
+.v4p-map-hero__metrics strong {
+  color: var(--v4p-text-1);
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.v4p-map-hero__metrics p {
+  margin-top: 6px;
+  font-size: var(--v4p-fs-xs);
+}
+
+.v4p-map-workspace {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: var(--v4p-density-gap);
+  align-items: start;
+}
+
+.v4p-map-regions {
+  position: sticky;
+  top: 16px;
+}
+
+.v4p-map-stage {
+  min-width: 0;
+  padding: var(--v4p-card-pad);
+  border: 1px solid rgba(148, 163, 184, 0.10);
+  border-radius: 16px;
+  background: rgba(13, 20, 32, 0.58);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.16);
+}
+
+.v4p-map-stage .v4-geomap {
+  border-radius: var(--v4p-r-md, 12px);
+}
+
+.v4p-map-stage__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.v4p-map-stage__top h2 {
+  margin: 0;
+  color: var(--v4p-text-1);
+  font-size: var(--v4p-fs-md);
+  font-weight: 600;
+}
+
+.v4p-map-stage__top p {
+  margin: 4px 0 0;
+  color: var(--v4p-text-4);
+  font-size: var(--v4p-fs-xs);
+}
+
+.v4p-map-stage__top button {
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--v4p-text-3);
+  font-family: var(--v4p-font);
+  font-size: var(--v4p-fs-xs);
+  cursor: pointer;
+}
+
+.v4p-map-opportunities {
+  max-width: 100%;
+}
+
+.v4p-map-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.10);
+  border-radius: 12px;
+  background: rgba(13, 20, 32, 0.58);
+}
+
+.v4p-map-filters input,
+.v4p-map-filters select {
+  height: 34px;
+  min-width: 160px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--v4p-text-2);
+  font-family: var(--v4p-font);
+  font-size: var(--v4p-fs-xs);
+  padding: 0 10px;
+}
+
+.v4p-map-filters input {
+  min-width: min(260px, 100%);
+}
+
+.v4p-map-filters button {
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--v4p-text-3);
+  font-family: var(--v4p-font);
+  font-size: var(--v4p-fs-xs);
+  cursor: pointer;
+}
+
+.v4p-map-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 260px;
+  padding: 28px;
+  border: 1px dashed rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+  background: rgba(13, 20, 32, 0.42);
+  text-align: center;
+}
+
+.v4p-map-empty .material-symbols-rounded {
+  color: var(--v4p-accent);
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.v4p-map-empty strong {
+  color: var(--v4p-text-1);
+  font-size: var(--v4p-fs-md);
+}
+
+.v4p-map-empty p {
+  color: var(--v4p-text-4);
+  font-size: var(--v4p-fs-xs);
+}
+
+@media (max-width: 1180px) {
+  .v4p-map-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .v4p-map-regions {
+    position: static;
+    order: 2;
+  }
+}
+
+@media (max-width: 780px) {
+  .v4p-map-hero,
+  .v4p-map-hero__metrics {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* ── Placa em foco banner ────────────────────────────────────── */
+.v4p-map-focus-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(34, 211, 238, 0.30);
+  background: rgba(34, 211, 238, 0.07);
+  animation: v4p-fade-in 200ms var(--v4p-ease) both;
+}
+
+.v4p-map-focus-banner__inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.v4p-map-focus-banner__pulse {
+  font-size: 20px;
+  color: var(--v4p-accent);
+  flex-shrink: 0;
+  animation: v4p-map-pulse 2s ease-in-out infinite;
+}
+
+@keyframes v4p-map-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(1.15); }
+}
+
+.v4p-map-focus-banner__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.v4p-map-focus-banner__text strong {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--v4p-accent);
+  font-family: var(--v4p-mono, monospace);
+  letter-spacing: 0.04em;
+}
+
+.v4p-map-focus-banner__text span {
+  font-size: 11px;
+  color: var(--v4p-text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.v4p-map-focus-banner__loc {
+  font-size: 10px !important;
+  color: var(--v4p-text-4) !important;
+}
+
+.v4p-map-focus-banner__coords {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 8px;
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(148, 163, 184, 0.10);
+}
+
+.v4p-map-focus-banner__coords span {
+  font-size: 10px;
+  color: var(--v4p-text-4);
+  font-family: var(--v4p-mono, monospace);
+}
+
+.v4p-map-focus-banner__close {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.06);
+  color: var(--v4p-text-3);
+  font-family: var(--v4p-font);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.v4p-map-focus-banner__close:hover {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--v4p-text-1);
+}
+
+/* ── Região ativa chip ────────────────────────────────────────── */
+.v4p-map-region-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(13, 20, 32, 0.72);
+  animation: v4p-fade-in 180ms var(--v4p-ease) both;
+  align-self: flex-start;
+}
+
+.v4p-map-region-chip__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.v4p-map-region-chip__label {
+  font-size: var(--v4p-fs-xs);
+  color: var(--v4p-text-4);
+}
+
+.v4p-map-region-chip__name {
+  font-size: var(--v4p-fs-xs);
+  font-weight: 600;
+  color: var(--v4p-text-1);
+}
+
+.v4p-map-region-chip__no-coords {
+  display: inline-flex;
+  align-items: center;
+  color: var(--v4p-text-4);
+  opacity: 0.7;
+}
+
+.v4p-map-region-chip__ops {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 2px;
+}
+
+.v4p-map-region-chip__ops em {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--v4p-text-3);
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.v4p-map-region-chip__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.10);
+  color: var(--v4p-text-4);
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s;
+  flex-shrink: 0;
+}
+
+.v4p-map-region-chip__clear:hover {
+  background: rgba(239, 68, 68, 0.18);
+  color: #ef4444;
+}
+
+/* ── Stage top actions ───────────────────────────────────────── */
+.v4p-map-stage__top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.v4p-map-stage__btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--v4p-text-3);
+  font-family: var(--v4p-font);
+  font-size: var(--v4p-fs-xs);
+  cursor: pointer;
+  transition: background 0.14s;
+}
+
+.v4p-map-stage__btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.v4p-map-stage__btn-manage {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(116, 133, 255, 0.30);
+  border-radius: 10px;
+  background: rgba(116, 133, 255, 0.08);
+  color: #a0aeff;
+  font-family: var(--v4p-font);
+  font-size: var(--v4p-fs-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.14s, border-color 0.14s;
+}
+
+.v4p-map-stage__btn-manage .material-symbols-rounded {
+  font-size: 15px;
+}
+
+.v4p-map-stage__btn-manage:hover {
+  background: rgba(116, 133, 255, 0.14);
+  border-color: rgba(116, 133, 255, 0.45);
+}
+
+/* ── Hero manage button ──────────────────────────────────────── */
+.v4p-map-hero__manage-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid rgba(116, 133, 255, 0.28);
+  border-radius: 10px;
+  background: rgba(116, 133, 255, 0.08);
+  color: #a0aeff;
+  font-family: var(--v4p-font);
+  font-size: var(--v4p-fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+  align-self: center;
+  flex-shrink: 0;
+  transition: background 0.14s, border-color 0.14s;
+}
+
+.v4p-map-hero__manage-btn .material-symbols-rounded {
+  font-size: 17px;
+}
+
+.v4p-map-hero__manage-btn:hover {
+  background: rgba(116, 133, 255, 0.14);
+  border-color: rgba(116, 133, 255, 0.44);
+}
+
+/* ── Empty manage button ─────────────────────────────────────── */
+.v4p-map-empty__manage {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid rgba(116, 133, 255, 0.28);
+  border-radius: 10px;
+  background: rgba(116, 133, 255, 0.08);
+  color: #a0aeff;
+  font-family: var(--v4p-font);
+  font-size: var(--v4p-fs-xs);
+  cursor: pointer;
+}

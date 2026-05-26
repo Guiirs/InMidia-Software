@@ -1,0 +1,159 @@
+@import '../../components/page/PageShell.css';
+@import '../../components/page/PageHeader.css';
+@import '../../components/page/PageContainer.css';
+@import '../../components/page/PageSection.css';
+@import '../../components/grid/KPIGrid.css';
+@import '../../components/cards/KPICard.css';
+@import '../../components/cards/SectionCard.css';
+@import '../../components/cards/ContentCard.css';
+@import '../../components/filters/index.css';
+@import '../../components/actions/index.css';
+@import '../../components/table/index.css';
+@import '../../components/states/EmptyState.css';
+@import '../../components/states/LoadingState.css';
+@import '../../components/states/ErrorState.css';
+@import '../../components/ds/StatusBadge.css';
+
+.v4-health-v4 {
+  background:
+    radial-gradient(circle at 12% -16%, rgba(20, 184, 166, 0.1) 0%, rgba(16, 22, 34, 0.9) 38%, var(--bg-page, #0d121c) 100%),
+    linear-gradient(135deg, rgba(116, 133, 255, 0.025), rgba(20, 184, 166, 0.035));
+  min-height: 100%;
+}
+
+.v4-health-v4 .v4-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  padding-top: 6px;
+}
+
+.v4-health-v4__button {
+  background: var(--bg-input, #1b1e2e);
+  border: 1px solid var(--border, rgba(156, 170, 194, 0.14));
+  border-radius: var(--r-sm, 6px);
+  color: var(--text-1, #eef0fa);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  height: 25px;
+  padding: 0 8px;
+  transition: border-color 0.16s ease, background-color 0.16s ease, transform 0.16s ease;
+}
+
+.v4-health-v4__button--primary {
+  background: rgba(20, 184, 166, 0.14);
+  border-color: rgba(20, 184, 166, 0.3);
+}
+
+.v4-health-v4__button:hover {
+  background: var(--bg-card-hover, #172133);
+  border-color: rgba(156, 170, 194, 0.24);
+  transform: translateY(-1px);
+}
+
+.v4-health-v4__label {
+  color: var(--text-3, #8390a6);
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.v4-health-v4__sync-grid {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.v4-health-v4__channel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.v4-health-v4__channel-item {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.v4-health-v4__channel-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.v4-health-v4__channel-main strong {
+  color: var(--text-1, #eef0fa);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.v4-health-v4__channel-main p {
+  color: var(--text-2, #8890ae);
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.v4-health-v4__channel-side {
+  align-items: flex-end;
+  color: var(--text-3, #8390a6);
+  display: inline-flex;
+  flex-direction: column;
+  font-size: 11px;
+  gap: 3px;
+}
+
+.v4-health-v4 .v4-data-table__table th,
+.v4-health-v4 .v4-data-table__table td {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.v4-health-v4__degradation p {
+  color: var(--text-2, #8890ae);
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0 0 8px;
+}
+
+.v4-health-v4__degradation ul {
+  color: var(--text-2, #b0bdd0);
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 16px;
+}
+
+.v4-health-v4__degradation li {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+@media (max-width: 1100px) {
+  .v4-health-v4__sync-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .v4-health-v4__sync-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .v4-health-v4__channel-item {
+    flex-direction: column;
+  }
+
+  .v4-health-v4__channel-side {
+    align-items: flex-start;
+  }
+}

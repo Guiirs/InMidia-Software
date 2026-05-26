@@ -1,0 +1,75 @@
+/* src/components/ConfirmationModal/ConfirmationModal.css */
+/* Importa ou assume que os estilos base de .modal, .modal__content, etc., já estão aplicados */
+
+/* Ajusta a largura máxima específica para este modal */
+.confirmation-modal-overlay .confirmation-modal-content { /* Seletor mais específico */
+    max-width: 400px;
+    text-align: center; /* Centraliza texto dentro deste modal específico */
+}
+
+/* Título (se houver um - opcional, pode usar .modal__title) */
+.confirmation-modal-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin: 0 0 1rem;
+    color: var(--text-color);
+}
+
+/* Mensagem específica */
+.confirmation-modal-message {
+    font-size: 1.5rem;
+    color: var(--text-color-light); /* Pode ajustar se precisar de cor diferente */
+    margin: 0 0 2.5rem;
+    line-height: 1.6;
+}
+
+/* Ações */
+.confirmation-modal-actions {
+    display: flex;
+    justify-content: center; /* Centraliza botões */
+    gap: 1.5rem;
+    /* Remove margem/padding/border-top se o modal base já tiver */
+}
+
+/* Botões - Herdam de .modal-form__button, mas sobrescrevem/adicionam cores */
+.confirmation-modal-button {
+    /* Herda padding, border-radius, font-weight, font-size, transition de .modal-form__button */
+    min-width: 100px; /* Largura mínima específica */
+}
+
+/* Botão Cancelar (pode herdar de .modal-form__button--cancel ou definir aqui) */
+.confirmation-modal-button--cancel {
+    background-color: var(--input-border);
+    color: var(--text-color);
+}
+.confirmation-modal-button--cancel:hover:not(:disabled) {
+    background-color: var(--accent-gray);
+    color: white;
+    box-shadow: 0 0.4rem 1rem rgba(0,0,0,0.2);
+}
+
+/* Botão Confirmar (Vermelho - Padrão) */
+.confirmation-modal-button--confirm {
+    background-color: var(--accent-red);
+    color: white;
+}
+.confirmation-modal-button--confirm:hover:not(:disabled) {
+    background-color: #d32f2f; /* Vermelho mais escuro */
+    box-shadow: 0 0.4rem 1.5rem rgba(244, 67, 54, 0.4);
+}
+
+/* Botão Confirmar (Verde - Opcional) */
+.confirmation-modal-button--confirm-green {
+    background-color: var(--accent-green);
+    color: white;
+}
+.confirmation-modal-button--confirm-green:hover:not(:disabled) {
+    background-color: #1a9c4a; /* Verde mais escuro */
+    box-shadow: 0 0.4rem 1.5rem rgba(34, 197, 94, 0.4);
+}
+
+/* Estado desabilitado (pode herdar de .modal-form__button:disabled) */
+.confirmation-modal-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}

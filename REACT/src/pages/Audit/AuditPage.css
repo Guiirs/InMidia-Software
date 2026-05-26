@@ -1,0 +1,135 @@
+.audit-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.audit-page__header {
+  align-items: center;
+  background: var(--card-bg, #1f2937);
+  border-left: 4px solid #38bdf8;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  padding: 18px 20px;
+}
+
+.audit-page__eyebrow,
+.audit-page__empty,
+.audit-event-card small,
+.audit-details dt {
+  color: var(--text-muted, #94a3b8);
+}
+
+.audit-page__header h2 {
+  font-size: 1.25rem;
+  margin: 4px 0 0;
+}
+
+.audit-filters {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.audit-filters input,
+.audit-filters select {
+  background: var(--card-bg, #1f2937);
+  border: 1px solid var(--border-color, rgba(148, 163, 184, 0.22));
+  border-radius: 6px;
+  color: inherit;
+  min-height: 38px;
+  padding: 8px 10px;
+}
+
+.audit-page__content {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+}
+
+.audit-page__timeline-panel,
+.audit-details {
+  background: var(--card-bg, #1f2937);
+  border: 1px solid var(--border-color, rgba(148, 163, 184, 0.22));
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.audit-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.audit-event-card {
+  background: transparent;
+  border: 1px solid var(--border-color, rgba(148, 163, 184, 0.22));
+  border-radius: 8px;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  text-align: left;
+  width: 100%;
+}
+
+.audit-event-card--selected {
+  border-color: #38bdf8;
+}
+
+.audit-event-card__severity {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.audit-event-card__severity--warning {
+  color: #f59e0b;
+}
+
+.audit-event-card__severity--critical {
+  color: #ef4444;
+}
+
+.audit-details h3,
+.audit-details h4 {
+  margin: 0 0 10px;
+}
+
+.audit-details dl {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.audit-details dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.audit-details pre {
+  background: rgba(15, 23, 42, 0.55);
+  border-radius: 6px;
+  max-height: 220px;
+  overflow: auto;
+  padding: 10px;
+  white-space: pre-wrap;
+}
+
+.audit-page__error {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  border-radius: 8px;
+  color: #fca5a5;
+  padding: 12px;
+}
+
+@media (max-width: 900px) {
+  .audit-page__content {
+    grid-template-columns: 1fr;
+  }
+}

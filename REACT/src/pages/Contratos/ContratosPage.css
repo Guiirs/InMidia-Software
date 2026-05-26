@@ -1,0 +1,132 @@
+/* src/pages/Contratos/ContratosPage.css */
+
+/* Reutilizamos os estilos da PIsPage */
+.pis-page {
+  padding: 2rem; 
+}
+
+.pis-page__controls {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1.5rem;
+}
+
+.pis-page__add-button {
+  background-color: var(--primary-color);
+  color: #fff;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--border-radius-default);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 0.9rem;
+}
+
+.pis-page__add-button:hover {
+  background-color: var(--primary-color-dark);
+}
+
+.pis-page__add-button i {
+  margin-right: 0.5rem;
+}
+
+.pis-page__table-wrapper {
+  overflow-x: auto;
+  background-color: var(--bg-content);
+  border-radius: var(--border-radius-large);
+  box-shadow: var(--box-shadow-light);
+}
+
+.pis-page__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.pis-page__table th,
+.pis-page__table td {
+  padding: 1.25rem 1.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+.pis-page__table th {
+  color: var(--text-color-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pis-page__table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.pis-page__table tbody tr:hover {
+  background-color: var(--bg-hover);
+}
+
+/* Status Badge (genérico, pode mover para style.css) */
+.status-badge {
+  padding: 0.3rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.status-badge--em-andamento {
+  background-color: rgba(249, 175, 24, 0.15);
+  color: #f9af18;
+}
+.status-badge--concluida {
+  background-color: rgba(40, 199, 111, 0.15);
+  color: #28c76f;
+}
+.status-badge--vencida {
+  background-color: rgba(234, 84, 85, 0.15);
+  color: #ea5455;
+}
+
+/* NOVO STATUS ADICIONADO */
+.status-badge--ativo {
+  background-color: rgba(0, 117, 255, 0.15); /* Azul */
+  color: #0075ff;
+}
+
+
+/* Ações da Tabela */
+.pis-page__actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.pis-page__action-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-color-muted);
+  font-size: 1.1rem;
+  padding: 0.25rem;
+  transition: color 0.2s;
+}
+.pis-page__action-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pis-page__action-button--contrato:hover:not(:disabled) {
+  color: var(--primary-color);
+}
+.pis-page__action-button--download:hover:not(:disabled) {
+  color: var(--success-color); /* Verde */
+}
+.pis-page__action-button--edit:hover:not(:disabled) {
+  color: #f9af18; /* Amarelo */
+}
+.pis-page__action-button--delete:hover:not(:disabled) {
+  color: var(--error-color); /* Vermelho */
+}

@@ -1,0 +1,215 @@
+/* InMidia/frontend/pages/Register/Register.css */
+
+/* Bloco Principal (similar ao Login, mas adaptado) */
+.register-page {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--bg-color);
+    padding: 3rem; /* Adiciona padding para scroll */
+    box-sizing: border-box;
+    overflow-y: auto; /* Permite scroll se o formulário for maior */
+}
+
+/* Container (pode ser maior que o do login) */
+.register-page__container {
+    width: 100%;
+    max-width: 800px; /* Mais largo para o formulário de registo */
+    margin: 3rem 0; /* Margem vertical para scroll */
+}
+
+.register-page__form-wrapper {
+    background-color: var(--bg-secondary-color);
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem;
+    box-sizing: border-box;
+    border: 1px solid var(--input-border);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+
+.register-page__form {
+    width: 100%;
+}
+
+.register-page__form-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.register-page__form-title {
+    font-size: 3rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+/* Grelha do Formulário */
+.register-page__form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 2.4rem; /* Apenas gap entre colunas */
+}
+
+.register-page__input-group {
+    position: relative;
+    margin-bottom: 2.4rem;
+}
+
+.register-page__input-group--full-width {
+    grid-column: 1 / -1;
+}
+
+/* Inputs com Label Flutuante (baseado em User.css) */
+.register-page__input {
+    background-color: var(--bg-color);
+    border: 1px solid var(--input-border);
+    border-radius: 1rem;
+    padding: 1.6rem 1.4rem 0.8rem; /* Padding para label flutuante */
+    color: var(--text-color);
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.5rem;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease;
+}
+
+.register-page__label {
+    position: absolute;
+    top: 1.2rem;
+    left: 1.5rem;
+    color: var(--text-color-light);
+    pointer-events: none;
+    transition: all 0.2s ease-out;
+    font-size: 1.5rem;
+    background-color: var(--bg-color); /* Para cobrir a borda */
+    padding: 0 0.4rem;
+}
+
+/* Efeito flutuante */
+.register-page__input:focus + .register-page__label,
+.register-page__input:not(:placeholder-shown) + .register-page__label {
+    top: 0.5rem;
+    left: 1.2rem;
+    font-size: 1.1rem;
+    color: var(--accent-green);
+}
+
+/* Mantém cor cinza se preenchido mas não focado */
+.register-page__input:not(:placeholder-shown):not(:focus) + .register-page__label {
+     color: var(--text-color-light);
+}
+
+.register-page__input:focus {
+    outline: none;
+    border-color: var(--accent-green);
+}
+
+/* Mensagem de erro (já estilizada em base.css) */
+/* .modal-form__error-message { ... } */
+
+
+/* Força da Senha */
+.register-page__password-strength {
+    height: 0.4rem; /* Ajustado */
+    background-color: var(--input-border);
+    border-radius: 0.2rem; /* Ajustado */
+    margin-top: 0.8rem; /* Ajustado */
+    overflow: hidden;
+}
+
+.register-page__password-strength-bar {
+    height: 100%;
+    width: 0;
+    border-radius: 0.2rem; /* Ajustado */
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+/* Cores da barra */
+.register-page__password-strength-bar--weak {
+    width: 25%;
+    background-color: var(--accent-red);
+}
+.register-page__password-strength-bar--medium {
+    width: 50%;
+    background-color: var(--accent-yellow);
+}
+.register-page__password-strength-bar--strong {
+    width: 75%;
+    background-color: #2F80ED; /* Azul */
+}
+.register-page__password-strength-bar--very-strong {
+    width: 100%;
+    background-color: var(--accent-green);
+}
+
+.register-page__password-strength-text {
+    font-size: 1.2rem; /* Ajustado */
+    color: var(--text-color-light);
+    margin-top: 0.4rem; /* Ajustado */
+    min-height: 1.5rem; /* Garante espaço */
+}
+
+/* Botão de Registo */
+.register-page__button {
+    background-color: var(--accent-green);
+    color: white;
+    padding: 1.6rem;
+    border-radius: 1rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    font-size: 1.6rem;
+    width: 100%;
+    margin-top: 1rem;
+    transition: background-color 0.3s ease;
+}
+
+.register-page__button:hover:not(:disabled) {
+    background-color: #1a9c4a;
+}
+
+.register-page__button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Link para Login */
+.register-page__login-link {
+    text-align: center;
+    font-size: 1.4rem;
+    color: var(--text-color-light);
+    padding-top: 2rem;
+    border-top: 1px solid var(--input-border);
+    margin-top: 2.4rem;
+}
+
+.register-page__form-link {
+    color: var(--accent-green);
+    text-decoration: none;
+    font-weight: 500;
+}
+.register-page__form-link:hover {
+    text-decoration: underline;
+}
+
+/* Responsividade */
+@media (max-width: 600px) {
+    .register-page__form-grid {
+        grid-template-columns: 1fr; /* Coluna única */
+    }
+    .register-page {
+        padding: 1.5rem;
+        align-items: flex-start; /* Alinha no topo */
+    }
+    .register-page__form-wrapper {
+        padding: 2.5rem;
+    }
+}

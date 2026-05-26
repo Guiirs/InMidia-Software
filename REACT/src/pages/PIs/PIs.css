@@ -1,0 +1,146 @@
+/* src/pages/PIs/PIs.css */
+/* Reutiliza a maior parte dos estilos de AdminUsersPage e RegioesPage */
+.pis-page__controls {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 3rem;
+}
+.pis-page__add-button {
+    background-color: var(--accent-green);
+    color: white;
+    padding: 1.2rem 2rem;
+    border-radius: 1rem;
+    text-decoration: none;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    font-size: 1.4rem;
+}
+.pis-page__add-button:hover { background-color: #1a9c4a; }
+.pis-page__add-button i { font-size: 1.4rem; }
+
+.pis-page__table-wrapper {
+    background-color: var(--bg-secondary-color);
+    border: 1px solid var(--input-border);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    overflow-x: auto;
+}
+
+.pis-page__table {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--text-color);
+    font-size: 1.4rem;
+}
+.pis-page__table th, .pis-page__table td {
+    padding: 1.5rem 2rem;
+    text-align: left;
+    border-bottom: 1px solid var(--input-border);
+    vertical-align: middle;
+    white-space: nowrap;
+}
+.pis-page__table thead { background-color: var(--card-background); }
+.pis-page__table th {
+    font-weight: 600;
+    color: var(--text-color-light);
+    text-transform: uppercase;
+    font-size: 1.2rem;
+    letter-spacing: 0.05rem;
+}
+.pis-page__table tbody tr:last-child td { border-bottom: none; }
+.pis-page__table tbody tr:hover { background-color: var(--sidebar-active-bg); }
+
+/* ── PI Status Badges ────────────────────────────────────────────────────── */
+.pi-status-badge {
+    display: inline-block;
+    padding: 0.3rem 0.9rem;
+    border-radius: 2rem;
+    font-size: 1.15rem;
+    font-weight: 600;
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+}
+
+/* V4.1 canonical */
+.pi-status-badge--draft              { background-color: rgba(148,163,184,0.15); color: #64748b; }
+.pi-status-badge--pending-approval   { background-color: rgba(251,191,36,0.15);  color: #d97706; }
+.pi-status-badge--approved           { background-color: rgba(34,197,94,0.12);   color: #16a34a; }
+.pi-status-badge--rejected           { background-color: rgba(239,68,68,0.12);   color: #dc2626; }
+.pi-status-badge--contract-generated { background-color: rgba(59,130,246,0.12);  color: #2563eb; }
+.pi-status-badge--cancelled          { background-color: rgba(107,114,128,0.12); color: #6b7280; }
+
+/* Legacy */
+.pi-status-badge--em-andamento       { background-color: rgba(255,181,114,0.15); color: var(--accent-yellow); }
+.pi-status-badge--concluida          { background-color: rgba(34,197,94,0.10);   color: var(--accent-green); }
+.pi-status-badge--vencida            { background-color: rgba(244,67,54,0.10);   color: var(--accent-red); }
+.pi-status-badge--unknown            { background-color: rgba(148,163,184,0.10); color: #94a3b8; }
+
+/* PI Action Buttons */
+.pi-action-btn {
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 0.6rem;
+    cursor: pointer;
+    font-size: 1.2rem;
+    font-weight: 600;
+    padding: 0.4rem 0.9rem;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+    white-space: nowrap;
+    line-height: 1.4;
+}
+.pi-action-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.pi-action-btn--approve  { color: #16a34a; border-color: rgba(34,197,94,0.3); }
+.pi-action-btn--approve:hover:not(:disabled)   { background-color: rgba(34,197,94,0.1); border-color: #16a34a; }
+
+.pi-action-btn--reject   { color: #dc2626; border-color: rgba(239,68,68,0.3); }
+.pi-action-btn--reject:hover:not(:disabled)    { background-color: rgba(239,68,68,0.1); border-color: #dc2626; }
+
+.pi-action-btn--cancel   { color: #d97706; border-color: rgba(251,191,36,0.3); }
+.pi-action-btn--cancel:hover:not(:disabled)    { background-color: rgba(251,191,36,0.1); border-color: #d97706; }
+
+.pi-action-btn--contract { color: #2563eb; border-color: rgba(59,130,246,0.3); }
+.pi-action-btn--contract:hover:not(:disabled)  { background-color: rgba(59,130,246,0.1); border-color: #2563eb; }
+
+/* Legacy status-badge (kept for other uses) */
+.status-badge {
+    padding: 0.4rem 1rem;
+    border-radius: 2rem;
+    font-size: 1.2rem;
+    font-weight: 600;
+    white-space: nowrap;
+    text-transform: capitalize;
+}
+.status-badge--em-andamento { background-color: rgba(255,181,114,0.15); color: var(--accent-yellow); }
+.status-badge--concluida    { background-color: rgba(34,197,94,0.1);    color: var(--accent-green); }
+.status-badge--vencida      { background-color: rgba(244,67,54,0.1);    color: var(--accent-red); }
+
+
+.pis-page__actions { 
+    display: flex; 
+    gap: 1rem; 
+}
+.pis-page__action-button {
+    background: none; border: none; cursor: pointer;
+    font-size: 1.6rem; padding: 0.8rem; border-radius: 0.5rem;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    width: 3.2rem; height: 3.2rem;
+    display: flex; align-items: center; justify-content: center;
+}
+.pis-page__action-button--edit { color: var(--accent-yellow); }
+.pis-page__action-button--edit:hover:not(:disabled) { background-color: rgba(255, 181, 114, 0.1); }
+.pis-page__action-button--delete { color: var(--accent-red); }
+.pis-page__action-button--delete:hover:not(:disabled) { background-color: rgba(244, 67, 54, 0.1); }
+
+/* (NOVO) Botões de Download e Contrato */
+.pis-page__action-button--download { color: var(--accent-green); }
+.pis-page__action-button--download:hover:not(:disabled) { background-color: rgba(34, 197, 94, 0.1); }
+.pis-page__action-button--contrato { color: #2F80ED; } /* Azul */
+.pis-page__action-button--contrato:hover:not(:disabled) { background-color: rgba(47, 128, 237, 0.1); }
+
+.pis-page__action-button:disabled { opacity: 0.5; cursor: not-allowed; }

@@ -1,0 +1,88 @@
+/* Reusable utility classes with dedicated prefix for safe coexistence. */
+.fdn-stack-xs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fdn-space-1);
+}
+
+.fdn-stack-sm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fdn-space-2);
+}
+
+.fdn-stack-md {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fdn-space-3);
+}
+
+.fdn-row-xs {
+  display: flex;
+  align-items: center;
+  gap: var(--fdn-space-1);
+}
+
+.fdn-row-sm {
+  display: flex;
+  align-items: center;
+  gap: var(--fdn-space-2);
+}
+
+.fdn-row-md {
+  display: flex;
+  align-items: center;
+  gap: var(--fdn-space-3);
+}
+
+.fdn-wrap {
+  flex-wrap: wrap;
+}
+
+.fdn-justify-between {
+  justify-content: space-between;
+}
+
+.fdn-p-2 {
+  padding: var(--fdn-space-2);
+}
+
+.fdn-p-3 {
+  padding: var(--fdn-space-3);
+}
+
+.fdn-p-4 {
+  padding: var(--fdn-space-4);
+}
+
+.fdn-mt-2 {
+  margin-top: var(--fdn-space-2);
+}
+
+.fdn-mt-3 {
+  margin-top: var(--fdn-space-3);
+}
+
+.fdn-mb-2 {
+  margin-bottom: var(--fdn-space-2);
+}
+
+.fdn-mb-3 {
+  margin-bottom: var(--fdn-space-3);
+}
+
+.fdn-w-full {
+  width: 100%;
+}
+
+.fdn-radius-sm {
+  border-radius: var(--fdn-radius-sm);
+}
+
+.fdn-radius-md {
+  border-radius: var(--fdn-radius-md);
+}
+
+.fdn-radius-lg {
+  border-radius: var(--fdn-radius-lg);
+}

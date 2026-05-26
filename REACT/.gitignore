@@ -1,0 +1,104 @@
+# =============================================================================
+# REACT (Vite + React) — .gitignore enterprise
+# =============================================================================
+
+# ─── DEPENDÊNCIAS ─────────────────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# ─── BUILD ────────────────────────────────────────────────────────────────────
+dist/
+docs/
+dist-ssr/
+build/
+out/
+storybook-static/
+*.tsbuildinfo
+
+# ─── VARIÁVEIS DE AMBIENTE ────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.local
+
+# ─── LOGS ─────────────────────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ─── CACHES / TOOLING ─────────────────────────────────────────────────────────
+.vite/
+.cache/
+.eslintcache
+.stylelintcache
+.parcel-cache
+.rollup.cache/
+.turbo/
+
+# ─── ARTEFATOS DE TESTE ───────────────────────────────────────────────────────
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+playwright/.cache/
+cypress/screenshots/
+cypress/videos/
+cypress/downloads/
+__snapshots__/
+
+# ─── BACKUPS ──────────────────────────────────────────────────────────────────
+backup-*/
+backups/
+_old_*/
+*_backup/
+*_bak/
+
+# ─── UPLOADS TEMPORÁRIOS ──────────────────────────────────────────────────────
+uploads/
+tmp-uploads/
+public/uploads/
+
+# ─── TEMPORÁRIOS ──────────────────────────────────────────────────────────────
+tmp/
+temp/
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# ─── IDE — VSCODE ─────────────────────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+*.code-workspace
+
+# ─── IDE — JETBRAINS ──────────────────────────────────────────────────────────
+.idea/
+*.iws
+*.iml
+*.ipr
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ─── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+ehthumbs.db

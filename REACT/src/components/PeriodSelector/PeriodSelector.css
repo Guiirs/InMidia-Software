@@ -1,0 +1,271 @@
+/* PeriodSelector.css */
+
+.period-selector {
+    width: 100%;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.period-selector__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.period-selector__header h4 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #333;
+}
+
+.period-selector__duration {
+    background: #007bff;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.period-selector__type-group {
+    margin-bottom: 1.5rem;
+}
+
+.period-selector__type-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+.period-selector__select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 1rem;
+    background-color: white;
+    cursor: pointer;
+}
+
+.period-selector__select:disabled {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+}
+
+.period-selector__select.input-error {
+    border-color: #dc3545;
+}
+
+.period-selector__error {
+    display: block;
+    color: #dc3545;
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+}
+
+/* BI-WEEK MODE */
+.period-selector__biweek-mode {
+    margin-top: 1rem;
+}
+
+.period-selector__year-selector {
+    margin-bottom: 1rem;
+}
+
+.period-selector__year-selector label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+.period-selector__loading,
+.period-selector__empty {
+    text-align: center;
+    padding: 2rem;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.period-selector__actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: white;
+    border-radius: 4px;
+}
+
+.period-selector__btn-select-all {
+    padding: 0.5rem 1rem;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+}
+
+.period-selector__btn-select-all:hover:not(:disabled) {
+    background: #0056b3;
+}
+
+.period-selector__btn-select-all:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+.period-selector__selected-count {
+    font-size: 0.9rem;
+    color: #6c757d;
+    font-weight: 600;
+}
+
+.period-selector__biweek-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.75rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 0.5rem;
+    background: white;
+    border-radius: 4px;
+}
+
+.period-selector__biweek-item {
+    position: relative;
+    padding: 1rem;
+    border: 2px solid #dee2e6;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: white;
+}
+
+.period-selector__biweek-item:hover {
+    border-color: #007bff;
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+.period-selector__biweek-item.selected {
+    border-color: #007bff;
+    background: #e7f3ff;
+}
+
+.period-selector__biweek-id {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.period-selector__biweek-dates {
+    font-size: 0.85rem;
+    color: #6c757d;
+    line-height: 1.4;
+}
+
+.period-selector__biweek-check {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 24px;
+    height: 24px;
+    background: #28a745;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+.period-selector__date-summary {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #e7f3ff;
+    border-left: 4px solid #007bff;
+    border-radius: 4px;
+    color: #004085;
+}
+
+/* CUSTOM MODE */
+.period-selector__custom-mode {
+    margin-top: 1rem;
+}
+
+.period-selector__date-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.period-selector__date-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.period-selector__date-group label {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+.period-selector__input {
+    padding: 0.75rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 1rem;
+    background-color: white;
+}
+
+.period-selector__input:disabled {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+}
+
+.period-selector__input.input-error {
+    border-color: #dc3545;
+}
+
+.period-selector__input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* SUMMARY */
+.period-selector__summary {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: white;
+    border: 2px solid #007bff;
+    border-radius: 6px;
+    color: #004085;
+    font-size: 0.95rem;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+    .period-selector__date-row {
+        grid-template-columns: 1fr;
+    }
+
+    .period-selector__biweek-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    }
+
+    .period-selector__header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+}

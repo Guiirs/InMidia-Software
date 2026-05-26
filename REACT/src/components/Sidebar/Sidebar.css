@@ -1,0 +1,358 @@
+/* --- Estilos da Sidebar Retrátil --- */
+
+/* --- ESTADO EXPANDIDO (PADRÃO) --- */
+.sidebar {
+        width: var(--sidebar-width-expanded);
+        height: 100vh;
+        background:
+            linear-gradient(180deg, rgba(16, 23, 36, 0.96) 0%, rgba(13, 19, 30, 0.98) 100%),
+            var(--bg-secondary-color);
+        border-right: 1px solid var(--fdn-color-border, var(--input-border));
+        display: flex;
+        flex-direction: column;
+        padding: 1.1rem 0.9rem;
+        box-sizing: border-box;
+        position: fixed;
+        left: 0;
+        top: 0;
+        transition: width 0.25s ease, padding 0.25s ease, background-color 0.2s ease;
+        z-index: 1000;
+}
+
+    body.foundation-theme .sidebar {
+        background:
+            linear-gradient(180deg, rgba(16, 23, 36, 0.96) 0%, rgba(13, 19, 30, 0.98) 100%),
+            var(--fdn-color-surface, #121926);
+    }
+
+.sidebar__header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 4rem;
+    margin-bottom: 0.9rem;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.sidebar__logo-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    border: 1px solid var(--fdn-color-border, var(--input-border));
+    border-radius: var(--fdn-radius-md, 0.8rem);
+    background: rgba(17, 24, 38, 0.78);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    padding: 0.8rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--fdn-color-text-strong, var(--text-color));
+    opacity: 1;
+    transition: opacity 0.2s ease, width 0.25s ease;
+    overflow: hidden;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.sidebar__logo-img {
+    height: 2.8rem;
+    width: 2.8rem;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.sidebar__logo-text {
+    transition: opacity 0.2s ease, width 0.25s ease;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+/* Botão Toggle removido no seu código anterior, mantido comentado se precisar */
+/*
+.sidebar__toggle-btn {
+    background: var(--bg-color);
+    border: 1px solid var(--input-border);
+    color: var(--text-color-light);
+    border-radius: 50%;
+    width: 3.2rem; // Ajustado (era 32px)
+    height: 3.2rem; // Ajustado (era 32px)
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: fixed;
+    // Posição calculada com base na variável
+    left: calc(var(--sidebar-width-expanded) - 1.6rem); // Ajustado (era 16px)
+    top: 2.4rem; // Ajustado (era 24px)
+    transition: all 0.3s ease;
+    z-index: 1001;
+}
+.sidebar__toggle-btn:hover {
+    background: var(--sidebar-active-bg);
+    color: white;
+}
+.sidebar__toggle-btn i {
+    transition: transform 0.3s ease;
+    font-size: 1.6rem; // Tamanho do ícone
+}
+*/
+
+.sidebar__nav-container {
+    width: 100%;
+    flex-grow: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--input-border) var(--bg-secondary-color);
+}
+.sidebar__nav-container::-webkit-scrollbar { width: 0.5rem; }
+.sidebar__nav-container::-webkit-scrollbar-track { background: var(--bg-secondary-color); }
+.sidebar__nav-container::-webkit-scrollbar-thumb { background-color: var(--input-border); border-radius: 0.5rem; }
+
+body.foundation-theme .sidebar__nav-container {
+    scrollbar-color: var(--fdn-color-border, var(--input-border)) var(--fdn-color-page, var(--bg-secondary-color));
+}
+
+body.foundation-theme .sidebar__nav-container::-webkit-scrollbar-track { background: var(--fdn-color-page, var(--bg-secondary-color)); }
+body.foundation-theme .sidebar__nav-container::-webkit-scrollbar-thumb { background-color: var(--fdn-color-border, var(--input-border)); }
+
+
+.sidebar__nav {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    width: 100%;
+}
+
+.sidebar__nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.7rem 0.8rem;
+    border-radius: var(--fdn-radius-sm, 0.6rem);
+    border: 1px solid transparent;
+    text-decoration: none;
+    color: var(--fdn-color-text, var(--text-color-light));
+    font-weight: 500;
+    transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+    overflow: hidden;
+    white-space: nowrap;
+    font-size: 1.25rem;
+}
+.sidebar__nav-link i {
+    font-size: 1.45rem;
+    width: 1.8rem;
+    text-align: center;
+    flex-shrink: 0;
+    transition: width 0.25s ease;
+}
+
+.sidebar__nav-link:hover,
+.sidebar__nav-link--active {
+    background: rgba(116, 133, 255, 0.14);
+    border-color: rgba(116, 133, 255, 0.28);
+    color: var(--fdn-color-text-strong, #f4f7fb);
+}
+
+.sidebar__nav-link:hover {
+    transform: translateX(1px);
+}
+
+/* --- Rodapé --- */
+.sidebar__footer {
+    margin-top: auto;
+    padding-top: 0.8rem;
+    border-top: 1px solid var(--fdn-color-border-soft, var(--input-border));
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+/* --- ESTADO RETRAÍDO --- */
+body.sidebar-collapsed .sidebar {
+    width: var(--sidebar-width-collapsed);
+    padding: 1.1rem 0;
+    align-items: center;
+}
+
+body.sidebar-collapsed .sidebar__header {
+    justify-content: center;
+    padding: 0;
+}
+
+body.sidebar-collapsed .sidebar__logo-container {
+    gap: 0;
+    width: 4.2rem;
+    justify-content: center;
+    padding: 0.6rem;
+}
+
+body.sidebar-collapsed .sidebar__logo-text,
+body.sidebar-collapsed .sidebar__nav-link span,
+body.sidebar-collapsed .sidebar__theme-switcher span {
+    opacity: 0;
+    width: 0;
+    visibility: hidden;
+    transition-delay: 0s;
+}
+
+/* Botão Toggle removido no seu código anterior */
+/*
+body.sidebar-collapsed .sidebar__toggle-btn {
+    left: calc(var(--sidebar-width-collapsed) - 1.6rem); // <<< USA A VARIÁVEL
+}
+
+body.sidebar-collapsed .sidebar__toggle-btn i {
+    transform: rotate(180deg);
+}
+*/
+
+body.sidebar-collapsed .sidebar__nav-link,
+body.sidebar-collapsed .sidebar__footer .sidebar__nav-link,
+body.sidebar-collapsed .sidebar__theme-switcher {
+    justify-content: center;
+    width: 4.4rem;
+    height: 4rem;
+    padding: 0;
+    margin: 0 auto;
+    gap: 0;
+    border-radius: var(--fdn-radius-sm, 0.6rem);
+}
+
+body.sidebar-collapsed .sidebar__nav-link i,
+body.sidebar-collapsed .sidebar__footer .sidebar__nav-link i,
+body.sidebar-collapsed .sidebar__theme-switcher i {
+    width: auto;
+    margin: 0;
+    text-align: center;
+    font-size: 1.5rem;
+}
+
+body.sidebar-collapsed .sidebar__theme-switcher .switch {
+    display: none;
+}
+
+
+/* --- ESTILOS PARA O INTERRUPTOR (SWITCH) DO TEMA --- */
+
+.sidebar__theme-switcher {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.7rem 0.8rem;
+    border-radius: var(--fdn-radius-sm, 0.6rem);
+    border: 1px solid transparent;
+    text-decoration: none;
+    color: var(--fdn-color-text, var(--text-color-light));
+    font-weight: 500;
+    overflow: hidden;
+    white-space: nowrap;
+    transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+    font-size: 1.25rem;
+}
+
+.sidebar__theme-switcher:hover {
+    background: rgba(116, 133, 255, 0.14);
+    border-color: rgba(116, 133, 255, 0.28);
+    color: var(--fdn-color-text-strong, #f4f7fb);
+}
+
+.sidebar__theme-switcher i {
+    font-size: 1.45rem;
+    width: 1.8rem;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.sidebar__theme-switcher span {
+    margin-right: auto;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 4rem;
+    height: 2.2rem;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--fdn-color-border, var(--input-border));
+    transition: .4s;
+    border-radius: 2.4rem;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 1.4rem;
+    width: 1.4rem;
+    left: 0.4rem;
+    bottom: 0.4rem;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: var(--fdn-color-accent, #2F80ED);
+}
+
+input:checked + .slider:before {
+    transform: translateX(1.8rem);
+}
+
+@media (max-width: 1024px) {
+    .sidebar {
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        position: static;
+        border-right: none;
+        border-bottom: 1px solid var(--fdn-color-border, var(--input-border));
+    }
+
+    .sidebar__nav-container {
+        max-height: 26rem;
+    }
+}
+
+body.light-theme:not(.foundation-theme) .sidebar {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 249, 255, 0.98) 100%),
+      var(--bg-secondary-color);
+}
+
+body.light-theme:not(.foundation-theme) .sidebar__logo-container {
+    background: rgba(255, 255, 255, 0.86);
+}
+
+body.light-theme:not(.foundation-theme) .sidebar__nav-link,
+body.light-theme:not(.foundation-theme) .sidebar__theme-switcher {
+    color: var(--text-color-light);
+}
+
+body.light-theme:not(.foundation-theme) .sidebar__nav-link:hover,
+body.light-theme:not(.foundation-theme) .sidebar__nav-link--active,
+body.light-theme:not(.foundation-theme) .sidebar__theme-switcher:hover {
+    color: var(--text-color);
+}

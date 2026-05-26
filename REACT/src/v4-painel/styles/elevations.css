@@ -1,0 +1,109 @@
+/* ─── ELEVAÇÕES E SUPERFÍCIES — V4 PAINEL ────────────────────── */
+
+/* Nível 0 — Página (background base) */
+.v4p-surface-page {
+  background: var(--v4p-bg-page);
+}
+
+/* Nível 1 — Shell / Sidebar / Topbar */
+.v4p-surface-shell {
+  background: var(--v4p-bg-shell);
+  border-bottom: 1px solid var(--v4p-border);
+}
+
+.v4p-surface-sidebar {
+  background: var(--v4p-bg-sidebar);
+  border-right: 1px solid var(--v4p-border-soft);
+}
+
+/* Nível 2 — Card padrão */
+.v4p-surface,
+.v4p-surface-card {
+  background: var(--v4p-model-card);
+  border: 1px solid var(--v4p-model-border);
+  border-radius: var(--v4p-r-xl);
+  box-shadow: var(--v4p-shadow-premium-card);
+  font-size: var(--v4p-fs-base);
+  line-height: var(--v4p-lh-body);
+}
+
+.v4p-surface:hover,
+.v4p-surface-card:hover {
+  background: var(--v4p-model-card-hover);
+  border-color: var(--v4p-model-border-strong);
+}
+
+/* Nível 3 — Card elevado / Painel de destaque */
+.v4p-surface-raised {
+  background: var(--v4p-bg-card-hover);
+  border: 1px solid var(--v4p-border-strong);
+  border-radius: var(--v4p-r-lg);
+  box-shadow: var(--v4p-shadow-md);
+}
+
+/* Nível 4 — Overlay / Modal */
+.v4p-surface-overlay {
+  background: var(--v4p-bg-overlay);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* Nível 5 — Tooltip */
+.v4p-surface-tooltip {
+  background: var(--v4p-bg-tooltip);
+  border: 1px solid var(--v4p-border-strong);
+  border-radius: var(--v4p-r-sm);
+  box-shadow: var(--v4p-shadow-lg);
+}
+
+/* Superfície de alerta */
+.v4p-surface-accent {
+  background: var(--v4p-accent-xsoft);
+  border: 1px solid var(--v4p-border-accent);
+  border-radius: var(--v4p-r-md);
+}
+
+.v4p-surface-success {
+  background: var(--v4p-success-xsoft);
+  border: 1px solid var(--v4p-success-border);
+  border-radius: var(--v4p-r-md);
+}
+
+.v4p-surface-warning {
+  background: var(--v4p-warning-xsoft);
+  border: 1px solid var(--v4p-warning-border);
+  border-radius: var(--v4p-r-md);
+}
+
+.v4p-surface-danger {
+  background: var(--v4p-danger-xsoft);
+  border: 1px solid var(--v4p-danger-border);
+  border-radius: var(--v4p-r-md);
+}
+
+/* Input / Campo */
+.v4p-surface-input {
+  background: var(--v4p-bg-input);
+  border: 1px solid var(--v4p-border);
+  border-radius: var(--v4p-r-md);
+}
+
+.v4p-surface-input:focus-within {
+  border-color: var(--v4p-border-accent);
+  box-shadow: var(--v4p-shadow-glow);
+}
+
+/* Seção separada dentro de card */
+.v4p-surface-inner {
+  background: rgba(0,0,0,0.15);
+  border: 1px solid var(--v4p-border-soft);
+  border-radius: var(--v4p-r-md);
+}
+
+/* Radius utilitários */
+.v4p-r-xs  { border-radius: var(--v4p-r-xs); }
+.v4p-r-sm  { border-radius: var(--v4p-r-sm); }
+.v4p-r-md  { border-radius: var(--v4p-r-md); }
+.v4p-r-lg  { border-radius: var(--v4p-r-lg); }
+.v4p-r-xl  { border-radius: var(--v4p-r-xl); }
+.v4p-r-full { border-radius: var(--v4p-r-full); }

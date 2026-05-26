@@ -1,0 +1,15 @@
+@import '../../tokens.css';
+
+.v4-page-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: auto;
+  background: var(--bg-page, #ffffff);
+  color: var(--text-1, #f3f6fb);
+  font-family: var(--v4-font-sans, 'Poppins', Inter, ui-sans-serif, system-ui, sans-serif);
+}
+
+.v4-page-shell--full-height {
+  min-height: 100vh;
+}

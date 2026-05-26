@@ -1,0 +1,109 @@
+/* InMidia/frontend/pages/User/User.css */
+
+/* Bloco Principal */
+.user-page {
+    max-width: 800px; /* Mantido em px */
+    margin: 3rem auto; /* Adicionado margem */
+}
+
+.user-page__form {
+    background-color: var(--bg-secondary-color);
+    padding: 3rem; /* Ajustado */
+    border-radius: var(--border-radius);
+    border: 1px solid var(--input-border);
+}
+
+.user-page__form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 2.4rem; /* Espaçamento apenas entre as colunas, ajustado */
+}
+
+/* --- ESTILOS MODERNOS PARA OS INPUTS --- */
+.user-page__input-group {
+    position: relative;
+    margin-bottom: 2.4rem; /* Ajustado */
+}
+
+.user-page__input-group--full-width {
+    grid-column: 1 / -1;
+}
+
+.user-page__input {
+    background-color: var(--bg-color);
+    border: 1px solid var(--input-border);
+    border-radius: 1rem; /* Ajustado */
+    padding: 1.6rem 1.4rem 0.8rem; /* Padding ajustado para label flutuante */
+    color: var(--text-color);
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.5rem; /* Ajustado */
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease;
+}
+
+.user-page__label {
+    position: absolute;
+    top: 1.2rem; /* Ajustado */
+    left: 1.5rem; /* Ajustado */
+    color: var(--text-color-light);
+    pointer-events: none;
+    transition: all 0.2s ease-out;
+    font-size: 1.5rem; /* Ajustado */
+    background-color: var(--bg-color); /* Para cobrir a borda */
+    padding: 0 0.4rem;
+}
+
+/* Efeito flutuante (Ajustado) */
+.user-page__input:focus + .user-page__label,
+.user-page__input:not(:placeholder-shown) + .user-page__label,
+.user-page__label.label-floated /* Classe adicionada via JS */ {
+    top: 0.5rem; /* Ajustado */
+    left: 1.2rem;
+    font-size: 1.1rem; /* Ajustado */
+    color: var(--accent-green);
+}
+
+/* Mantém cor cinza se preenchido mas não focado */
+.user-page__input:not(:placeholder-shown):not(:focus) + .user-page__label {
+     color: var(--text-color-light);
+}
+
+
+.user-page__input:focus {
+    outline: none;
+    border-color: var(--accent-green);
+}
+
+.user-page__actions {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 1.5rem; /* Mantido */
+    padding-top: 2rem; /* Ajustado */
+    border-top: 1px solid var(--input-border);
+}
+
+.user-page__save-button {
+    background-color: var(--accent-green);
+    color: white;
+    padding: 1.2rem 3rem; /* Ajustado */
+    border-radius: 1rem; /* Ajustado */
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    font-size: 1.5rem; /* Ajustado */
+}
+
+.user-page__save-button:hover:not(:disabled) {
+    background-color: #1a9c4a;
+}
+
+.user-page__save-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Mensagem de erro já estilizada em base.css */
+/* .modal-form__error-message { ... } */

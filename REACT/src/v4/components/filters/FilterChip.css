@@ -1,0 +1,46 @@
+.v4-filter-chip {
+  align-items: center;
+  background: var(--bg-input, #1b1e2e);
+  border: 1px solid var(--border, #23263a);
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 6px;
+  height: 28px;
+  max-width: 100%;
+  padding: 0 8px;
+}
+
+.v4-filter-chip--active {
+  border-color: rgba(99, 102, 241, 0.55);
+}
+
+.v4-filter-chip--disabled {
+  opacity: 0.55;
+}
+
+.v4-filter-chip__text {
+  color: var(--text-1, #eef0fa);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v4-filter-chip__clear {
+  align-items: center;
+  background: transparent;
+  border: none;
+  color: var(--text-2, #8890ae);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 13px;
+  height: 18px;
+  justify-content: center;
+  line-height: 1;
+  width: 18px;
+}
+
+.v4-filter-chip__clear:focus {
+  outline: 2px solid var(--accent, #6366f1);
+  outline-offset: 1px;
+}

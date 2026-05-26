@@ -1,0 +1,9 @@
+.v4-card {
+  background: var(--bg-card, #141720);
+  border-radius: var(--r-md, 10px);
+  box-shadow: var(--shadow-xs, 0 1px 2px rgba(0,0,0,0.20));
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

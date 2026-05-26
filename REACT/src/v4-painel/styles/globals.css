@@ -1,0 +1,9 @@
+/* ─── GLOBALS — V4 PAINEL ────────────────────────────────────── */
+/* Importa todos os módulos de estilo na ordem correta */
+
+@import './tokens.css';
+@import './typography.css';
+@import './spacing.css';
+@import './elevations.css';
+@import './states.css';
+@import './theme.css';

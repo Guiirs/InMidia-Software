@@ -1,0 +1,121 @@
+@import '../../components/page/PageShell.css';
+@import '../../components/page/PageHeader.css';
+@import '../../components/page/PageContainer.css';
+@import '../../components/page/PageSection.css';
+@import '../../components/grid/KPIGrid.css';
+@import '../../components/cards/KPICard.css';
+@import '../../components/cards/ContentCard.css';
+@import '../../components/cards/SectionCard.css';
+@import '../../components/filters/index.css';
+@import '../../components/actions/index.css';
+@import '../../components/table/index.css';
+@import '../../components/states/EmptyState.css';
+@import '../../components/states/LoadingState.css';
+@import '../../components/states/ErrorState.css';
+@import '../../components/ds/StatusBadge.css';
+
+.v4-proposals-v4 {
+  background:
+    radial-gradient(circle at 14% -18%, rgba(21, 68, 89, 0.58) 0%, rgba(15, 24, 41, 0.88) 40%, #0a1018 100%),
+    linear-gradient(135deg, rgba(20, 184, 166, 0.09), rgba(14, 116, 144, 0.09));
+  min-height: 100%;
+}
+
+.v4-proposals-v4 .v4-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  padding-top: 6px;
+}
+
+.v4-proposals-v4__button {
+  background: rgba(15, 23, 42, 0.62);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 6px;
+  color: var(--text-1, #e2e8f0);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  height: 26px;
+  padding: 0 8px;
+}
+
+.v4-proposals-v4__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.v4-proposals-v4__state-banner {
+  margin-bottom: 8px;
+}
+
+.v4-proposals-v4__kanban-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.v4-proposals-v4__kanban-head {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.v4-proposals-v4__kanban-head h3 {
+  color: var(--text-1, #f8fafc);
+  font-size: 13px;
+  margin: 0;
+}
+
+.v4-proposals-v4__kanban-list {
+  display: grid;
+  gap: 8px;
+}
+
+.v4-proposals-v4__kanban-card {
+  background: rgba(15, 23, 42, 0.56);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 10px;
+  display: grid;
+  gap: 4px;
+  padding: 8px 9px;
+}
+
+.v4-proposals-v4__kanban-card strong {
+  color: var(--text-1, #f8fafc);
+  font-size: 12px;
+}
+
+.v4-proposals-v4__kanban-card p {
+  color: var(--text-2, #cbd5e1);
+  font-size: 11px;
+  margin: 0;
+}
+
+.v4-proposals-v4__kanban-meta {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  justify-content: space-between;
+}
+
+.v4-proposals-v4__kanban-meta span {
+  color: var(--text-2, #94a3b8);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+@media (max-width: 1200px) {
+  .v4-proposals-v4__kanban-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .v4-proposals-v4__kanban-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
