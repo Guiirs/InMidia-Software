@@ -6,13 +6,44 @@ import type {
   InventoryPhysicalStatus,
 } from '@modules/inventory';
 
+/**
+ * Public API scopes — controls what a partner's API key can access.
+ *
+ * Naming convention: resource:action
+ * - inventory:read          list boards with status/location
+ * - inventory:availability  availability summary per board
+ * - media:read              board photo/media assets
+ * - geo:read                coordinates and map data
+ * - catalog:read            combined inventory + geo snapshot
+ * - analytics:read          aggregated metrics (reserved — not yet active)
+ * - export:inventory        bulk CSV/JSON export (reserved — not yet active)
+ * - diagnostics:read        internal health counters (super-admin only)
+ */
 export type PublicApiScope =
   | 'inventory:read'
   | 'inventory:availability'
   | 'media:read'
   | 'geo:read'
   | 'catalog:read'
+  | 'analytics:read'
+  | 'export:inventory'
   | 'diagnostics:read';
+
+/** Scopes granted to all partners by default on API key creation. */
+export const PUBLIC_API_DEFAULT_SCOPES: PublicApiScope[] = [
+  'inventory:read',
+  'inventory:availability',
+  'media:read',
+  'geo:read',
+  'catalog:read',
+];
+
+/** Reserved scopes — must be explicitly granted by super-admin. */
+export const PUBLIC_API_RESTRICTED_SCOPES: PublicApiScope[] = [
+  'analytics:read',
+  'export:inventory',
+  'diagnostics:read',
+];
 
 export interface PublicApiKey {
   id: string;

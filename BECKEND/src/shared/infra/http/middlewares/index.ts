@@ -17,4 +17,7 @@ export {
   regenerateApiKeyLimiter,
   tenantRateLimiter,
   refreshRateLimiter,
+  sseRateLimiter,
+  uploadRateLimiter,
+  publicApiRateLimiter,
 } from './rate-limit.middleware';

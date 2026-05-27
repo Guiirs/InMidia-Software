@@ -68,8 +68,56 @@ export const metrics = {
     name: 'api_alugueis_created_total',
     help: 'Total number of alugueis created',
     labelNames: ['empresa_id']
-  })
+  }),
+
+  // ── Layer-specific counters ──────────────────────────────────────────────────
+
+  // Auth events — success/failure/expired/revoked per endpoint
+  authAttempts: new Counter({
+    name: 'api_auth_attempts_total',
+    help: 'Total auth attempts by result',
+    labelNames: ['result'],  // success | failure | expired | revoked | error
+  }),
+
+  // Public API requests — keyed by scope so abuse is visible per resource type
+  publicApiRequests: new Counter({
+    name: 'api_public_requests_total',
+    help: 'Total requests to the public integration API',
+    labelNames: ['endpoint', 'status'],
+  }),
+
+  // SSE connection events
+  sseConnections: new Counter({
+    name: 'api_sse_connections_total',
+    help: 'Total SSE connection events',
+    labelNames: ['event'],  // opened | closed | error | heartbeat
+  }),
+
+  // Upload operations — track R2 cost indicators
+  uploadOperations: new Counter({
+    name: 'api_upload_operations_total',
+    help: 'Total upload operations',
+    labelNames: ['status'],  // success | failure | rate_limited
+  }),
+
+  // Rate limit hits per layer — abuse indicator
+  rateLimitHits: new Counter({
+    name: 'api_rate_limit_hits_total',
+    help: 'Total rate limit rejections by layer',
+    labelNames: ['layer'],  // global | auth | public_api | sse | upload | tenant
+  }),
 };
+
+// Classify request by API layer for observability segmentation.
+function resolveLayer(path: string): string {
+  if (path.startsWith('/public/')) return 'public';
+  if (path.startsWith('/api/v1/auth')) return 'auth';
+  if (path.startsWith('/api/v4/')) return 'v4';
+  if (path.startsWith('/api/v1/sync/stream') || path.startsWith('/api/v1/sse/')) return 'sse';
+  if (path.startsWith('/api/v1/media/upload') || path.startsWith('/api/v1/placa')) return 'upload';
+  if (path.startsWith('/api/')) return 'internal';
+  return 'other';
+}
 
 // Middleware to collect HTTP metrics
 export const metricsMiddleware = (req: any, res: any, next: any) => {
@@ -93,10 +141,18 @@ export const metricsMiddleware = (req: any, res: any, next: any) => {
       .labels(method, route, statusCode)
       .inc();
 
+    // Public API layer counter — separate from internal traffic
+    if (req.path?.startsWith('/public/')) {
+      metrics.publicApiRequests
+        .labels(route, statusCode)
+        .inc();
+    }
+
     // Decrement active connections
     metrics.activeConnections.dec();
 
-    logger.debug(`[Metrics] ${method} ${route} ${statusCode} - ${duration.toFixed(3)}s`);
+    const layer = resolveLayer(req.path || '');
+    logger.debug(`[Metrics] ${layer} ${method} ${route} ${statusCode} ${duration.toFixed(3)}s`);
   });
 
   next();

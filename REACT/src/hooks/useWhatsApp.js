@@ -63,14 +63,16 @@ export function useWhatsApp() {
     if (sseConnection) return;
 
     try {
-      const sseUrl = new URL(`${API_BASE_URL.replace(/\/$/, '')}/sse/stream`);
+      // Build SSE URL without new URL() — it throws when API_BASE_URL is a
+      // same-origin relative path ('/api/v1') because new URL() requires an
+      // absolute base. EventSource accepts relative URLs natively.
+      const base = API_BASE_URL.replace(/\/$/, '');
       const token = localStorage.getItem('token');
+      const params = new URLSearchParams();
+      if (token) params.set('token', token);
+      const sseUrl = `${base}/sse/stream?${params.toString()}`;
 
-      if (token) {
-        sseUrl.searchParams.set('token', token);
-      }
-
-      const eventSource = new EventSource(sseUrl.toString());
+      const eventSource = new EventSource(sseUrl);
 
       eventSource.onmessage = (event) => {
         try {

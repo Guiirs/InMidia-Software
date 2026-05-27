@@ -17,7 +17,7 @@ export interface PublicGeoCatalog {
 export class PublicGeoPresenter {
   static point(point: SpatialProjectionPoint): PublicGeoCatalog['points'][number] {
     return {
-      id: point.numeroOperacional ? `op-${point.numeroOperacional}` : point.placaId,
+      id: point.numeroOperacional ? `op-${point.numeroOperacional}` : `board-${point.placaId.slice(-8)}`,
       regionId: point.regiaoId,
       boardNumber: point.numeroOperacional ? String(point.numeroOperacional) : undefined,
       geo: {

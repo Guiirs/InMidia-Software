@@ -21,6 +21,7 @@ import boardContractsV4Routes from '@modules/contratos/board-contracts-v4.routes
 import biWeekRoutes from '@modules/biweeks/biWeeks.routes';
 import webhookRoutes from '@modules/webhooks/webhook.routes';
 import publicApiRoutes from '@modules/public-api/public-api.routes';
+import publicApiV1Routes from '@modules/public-api/public-api-v1.routes';
 import relatorioRoutes from '@modules/relatorios/relatorios.routes';
 import whatsappRoutes from '@modules/whatsapp/whatsapp.routes';
 import adminRoutes from '@modules/admin/admin.routes';
@@ -211,7 +212,16 @@ export const modules: ModuleDefinition[] = [
     name: 'public-api',
     basePath: '/api/v1/public',
     router: publicApiRoutes,
-    description: 'API publica para parceiros',
+    description: 'API publica para parceiros (legacy path — mantido para compatibilidade)',
+    domain: 'integration',
+    version: '1.0.0',
+    enabled: true,
+  },
+  {
+    name: 'public-api-v1',
+    basePath: '/public/v1',
+    router: publicApiV1Routes,
+    description: 'API publica de integracao — caminho canonico externo (/public/v1)',
     domain: 'integration',
     version: '1.0.0',
     enabled: true,

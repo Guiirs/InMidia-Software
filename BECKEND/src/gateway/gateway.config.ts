@@ -230,7 +230,18 @@ export const gatewayConfig: GatewayConfig = {
       requiresApiKey: true,
       rateLimit: {
         windowMs: 15 * 60 * 1000,
-        max: 1000,
+        max: 100,
+      },
+    },
+    {
+      path: '/public/v1/*',
+      target: 'local',
+      module: 'public-api-v1',
+      requiresAuth: false,
+      requiresApiKey: true,
+      rateLimit: {
+        windowMs: 15 * 60 * 1000,
+        max: 100,
       },
     },
     {

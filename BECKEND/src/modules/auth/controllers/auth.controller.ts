@@ -19,6 +19,7 @@ import { tokenBlacklist } from '@shared/infra/auth/token-blacklist.service';
 import { sessionRepository } from '../repositories/session.repository';
 import { randomUUID } from 'crypto';
 import { verifyUserPassword } from '../utils/verify-user-password';
+import { getClientIp as getProxyClientIp, getRequestId } from '@shared/infra/http/proxy.utils';
 
 type Params = Record<string, string>;
 
@@ -54,11 +55,12 @@ function clearAuthCookies(res: Response): void {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getCorrelationId(req: Request): string {
-  return String(req.headers['x-correlation-id'] || req.headers['x-request-id'] || randomUUID());
+  return getRequestId(req) !== 'unknown' ? getRequestId(req) : String(randomUUID());
 }
 
 function getClientIp(req: Request): string {
-  return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
+  // Proxy-safe: CF-Connecting-IP → req.ip (trust proxy) → X-Forwarded-For → unknown
+  return getProxyClientIp(req);
 }
 
 function getUserAgent(req: Request): string {

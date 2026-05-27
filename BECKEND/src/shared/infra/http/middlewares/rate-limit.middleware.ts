@@ -166,3 +166,84 @@ export const regenerateApiKeyLimiter = rateLimit({
     });
   },
 });
+
+/**
+ * SSE streams: 10 novas conexões/min por usuário.
+ * SSE connections são long-lived — o cliente só abre uma nova conexão ao reconectar.
+ * 10/min é generoso o suficiente para reconexões normais sem permitir connection spam.
+ * Não aplicar no heartbeat/poll — apenas nos endpoints que abrem o stream SSE.
+ */
+export const sseRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  skip: () => process.env.NODE_ENV === 'test',
+  keyGenerator: keyByUser,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    const authReq = req as IAuthRequest;
+    logger.warn(`[RateLimit] SSE — user=${authReq.user?.id} IP=${req.ip} excedeu 10 conexões/min`);
+    res.status(429).json({
+      message: 'Limite de conexões SSE atingido. O cliente irá reconectar automaticamente.',
+      code: 'SSE_RATE_LIMITED',
+    });
+  },
+});
+
+/**
+ * Uploads: 30 req/min por usuário.
+ * Previne uso abusivo do endpoint de upload (R2 tem custo por operação).
+ */
+export const uploadRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  skip: () => process.env.NODE_ENV === 'test',
+  keyGenerator: keyByUser,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    const authReq = req as IAuthRequest;
+    logger.warn(`[RateLimit] Upload — user=${authReq.user?.id} empresa=${authReq.user?.empresaId} IP=${req.ip} excedeu 30/min`);
+    res.status(429).json({
+      message: 'Limite de uploads atingido. Aguarde 1 minuto e tente novamente.',
+      code: 'UPLOAD_RATE_LIMITED',
+    });
+  },
+});
+
+/**
+ * Public API: 100 req/15min por prefixo de API key.
+ * Chave derivada do prefixo (tudo antes do último underscore) para que uma
+ * rotação de secret não quebre o bucket de rate-limit existente.
+ * Fallback para IP quando o header x-api-key estiver ausente.
+ */
+export const publicApiRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  skip: () => process.env.NODE_ENV === 'test',
+  keyGenerator: (req: Request): string => {
+    const raw = (req.header('x-api-key') || req.header('authorization')?.replace(/^Bearer\s+/i, '') || '').trim();
+    const idx = raw.lastIndexOf('_');
+    const prefix = idx > 0 ? raw.slice(0, idx) : raw;
+    return prefix ? `pub:${prefix}` : `ip:${ipKeyGenerator(req.ip ?? '::1')}`;
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    const raw = req.header('x-api-key') || '';
+    const prefix = raw.slice(0, raw.lastIndexOf('_')) || 'unknown';
+    logger.warn(`[RateLimit] PublicAPI — prefix=${prefix} IP=${req.ip} excedeu 100/15min`);
+    res.status(429).json({
+      success: false,
+      error: {
+        code: 'PUBLIC_API_RATE_LIMITED',
+        message: 'Limite de requisições atingido. Aguarde 15 minutos.',
+      },
+      meta: {
+        requestId: req.header('x-request-id') || 'rate-limited',
+        version: 'v1',
+        timestamp: new Date().toISOString(),
+      },
+    });
+  },
+});

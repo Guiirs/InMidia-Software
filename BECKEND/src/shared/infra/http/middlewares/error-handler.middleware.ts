@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import logger from '@shared/container/logger';
 import AppError from '@shared/container/AppError';
+import { getClientIp, getRequestId } from '@shared/infra/http/proxy.utils';
 
 /**
  * Converts Mongoose Cast errors to operational AppError
@@ -75,7 +76,8 @@ const sendErrorV4 = (err: any, _req: Request, res: Response): void => {
 };
 
 /**
- * Sends detailed error response (development environment)
+ * Sends detailed error response (development environment).
+ * Uses a safe serializer to avoid circular-reference crashes from native Error objects.
  */
 const sendErrorDev = (err: any, _req: Request, res: Response): void => {
   if (!err) {
@@ -90,10 +92,20 @@ const sendErrorDev = (err: any, _req: Request, res: Response): void => {
   const statusCode = err.statusCode || 500;
   const status = err.status || 'error';
 
+  // Extract safe scalar fields — avoids circular references and non-serializable values
+  // that would cause JSON.stringify to throw inside res.json().
+  const safeError = {
+    name: err.name,
+    message: err.message,
+    statusCode: err.statusCode,
+    isOperational: err.isOperational,
+    code: err.code,
+  };
+
   res.status(statusCode).json({
     status,
     message: err.message || 'Erro interno do servidor',
-    error: err,
+    error: safeError,
     stack: err.stack,
     ...(err.errors && { errors: err.errors }),
   });
@@ -149,9 +161,11 @@ const errorHandler = (
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
 
-  // Centralized logging
+  // Proxy-aware error log — includes real IP, request-id, and protocol for tracing.
+  const rid = getRequestId(req);
+  const ip  = getClientIp(req);
   logger.error(
-    `${err.statusCode} - ${err.message || 'Sem mensagem'} - ${req.originalUrl} - ${req.method} - IP: ${req.ip}`,
+    `${err.statusCode} ${req.method} ${req.originalUrl} ip=${ip} rid=${rid} — ${err.message || 'Sem mensagem'}`,
     { stack: err.stack }
   );
 

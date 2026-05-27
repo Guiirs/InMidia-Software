@@ -4,16 +4,8 @@ import type {
   PublicApiAuthContext,
   PublicApiError,
   PublicApiKey,
-  PublicApiScope,
 } from '../contracts/public-api.contracts';
-
-const DEFAULT_SCOPES: PublicApiScope[] = [
-  'inventory:read',
-  'inventory:availability',
-  'media:read',
-  'geo:read',
-  'catalog:read',
-];
+import { PUBLIC_API_DEFAULT_SCOPES } from '../contracts/public-api.contracts';
 
 const CACHE_TTL_MS = 60_000;
 
@@ -106,7 +98,7 @@ export class PublicApiKeyManager {
       keyPrefix: prefix,
       partnerId: `empresa-${empresaId}`,
       empresaId,
-      scopes: DEFAULT_SCOPES,
+      scopes: PUBLIC_API_DEFAULT_SCOPES,
       active: true,
       createdAt: new Date().toISOString(),
     };
@@ -118,7 +110,7 @@ export class PublicApiKeyManager {
         name: (empresa as any).nome ?? '',
         empresaId,
         active: true,
-        scopes: DEFAULT_SCOPES,
+        scopes: PUBLIC_API_DEFAULT_SCOPES,
       },
       requestId: cryptoId(),
     };

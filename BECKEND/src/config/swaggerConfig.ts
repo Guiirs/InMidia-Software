@@ -10,12 +10,12 @@ const options: swaggerJsdoc.Options = {
     },
     servers: [
       {
-        url: 'http://localhost:4000',
+        url: process.env.SWAGGER_DEV_URL || 'http://localhost:4000',
         description: 'Servidor de Desenvolvimento',
       },
       {
-        url: 'https://api.inmidia.com',
-        description: 'Servidor de Produção',
+        url: process.env.SWAGGER_PROD_URL || 'https://inmidia.futureoutdoors.com.br',
+        description: 'Servidor de Produção (same-origin)',
       },
     ],
     components: {

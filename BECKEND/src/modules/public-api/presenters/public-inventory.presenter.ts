@@ -15,8 +15,12 @@ export interface PublicInventorySourceView {
 export class PublicInventoryPresenter {
   static item(view: PublicInventorySourceView): PublicInventoryItem {
     const item = view.item;
+    // Prefer human-visible identifiers. When neither exists, use a truncated opaque suffix
+    // so the full internal MongoDB _id is never exposed to external partners.
+    const publicId = item.numeroPlaca ?? item.numeroOperacional?.toString()
+      ?? `board-${item.placaId.slice(-8)}`;
     return {
-      id: item.numeroPlaca ?? item.numeroOperacional?.toString() ?? item.placaId,
+      id: publicId,
       boardNumber: item.numeroPlaca,
       operationalNumber: item.numeroOperacional,
       region: {

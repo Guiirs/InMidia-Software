@@ -3,7 +3,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import express, { Request, Response, NextFunction, Application } from 'express';
-import cors, { type CorsOptions } from 'cors';
+// cors package removed — manual CORS middleware below ensures single-header write
+import { randomUUID } from 'crypto';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import swaggerUi from 'swagger-ui-express';
@@ -22,7 +23,7 @@ import '@config/redis';
 import { bootstrapGateway, getGatewayInfo } from '@gateway/index';
 
 // Middlewares
-import { errorHandler, sanitize, globalRateLimiter } from './middlewares';
+import { errorHandler, sanitize, globalRateLimiter, sseRateLimiter, uploadRateLimiter, publicApiRateLimiter } from './middlewares';
 import { metricsMiddleware, getMetrics } from '@shared/infra/monitoring/metrics';
 import { renderSyncPrometheusMetrics } from '@modules/sync/sync.service';
 
@@ -35,49 +36,41 @@ import AppError from '@shared/container/AppError';
 // Initialize Express app
 const app: Application = express();
 
-// Railway/Render/proxies: required for req.ip and express-rate-limit behind reverse proxy
-if (config.nodeEnv === 'production' || process.env.RAILWAY_ENVIRONMENT) {
-  app.set('trust proxy', 1);
-}
+// Trust all upstream proxies (Cloudflare → OLS → Coolify Docker).
+// Without this, req.ip resolves to the OLS/Docker-gateway address instead of the real
+// client IP, which breaks rate-limit key isolation (all users share one bucket).
+// The backend is never publicly exposed — only reachable through OLS — so trusting all
+// proxies is safe here. Use 'loopback,uniquelocal' if the backend ever becomes semi-public.
+app.set('trust proxy', true);
 
-// --- Essential Middlewares ---
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", 'data:', 'https:'],
-      connectSrc: ["'self'"],
-      frameSrc: ["'none'"],
-      objectSrc: ["'none'"],
-    },
-  },
-  hsts: config.nodeEnv === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
-}));
+// ─── CORS — must be the FIRST app.use() call ────────────────────────────────
+//
+// Manual middleware — single write of Access-Control-Allow-Origin per response.
+//
+// Why not cors() library:
+//   cors() reflects req.headers.origin verbatim into the response header.
+//   OLS/LiteSpeed duplicates the Origin request header before proxying to Express
+//   ("https://x.com, https://x.com"), so cors() would copy that duplicated string
+//   into Access-Control-Allow-Origin — which browsers reject.
+//   res.setHeader() replaces (never appends), so we always emit one clean value.
+//
+// Why first:
+//   OPTIONS preflights must never reach rate-limit, auth, Redis, or DB middleware.
+//   Registering here guarantees they are intercepted and answered with 204 immediately.
 
-// Global rate limiting (2000 req/min per IP)
-app.use('/api', globalRateLimiter);
+const normalizeOrigin = (raw: string) => raw.trim().replace(/\/+$/, '');
 
-// Metrics middleware (must be after rate limiting but before routes)
-app.use(metricsMiddleware);
-
-// ─── CORS ────────────────────────────────────────────────────────────────────
-
-const normalizeOrigin = (origin: string) => origin.trim().replace(/\/+$/, '');
 const configuredCorsOrigins = (config.corsOrigin || '')
   .split(',')
-  .map((origin) => origin.trim())
+  .map((o) => o.trim())
   .filter(Boolean);
-const corsCredentialsEnabled = true;
-const hasCorsWildcard = configuredCorsOrigins.includes('*');
 
-if (hasCorsWildcard && corsCredentialsEnabled) {
-  throw new Error('CORS_ORIGIN="*" nao e permitido com credentials habilitado. Configure uma whitelist explicita.');
+if (configuredCorsOrigins.includes('*')) {
+  throw new Error('CORS_ORIGIN="*" is not allowed with credentials=true. Use an explicit whitelist.');
 }
 
 if (config.nodeEnv === 'production' && configuredCorsOrigins.length === 0) {
-  throw new Error('CORS_ORIGIN deve ser configurado explicitamente em producao.');
+  throw new Error('CORS_ORIGIN must be set explicitly in production.');
 }
 
 const defaultDevOrigins = ['http://localhost:5173', 'http://localhost:4173'];
@@ -88,41 +81,165 @@ const allowedOrigins = Array.from(
   )
 );
 
-logger.info(`[CORS] credentials=${corsCredentialsEnabled} origins=[${allowedOrigins.join(', ')}]`);
+const CORS_ALLOW_METHODS = 'GET,POST,PUT,DELETE,PATCH,OPTIONS';
+const CORS_ALLOW_HEADERS = 'Content-Type,Authorization,x-api-key,x-correlation-id,x-request-id';
+const CORS_EXPOSE_HEADERS = 'X-Gateway-Module,X-Response-Time,X-Request-Id';
+const CORS_MAX_AGE = '86400';
 
-const corsOptions: CorsOptions = {
-  origin: (origin, callback) => {
-    // Permite requests sem Origin (curl, health checks internos, Railway probes)
-    if (!origin) {
-      callback(null, true);
+logger.info(`[CORS] origins=[${allowedOrigins.join(', ')}]`);
+
+app.use(function corsMiddleware(req: Request, res: Response, next: NextFunction): void {
+  // ── Public API layer (/public/*) ─────────────────────────────────────────────
+  // External partner endpoints are API-key authenticated, not cookie-based.
+  // credentials=false allows wildcard origin — valid per CORS spec.
+  // Clients may be WordPress plugins, BI tools, or partner backends — any origin.
+  if (req.path.startsWith('/public/')) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    if (req.method === 'OPTIONS') {
+      res.setHeader('Access-Control-Allow-Methods', CORS_ALLOW_METHODS);
+      res.setHeader('Access-Control-Allow-Headers', `${CORS_ALLOW_HEADERS},x-api-key`);
+      res.setHeader('Access-Control-Max-Age', CORS_MAX_AGE);
+      logger.debug('[CORS] OPTIONS /public/* handled (wildcard)');
+      res.status(204).end();
       return;
     }
+    res.setHeader('Access-Control-Expose-Headers', CORS_EXPOSE_HEADERS);
+    return next();
+  }
 
-    // Some reverse proxies (OpenLiteSpeed, Traefik) forward the Origin header AND
-    // append their own copy, producing "https://a.com, https://a.com" in the same
-    // header value. Take only the first entry for matching.
-    const primaryOrigin  = origin.split(',')[0]!.trim();
-    const requestOrigin  = normalizeOrigin(primaryOrigin);
+  // ── Internal API layer (/api/*) ───────────────────────────────────────────────
+  const rawOrigin = req.headers['origin'] as string | undefined;
 
-    if (allowedOrigins.includes(requestOrigin)) {
-      callback(null, true);
-      return;
+  // OLS/LiteSpeed/Traefik may forward a duplicated Origin header value:
+  // "https://x.com, https://x.com" — extract only the first segment for validation.
+  const candidate = rawOrigin ? normalizeOrigin(rawOrigin.split(',')[0]!.trim()) : null;
+  const allowed = candidate !== null && allowedOrigins.includes(candidate);
+
+  if (allowed) {
+    // res.setHeader replaces any existing value — never concatenates — single header guaranteed.
+    res.setHeader('Access-Control-Allow-Origin', candidate!);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    // res.vary appends 'Origin' without overwriting other Vary tokens (e.g. Accept-Encoding).
+    res.vary('Origin');
+    logger.debug(`[CORS] origin permitida: ${candidate}`);
+  } else if (candidate) {
+    logger.warn(`[CORS] origin bloqueada: ${candidate} (raw: "${rawOrigin}")`);
+    // No CORS headers set → browser enforces the block. No 403 — OPTIONS must still return 204.
+  }
+
+  if (req.method === 'OPTIONS') {
+    if (allowed) {
+      res.setHeader('Access-Control-Allow-Methods', CORS_ALLOW_METHODS);
+      res.setHeader('Access-Control-Allow-Headers', CORS_ALLOW_HEADERS);
+      res.setHeader('Access-Control-Max-Age', CORS_MAX_AGE);
     }
+    logger.debug('[CORS] OPTIONS handled directly');
+    res.status(204).end();
+    return;
+  }
 
-    logger.warn(`[CORS] Origem bloqueada: ${requestOrigin} (raw header: "${origin}")`);
-    callback(new Error(`CORS blocked for origin: ${requestOrigin}`));
+  if (allowed) {
+    res.setHeader('Access-Control-Expose-Headers', CORS_EXPOSE_HEADERS);
+  }
+
+  next();
+});
+
+// ─── Request ID ──────────────────────────────────────────────────────────────
+// Propagates or generates x-request-id for end-to-end tracing.
+// Accepts the header from upstream proxies (OLS/Cloudflare) or creates one.
+// Written to the response so the frontend can correlate errors with backend logs.
+app.use((req: Request, res: Response, next: NextFunction): void => {
+  const requestId =
+    (req.headers['x-request-id'] as string) ||
+    (req.headers['x-correlation-id'] as string) ||
+    randomUUID();
+  req.headers['x-request-id'] = requestId;
+  res.setHeader('X-Request-Id', requestId);
+
+  const startMs = Date.now();
+
+  // Proxy-aware access log: real IP + protocol detected from proxy headers.
+  // Only active in production. SSE endpoints log their own connect/disconnect.
+  if (config.nodeEnv === 'production') {
+    const ip     = (req.headers['cf-connecting-ip'] as string) || req.ip || 'unknown';
+    const proto  = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+    const origin = (req.headers['origin'] as string)?.split(',')[0]?.trim() || '-';
+    logger.debug(`[HTTP] ${req.method} ${req.path} ip=${ip} proto=${proto} origin=${origin} rid=${requestId}`);
+
+    // Latency log: fires when the response finishes (or SSE stream closes).
+    // For SSE, duration == total connection time, which is still useful for capacity planning.
+    res.on('finish', () => {
+      const ms = Date.now() - startMs;
+      const status = res.statusCode;
+      // Only emit for slow requests (>500ms) or errors to keep log volume manageable.
+      if (ms > 500 || status >= 500) {
+        logger.warn(`[HTTP] SLOW/ERR ${req.method} ${req.path} ${status} ${ms}ms rid=${requestId} ip=${ip}`);
+      }
+    });
+  }
+
+  next();
+});
+
+// --- Security Headers (Helmet) ---
+//
+// crossOriginEmbedderPolicy is disabled because:
+//   - R2 (Cloudflare) assets are cross-origin and require credentialless loading
+//   - COEP: require-corp would block those assets
+//
+// crossOriginOpenerPolicy is disabled because:
+//   - Future OAuth popup flows require window.opener access
+//   - safe value is 'same-origin-allow-popups' if re-enabled
+//
+// Both can be re-evaluated per-route once same-origin migration is complete.
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc:  ["'self'"],
+      scriptSrc:   ["'self'"],
+      styleSrc:    ["'self'", "'unsafe-inline'"],
+      imgSrc:      ["'self'", 'data:', 'https:'],
+      // 'self' covers SSE (same-origin after Phase 3), WebSocket upgrade, and fetch.
+      // wss: covers Socket.IO WebSocket transport.
+      connectSrc:  ["'self'", 'wss:'],
+      frameSrc:    ["'none'"],
+      objectSrc:   ["'none'"],
+      baseUri:     ["'self'"],          // prevents base-tag injection
+      formAction:  ["'self'"],          // prevents form hijacking
+      workerSrc:   ["'none'"],
+    },
   },
-  credentials: corsCredentialsEnabled,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'x-correlation-id', 'x-request-id'],
-  exposedHeaders: ['X-Gateway-Module', 'X-Response-Time', 'X-Request-Id'],
-  maxAge: 86400,
-};
+  hsts: config.nodeEnv === 'production'
+    ? { maxAge: 31536000, includeSubDomains: true, preload: true }
+    : false,
+  // strict-origin-when-cross-origin: sends full referrer on same-origin,
+  // only origin on cross-origin HTTPS → HTTPS, nothing on HTTPS → HTTP.
+  referrerPolicy:            { policy: 'strict-origin-when-cross-origin' },
+  crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy:   false,
+}));
 
-// Handle CORS preflight for all routes before any auth/gateway middleware
-// Express 5 / path-to-regexp v8 rejects bare '*' — use regex instead
-app.options(/.*/, cors(corsOptions));
-app.use(cors(corsOptions));
+// Global rate limiting (2000 req/min per IP) — internal API only
+app.use('/api', globalRateLimiter);
+
+// Public integration API — 100 req/15min per API key prefix.
+// Separate limiter: more restrictive than internal, keyed by API key not IP.
+app.use('/public', publicApiRateLimiter);
+
+// SSE stream endpoints — limit new connection rate to prevent connection spam.
+// Applied before auth middleware in the gateway; the limiter itself uses keyByUser
+// (falls back to IP when unauthenticated, which is fine since stream requires a token).
+app.use('/api/v1/sync/stream',      sseRateLimiter);
+app.use('/api/v1/sse/stream',       sseRateLimiter);
+app.use('/api/v4/realtime/stream',  sseRateLimiter);
+
+// Upload endpoints — 30 uploads/min per user (R2 has per-operation cost).
+app.use('/api/v1/media/upload',     uploadRateLimiter);
+app.use('/api/v1/placa',            uploadRateLimiter);  // gallery upload
+
+// Metrics middleware (must be after rate limiting but before routes)
+app.use(metricsMiddleware);
 
 // ─── Cookie Parser ─────────────────────────────────────────────────────────────
 // Deve vir ANTES de qualquer middleware que leia req.cookies

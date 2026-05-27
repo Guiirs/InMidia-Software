@@ -19,11 +19,20 @@ import cron from 'node-cron';
 // Import the Express app
 import app from './app';
 
+// SSE connection registry — used to notify active streams on graceful shutdown
+import { sendHeartbeatToAll } from '@modules/sync/sync.sse-connections';
+
 // Load environment variables
 dotenv.config();
 
 // --- Server Initialization ---
 const PORT = config.port;
+
+// BACKEND_HOST restricts which network interface the server binds to.
+// In production behind OLS/Coolify, set to '127.0.0.1' or the Docker-internal
+// gateway to prevent the port from being publicly reachable.
+// Omit (or set to '0.0.0.0') to bind on all interfaces (default / Docker health checks).
+const HOST = process.env.BACKEND_HOST || undefined;
 
 let server: http.Server | undefined;
 let io: SocketIOServer | undefined;
@@ -31,10 +40,26 @@ let io: SocketIOServer | undefined;
 if (process.env.NODE_ENV !== 'test') {
   server = http.createServer(app);
 
+  // Explicit timeout settings for long-lived SSE connections.
+  // keepAliveTimeout must exceed the proxy idle timeout (OLS default: 60s, Cloudflare: 100s).
+  // headersTimeout must exceed keepAliveTimeout to avoid a race condition where Node closes
+  // the connection while the proxy is still sending the next request header.
+  // Both values are above the SSE heartbeat interval (25s) with comfortable margin.
+  server.keepAliveTimeout = 65_000;  // 65 s
+  server.headersTimeout   = 66_000;  // 66 s — must be > keepAliveTimeout
+
   // Socket.IO Configuration
+  // Parse CORS_ORIGIN (comma-separated) into the array Socket.IO expects.
+  // In same-origin mode the frontend and WS share the same origin, so CORS
+  // won't be triggered — but the array is kept correct for hybrid rollback.
+  const socketOrigins: string[] = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
   io = new SocketIOServer(server, {
     cors: {
-      origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+      origin: socketOrigins,
       credentials: true,
     },
     transports: ['websocket', 'polling'],
@@ -88,8 +113,9 @@ if (process.env.NODE_ENV !== 'test') {
       logger.info('[DB] ✅ Conexão estabelecida com sucesso');
 
       // Start server
-      server!.listen(PORT, () => {
-        logger.info(`🚀 Server running in ${config.nodeEnv} mode on port ${PORT}`);
+      server!.listen(PORT, ...(HOST ? [HOST] : []), () => {
+        const bindAddr = HOST ? `${HOST}:${PORT}` : `0.0.0.0:${PORT}`;
+        logger.info(`🚀 Server running in ${config.nodeEnv} mode — bound to ${bindAddr}`);
         logger.info(`📚 API Documentation: http://localhost:${PORT}/api/v1/docs`);
         logger.info(`🔌 Socket.IO: ws://localhost:${PORT}`);
 
@@ -167,6 +193,10 @@ process.on('unhandledRejection', (reason: any, _promise: Promise<any>) => {
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   logger.info('👋 SIGTERM received. Shutting down gracefully...');
+
+  // Notify all active SSE clients so they reconnect to the new instance.
+  // The heartbeat event carries a server_shutdown reason — clients should handle it.
+  try { sendHeartbeatToAll(); } catch { /* non-fatal */ }
 
   try {
     await QueueService.close();

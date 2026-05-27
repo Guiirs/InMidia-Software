@@ -8,6 +8,7 @@ import { createTenantContextFromJwt, requireEmpresaId } from '../tenant/tenant-c
 import { createPermissionContextFromRequest } from '../permissions/permission-context';
 import { tokenBlacklist } from '@shared/infra/auth/token-blacklist.service';
 import { ACCESS_COOKIE } from '@modules/auth/services/auth.service';
+import { getClientIp, getRequestId, getRequestOrigin } from '@shared/infra/http/proxy.utils';
 
 /**
  * Extrai token JWT do request.
@@ -37,12 +38,16 @@ const authenticateToken = (
   next: NextFunction
 ): void => {
   try {
-    logger.debug('[AuthMiddleware] Autenticando token...');
+    const rid = getRequestId(req);
+    const ip  = getClientIp(req);
+    const origin = getRequestOrigin(req) ?? '-';
+
+    logger.debug(`[Auth] verifying token rid=${rid} ip=${ip} path=${req.path}`);
 
     const token = extractToken(req);
 
     if (!token) {
-      logger.warn('[AuthMiddleware] Token ausente.');
+      logger.warn(`[Auth] token ausente rid=${rid} ip=${ip} origin=${origin} path=${req.path}`);
       res.status(401).json({
         success: false,
         code: 'AUTH_REQUIRED',
@@ -54,9 +59,8 @@ const authenticateToken = (
     jwt.verify(token, config.jwtSecret, async (err, decoded) => {
       try {
         if (err) {
-          logger.warn(`[AuthMiddleware] Token inválido: ${err.message}`);
-
           if (err.name === 'TokenExpiredError') {
+            logger.warn(`[Auth] token expirado rid=${rid} ip=${ip} origin=${origin}`);
             res.status(401).json({
               success: false,
               code: 'TOKEN_EXPIRED',
@@ -65,6 +69,7 @@ const authenticateToken = (
             return;
           }
 
+          logger.warn(`[Auth] token invalido reason=${err.message} rid=${rid} ip=${ip} origin=${origin}`);
           res.status(401).json({
             success: false,
             code: 'INVALID_TOKEN',
@@ -76,7 +81,7 @@ const authenticateToken = (
         const user = decoded as IUserPayload & { jti?: string };
 
         if (!user || !user.id || !user.email || !user.empresaId) {
-          logger.error(`[AuthMiddleware] Payload incompleto userId=${user?.id || 'N/A'}`);
+          logger.error(`[Auth] payload incompleto rid=${rid} ip=${ip} userId=${user?.id || 'N/A'}`);
           res.status(401).json({
             success: false,
             code: 'INVALID_TOKEN',
@@ -89,7 +94,7 @@ const authenticateToken = (
         if (user.jti) {
           const revoked = await tokenBlacklist.isRevoked(user.jti);
           if (revoked) {
-            logger.warn(`[AuthMiddleware] Token revogado jti=${user.jti} userId=${user.id}`);
+            logger.warn(`[Auth] token revogado jti=${user.jti} userId=${user.id} rid=${rid} ip=${ip}`);
             res.status(401).json({
               success: false,
               code: 'TOKEN_REVOKED',
@@ -105,12 +110,12 @@ const authenticateToken = (
         req.permissionContext = createPermissionContextFromRequest(req);
 
         logger.debug(
-          `[AuthMiddleware] OK userId=${req.user.email} empresaId=${req.tenantContext.empresaId} role=${req.permissionContext.role}`
+          `[Auth] OK user=${req.user.email} empresa=${req.tenantContext.empresaId} role=${req.permissionContext.role} rid=${rid}`
         );
 
         next();
       } catch (callbackErr) {
-        logger.error('[AuthMiddleware] Erro no callback JWT', { callbackErr });
+        logger.error(`[Auth] erro interno rid=${rid}`, { callbackErr });
         next(new AppError('Erro interno de autenticacao.', 500));
       }
     });
