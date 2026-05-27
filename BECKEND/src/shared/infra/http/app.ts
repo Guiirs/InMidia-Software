@@ -18,21 +18,15 @@ import { errorHandler, sanitize, globalRateLimiter } from './middlewares';
 import { metricsMiddleware, getMetrics } from '@shared/infra/monitoring/metrics';
 import { renderSyncPrometheusMetrics } from '@modules/sync/sync.service';
 
-// Auth blacklist — inicializa conexão Redis para revogação distribuída
-import { tokenBlacklist } from '@shared/infra/auth/token-blacklist.service';
+// TokenBlacklist uses the shared RedisManager — no explicit connect() needed here.
+// RedisManager boots when config/redis.ts is first imported (above).
+import '@shared/infra/auth/token-blacklist.service';
 
 // Utils
 import AppError from '@shared/container/AppError';
 
 // Load environment variables
 dotenv.config();
-
-// Initialize token blacklist (Redis-backed)
-if (process.env.NODE_ENV !== 'test') {
-  tokenBlacklist.connect(config.redisUrl).catch((err: Error) => {
-    logger.warn('[App] Token blacklist Redis indisponível — usando fallback in-memory:', err.message);
-  });
-}
 
 // Initialize Express app
 const app: Application = express();

@@ -126,24 +126,39 @@ process.on('uncaughtException', (err: Error) => {
 });
 
 // Unhandled Rejection Handler
+//
+// Strategy: only crash for truly fatal rejections (DB connection failure on boot).
+// Redis, BullMQ, Socket.IO, and other optional-service rejections must NOT kill
+// the process — they have their own graceful-degradation paths.
 process.on('unhandledRejection', (reason: any, _promise: Promise<any>) => {
   const errorMessage = reason?.message || String(reason);
-  const uptimeSec = Math.round(process.uptime());
+  const uptimeSec    = Math.round(process.uptime());
+
+  // Classify the rejection source to decide whether to crash
+  const isFatal = (() => {
+    const msg = errorMessage.toLowerCase();
+
+    // Redis / BullMQ / ioredis — never fatal (degraded-mode fallback exists)
+    if (msg.includes('redis') || msg.includes('bullmq') || msg.includes('econnrefused')) return false;
+    // Socket.IO transport errors — not fatal
+    if (msg.includes('socket') || msg.includes('websocket')) return false;
+    // Mongoose connection errors handled by connectDB — not fatal after boot
+    if (msg.includes('mongoose') || msg.includes('mongo')) return uptimeSec < 5;
+
+    return true;
+  })();
+
+  if (!isFatal) {
+    logger.warn(`[Server] Unhandled rejection (non-fatal, uptime=${uptimeSec}s): ${errorMessage}`);
+    return;
+  }
 
   logger.error('💥 UNHANDLED REJECTION! Shutting down...');
   logger.error(`Uptime: ${uptimeSec}s | Reason: ${errorMessage}`);
+  if (reason?.stack) logger.error(`Stack: ${reason.stack}`);
 
-  if (reason?.stack) {
-    logger.error(`Stack: ${reason.stack}`);
-  }
-
-  /* uptimeSec < 10: crash durante bootstrap — sai imediatamente para evitar estado inconsistente.
-     uptimeSec >= 10: crash em runtime — fecha server graciosamente antes de sair,
-     permitindo que clientes SSE detectem a desconexão e reconectem. */
   if (server && uptimeSec >= 10) {
-    server.close(() => {
-      process.exit(1);
-    });
+    server.close(() => process.exit(1));
   } else {
     process.exit(1);
   }

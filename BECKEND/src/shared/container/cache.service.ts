@@ -1,128 +1,61 @@
 /**
  * Cache Service
- * Redis caching singleton
+ *
+ * Thin wrapper over the shared RedisManager.
+ * All methods are fire-and-forget safe — they never throw.
+ * Cache miss (Redis offline) silently degrades to DB lookup.
  */
+
+import { redisManager } from '@shared/infra/redis/redis-manager';
 import logger from './logger';
-import { RedisClientType, createClient } from 'redis';
 
-let redisClient: RedisClientType | null = null;
-let isRedisAvailable = false;
+const DEFAULT_TTL = parseInt(process.env.CACHE_TTL || '300', 10);
 
-async function initializeRedis(): Promise<void> {
-  try {
-    if (!process.env.REDIS_HOST && process.env.NODE_ENV !== 'production') {
-      logger.info('[CacheService] Redis não configurado. Cache desabilitado (modo desenvolvimento).');
-      return;
-    }
-
-    const config = {
-      socket: {
-        host: process.env.REDIS_HOST || 'localhost',
-        port: parseInt(process.env.REDIS_PORT || '6379', 10)
-      },
-      password: process.env.REDIS_PASSWORD || undefined
-    };
-
-    redisClient = createClient(config) as RedisClientType;
-
-    redisClient.on('error', (err: Error) => {
-      logger.error('[CacheService] Erro de conexão Redis:', err.message);
-      isRedisAvailable = false;
-    });
-
-    redisClient.on('connect', () => {
-      logger.info('[CacheService] ✅ Conectado ao Redis.');
-      isRedisAvailable = true;
-    });
-
-    redisClient.on('ready', () => {
-      logger.info('[CacheService] Redis pronto para uso.');
-      isRedisAvailable = true;
-    });
-
-    await redisClient.connect();
-    
-  } catch (error) {
-    const err = error as Error;
-    logger.warn('[CacheService] Redis não disponível:', err.message);
-    logger.info('[CacheService] Continuando sem cache (fallback para DB).');
-    isRedisAvailable = false;
-  }
-}
+/** No-op boot — redisManager is initialized via config/redis.ts import chain. */
+async function initializeRedis(): Promise<void> {}
 
 async function get(key: string): Promise<unknown> {
-  if (!isRedisAvailable || !redisClient) {
-    return null;
-  }
+  const raw = await redisManager.get(key);
+  if (!raw) return null;
 
   try {
-    const value = await redisClient.get(key);
-    if (!value) return null;
-    
-    logger.debug(`[CacheService] Cache HIT: ${key}`);
-    return JSON.parse(value);
-  } catch (error) {
-    const err = error as Error;
-    logger.warn(`[CacheService] Erro ao ler cache ${key}:`, err.message);
+    logger.debug(`[CacheService] HIT: ${key}`);
+    return JSON.parse(raw);
+  } catch {
     return null;
   }
 }
 
-async function set(key: string, value: unknown, ttl: number = parseInt(process.env.CACHE_TTL || '300', 10)): Promise<void> {
-  if (!isRedisAvailable || !redisClient) {
-    return;
-  }
-
+async function set(key: string, value: unknown, ttl = DEFAULT_TTL): Promise<void> {
   try {
     const serialized = JSON.stringify(value);
-    await redisClient.setEx(key, ttl, serialized);
-    logger.debug(`[CacheService] Cache SET: ${key} (TTL: ${ttl}s)`);
-  } catch (error) {
-    const err = error as Error;
-    logger.warn(`[CacheService] Erro ao escrever cache ${key}:`, err.message);
+    await redisManager.setEx(key, ttl, serialized);
+    logger.debug(`[CacheService] SET: ${key} (TTL: ${ttl}s)`);
+  } catch (e: any) {
+    logger.warn(`[CacheService] set falhou para ${key}: ${e.message}`);
   }
 }
 
 async function del(keys: string | string[]): Promise<void> {
-  if (!isRedisAvailable || !redisClient) {
-    return;
-  }
-
-  try {
-    const keysArray = Array.isArray(keys) ? keys : [keys];
-    await redisClient.del(keysArray);
-    logger.debug(`[CacheService] Cache DEL: ${keysArray.join(', ')}`);
-  } catch (error) {
-    const err = error as Error;
-    logger.warn(`[CacheService] Erro ao deletar cache:`, err.message);
-  }
+  const arr = Array.isArray(keys) ? keys : [keys];
+  for (const k of arr) await redisManager.del(k);
+  logger.debug(`[CacheService] DEL: ${arr.join(', ')}`);
 }
 
-async function invalidatePattern(pattern: string) {
-  if (!isRedisAvailable || !redisClient) {
-    return;
-  }
-
-  try {
-    const keys = await redisClient.keys(pattern);
-    if (keys.length > 0) {
-      await redisClient.del(keys);
-      logger.info(`[CacheService] Invalidadas ${keys.length} chaves com padrão: ${pattern}`);
-    }
-  } catch (error: any) {
-    logger.warn(`[CacheService] Erro ao invalidar padrão ${pattern}:`, error.message);
+async function invalidatePattern(pattern: string): Promise<void> {
+  const keys = await redisManager.keys(pattern);
+  if (keys.length > 0) {
+    for (const k of keys) await redisManager.del(k);
+    logger.info(`[CacheService] Invalidadas ${keys.length} chaves: ${pattern}`);
   }
 }
 
 function isAvailable(): boolean {
-  return isRedisAvailable;
+  return redisManager.isConnected();
 }
 
-async function disconnect() {
-  if (redisClient && isRedisAvailable) {
-    await redisClient.quit();
-    logger.info('[CacheService] Desconectado do Redis.');
-  }
+async function disconnect(): Promise<void> {
+  // Shared client — owned by RedisManager, not this service
 }
 
 export default {
@@ -132,5 +65,5 @@ export default {
   del,
   invalidatePattern,
   isAvailable,
-  disconnect
+  disconnect,
 };

@@ -1,136 +1,98 @@
 /**
  * JWT Token Blacklist Service
- * Redis-backed com fallback in-memory para desenvolvimento sem Redis.
- * Garante revogação imediata de tokens mesmo dentro do período de validade.
+ *
+ * Uses the shared RedisManager with in-memory fallback.
+ * Contract: every public method returns a value — NEVER throws.
+ * The auth middleware must never get a 500 due to Redis being offline.
  */
 
-import { createClient, RedisClientType } from 'redis';
+import { redisManager } from '@shared/infra/redis/redis-manager';
 import logger from '@shared/container/logger';
 
-const BLACKLIST_PREFIX = 'jwt:blacklist:';
+const BLACKLIST_PREFIX    = 'jwt:blacklist:';
 const FAMILY_REVOKE_PREFIX = 'session:family:revoked:';
 
+// In-memory fallback: jti/family-key → expiry timestamp (ms)
+const memStore = new Map<string, number>();
+
+function memGet(key: string): boolean {
+  const exp = memStore.get(key);
+  if (!exp) return false;
+  if (Date.now() > exp) { memStore.delete(key); return false; }
+  return true;
+}
+
+function memSet(key: string, ttlSeconds: number): void {
+  memStore.set(key, Date.now() + ttlSeconds * 1_000);
+  // Prune when store grows too large (>2000 entries)
+  if (memStore.size > 2_000) {
+    const now = Date.now();
+    for (const [k, v] of memStore) if (now > v) memStore.delete(k);
+  }
+}
+
 class TokenBlacklistService {
-  private redis: RedisClientType | null = null;
-  private available = false;
-  // Fallback in-memory para quando Redis não está disponível
-  private memoryStore = new Map<string, number>(); // jti -> expiresAt (unix ms)
-
-  async connect(redisUrl: string): Promise<void> {
-    try {
-      this.redis = createClient({ url: redisUrl }) as RedisClientType;
-
-      this.redis.on('error', (err: Error) => {
-        logger.warn('[TokenBlacklist] Redis error:', err.message);
-        this.available = false;
-      });
-
-      this.redis.on('ready', () => {
-        this.available = true;
-        logger.info('[TokenBlacklist] Redis conectado — revogação distribuída ativa');
-      });
-
-      await this.redis.connect();
-      this.available = true;
-    } catch (err: any) {
-      logger.warn('[TokenBlacklist] Redis indisponível — usando fallback in-memory:', err.message);
-      this.available = false;
-    }
+  /**
+   * connect() kept for backwards-compat with app.ts — now a no-op because
+   * the shared redisManager is booted by config/redis.ts on first import.
+   */
+  async connect(_redisUrl: string): Promise<void> {
+    // No-op: redisManager is initialized centrally via config/redis.ts
   }
 
-  /**
-   * Adiciona token à blacklist.
-   * @param jti  JWT ID (campo `jti` do payload) ou o próprio token como fallback
-   * @param ttlSeconds  Tempo de vida restante do token em segundos
-   */
   async revoke(jti: string, ttlSeconds: number): Promise<void> {
-    if (ttlSeconds <= 0) return; // Já expirado, não precisa blacklistar
+    if (ttlSeconds <= 0) return;
 
-    if (this.available && this.redis) {
-      try {
-        await this.redis.setEx(`${BLACKLIST_PREFIX}${jti}`, ttlSeconds, '1');
-        return;
-      } catch (err: any) {
-        logger.warn('[TokenBlacklist] Falha ao revogar no Redis, usando fallback:', err.message);
-      }
+    const stored = await redisManager.setEx(
+      `${BLACKLIST_PREFIX}${jti}`,
+      ttlSeconds,
+      '1',
+    );
+
+    if (!stored) {
+      // Redis unavailable — fall back to in-memory
+      memSet(jti, ttlSeconds);
     }
-
-    // Fallback in-memory
-    this.memoryStore.set(jti, Date.now() + ttlSeconds * 1000);
-    this.pruneMemoryStore();
   }
 
-  /**
-   * Verifica se o token está revogado.
-   */
   async isRevoked(jti: string): Promise<boolean> {
-    if (this.available && this.redis) {
-      try {
-        const val = await this.redis.get(`${BLACKLIST_PREFIX}${jti}`);
-        return val !== null;
-      } catch (err: any) {
-        logger.warn('[TokenBlacklist] Falha ao verificar blacklist Redis:', err.message);
-      }
-    }
+    const val = await redisManager.get(`${BLACKLIST_PREFIX}${jti}`);
 
-    // Fallback in-memory
-    const exp = this.memoryStore.get(jti);
-    if (!exp) return false;
-    if (Date.now() > exp) {
-      this.memoryStore.delete(jti);
-      return false;
-    }
-    return true;
+    if (val !== null) return true;         // Redis says revoked
+    if (redisManager.isConnected()) return false; // Redis online, not in blacklist
+
+    // Redis offline — check in-memory fallback
+    return memGet(jti);
   }
 
-  /**
-   * Marca uma família de refresh tokens como revogada (reuse attack).
-   */
-  async revokeFamily(family: string, ttlSeconds = 7 * 24 * 3600): Promise<void> {
-    if (this.available && this.redis) {
-      try {
-        await this.redis.setEx(`${FAMILY_REVOKE_PREFIX}${family}`, ttlSeconds, '1');
-        return;
-      } catch (err: any) {
-        logger.warn('[TokenBlacklist] Falha ao revogar família Redis:', err.message);
-      }
-    }
-    this.memoryStore.set(`fam:${family}`, Date.now() + ttlSeconds * 1000);
+  async revokeFamily(family: string, ttlSeconds = 7 * 24 * 3_600): Promise<void> {
+    const stored = await redisManager.setEx(
+      `${FAMILY_REVOKE_PREFIX}${family}`,
+      ttlSeconds,
+      '1',
+    );
+    if (!stored) memSet(`fam:${family}`, ttlSeconds);
   }
 
   async isFamilyRevoked(family: string): Promise<boolean> {
-    if (this.available && this.redis) {
-      try {
-        const val = await this.redis.get(`${FAMILY_REVOKE_PREFIX}${family}`);
-        return val !== null;
-      } catch {}
-    }
-    const exp = this.memoryStore.get(`fam:${family}`);
-    if (!exp) return false;
-    if (Date.now() > exp) {
-      this.memoryStore.delete(`fam:${family}`);
-      return false;
-    }
-    return true;
+    const val = await redisManager.get(`${FAMILY_REVOKE_PREFIX}${family}`);
+    if (val !== null) return true;
+    if (redisManager.isConnected()) return false;
+    return memGet(`fam:${family}`);
   }
 
   isRedisAvailable(): boolean {
-    return this.available;
-  }
-
-  private pruneMemoryStore(): void {
-    if (this.memoryStore.size < 1000) return;
-    const now = Date.now();
-    for (const [key, exp] of this.memoryStore.entries()) {
-      if (now > exp) this.memoryStore.delete(key);
-    }
+    return redisManager.isConnected();
   }
 
   async disconnect(): Promise<void> {
-    if (this.redis && this.available) {
-      await this.redis.quit();
-    }
+    // Shared client — do not disconnect from here
   }
 }
 
 export const tokenBlacklist = new TokenBlacklistService();
+
+// Startup log — replaces the old connect() call in app.ts
+logger.info(
+  `[TokenBlacklist] Inicializado — Redis: ${redisManager.isConnected() ? 'conectado' : 'aguardando'}`
+);
