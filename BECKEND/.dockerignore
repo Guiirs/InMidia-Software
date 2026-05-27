@@ -1,37 +1,65 @@
+# ── Build outputs ──────────────────────────────────────────────────────────────
 node_modules
 dist
 coverage
+
+# ── Runtime data (nunca deve entrar no contexto de build) ──────────────────────
 logs
+uploads
+tmp
+temp
+redis-data
+backup-*
+backups
+
+# ── Secrets e configurações de ambiente ───────────────────────────────────────
 .env
 .env.*
 !.env.example
+
+# ── WhatsApp session (dados sensíveis + muito grande) ─────────────────────────
+.wwebjs_cache
+.wwebjs_auth
+whatsapp-session
+
+# ── Git ────────────────────────────────────────────────────────────────────────
 .git
 .gitignore
-.DS_Store
-Thumbs.db
+.gitattributes
+
+# ── Logs de package managers ───────────────────────────────────────────────────
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 *.log
+
+# ── Build artifacts TypeScript ─────────────────────────────────────────────────
 *.tsbuildinfo
 .eslintcache
 .cache
-tmp
-temp
-uploads
-.wwebjs_cache
-.wwebjs_auth
-whatsapp-session
-redis-data
-backup-*
-backups
+
+# ── Scripts de migration (somente para uso local/CI) ──────────────────────────
+scripts
+
+# ── Testes ────────────────────────────────────────────────────────────────────
 __tests__
 *.test.ts
 *.spec.ts
-*.md
-.vscode
-.idea
-ecosystem.config.js
-nodemon.json
 jest.config.js
 tsconfig.test.json
+tsconfig.active.json
+
+# ── Configs de desenvolvimento local ──────────────────────────────────────────
+.vscode
+.idea
+nodemon.json
+ecosystem.config.js
+*.ps1
+
+# ── Documentação ──────────────────────────────────────────────────────────────
+*.md
+!README.md
+
+# ── OS artifacts ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
