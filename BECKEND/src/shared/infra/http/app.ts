@@ -98,14 +98,19 @@ const corsOptions: CorsOptions = {
       return;
     }
 
-    const requestOrigin = normalizeOrigin(origin);
+    // Some reverse proxies (OpenLiteSpeed, Traefik) forward the Origin header AND
+    // append their own copy, producing "https://a.com, https://a.com" in the same
+    // header value. Take only the first entry for matching.
+    const primaryOrigin  = origin.split(',')[0]!.trim();
+    const requestOrigin  = normalizeOrigin(primaryOrigin);
+
     if (allowedOrigins.includes(requestOrigin)) {
       callback(null, true);
       return;
     }
 
-    logger.warn(`[CORS] Origem bloqueada: ${origin}`);
-    callback(new Error(`CORS blocked for origin: ${origin}`));
+    logger.warn(`[CORS] Origem bloqueada: ${requestOrigin} (raw header: "${origin}")`);
+    callback(new Error(`CORS blocked for origin: ${requestOrigin}`));
   },
   credentials: corsCredentialsEnabled,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
