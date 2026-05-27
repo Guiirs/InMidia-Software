@@ -117,7 +117,8 @@ const corsOptions: CorsOptions = {
 };
 
 // Handle CORS preflight for all routes before any auth/gateway middleware
-app.options('*', cors(corsOptions));
+// Express 5 / path-to-regexp v8 rejects bare '*' — use regex instead
+app.options(/.*/, cors(corsOptions));
 app.use(cors(corsOptions));
 
 // ─── Cookie Parser ─────────────────────────────────────────────────────────────
