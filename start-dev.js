@@ -71,6 +71,8 @@ const backendPath = path.join(__dirname, 'BECKEND');
 const frontendPath = path.join(__dirname, 'REACT');
 const redisPath = path.join(__dirname, 'redis-new');
 
+const REDIS_PORT = parseInt(process.env.REDIS_PORT || '6379', 10);
+
 console.log('\n╔═══════════════════════════════════════════════════════╗');
 console.log('║   INICIANDO AMBIENTE DE DESENVOLVIMENTO               ║');
 console.log('╚═══════════════════════════════════════════════════════╝\n');
@@ -92,61 +94,88 @@ if (!fs.existsSync(redisPath)) {
   process.exit(1);
 }
 
-// Iniciar processos
-const redis = startProcess(
-  'REDIS',
-  'redis-server.exe',
-  ['redis6380.conf'],
-  redisPath,
-  colors.green
-);
+// Check if Redis is already listening on REDIS_PORT — skip spawn if so
+const net = require('net');
+function checkRedisRunning(port) {
+  return new Promise((resolve) => {
+    const socket = net.createConnection({ host: '127.0.0.1', port }, () => {
+      socket.destroy();
+      resolve(true);
+    });
+    socket.on('error', () => resolve(false));
+    socket.setTimeout(500, () => { socket.destroy(); resolve(false); });
+  });
+}
 
-const backend = startProcess(
-  'BACKEND',
-  'npm',
-  ['run', 'dev'],
-  backendPath,
-  colors.cyan
-);
+(async () => {
+  // Start Redis only if not already listening on REDIS_PORT
+  const redisAlreadyUp = await checkRedisRunning(REDIS_PORT);
+  let redis;
+  if (redisAlreadyUp) {
+    log('REDIS', `Já em execução em 127.0.0.1:${REDIS_PORT} — reutilizando instância existente`, colors.yellow);
+    redis = { kill: () => {} };
+  } else {
+    const confFile = `redis${REDIS_PORT}.conf`;
+    if (!fs.existsSync(path.join(redisPath, confFile))) {
+      console.error(`${colors.red}Erro: Arquivo de configuração redis-new/${confFile} não encontrado!${colors.reset}`);
+      process.exit(1);
+    }
+    redis = startProcess(
+      'REDIS',
+      'redis-server.exe',
+      [confFile],
+      redisPath,
+      colors.green
+    );
+  }
 
-const frontend = startProcess(
-  'FRONTEND',
-  'npm',
-  ['run', 'dev'],
-  frontendPath,
-  colors.magenta
-);
+  const backend = startProcess(
+    'BACKEND',
+    'npm',
+    ['run', 'dev'],
+    backendPath,
+    colors.cyan
+  );
 
-// Tratamento de sinais para encerramento gracioso
-process.on('SIGINT', () => {
-  console.log('\n');
-  log('SYSTEM', 'Encerrando processos...', colors.yellow);
-  
-  redis.kill('SIGINT');
-  backend.kill('SIGINT');
-  frontend.kill('SIGINT');
-  
-  setTimeout(() => {
-    redis.kill('SIGKILL');
-    backend.kill('SIGKILL');
-    frontend.kill('SIGKILL');
+  const frontend = startProcess(
+    'FRONTEND',
+    'npm',
+    ['run', 'dev'],
+    frontendPath,
+    colors.magenta
+  );
+
+  // Tratamento de sinais para encerramento gracioso
+  process.on('SIGINT', () => {
+    console.log('\n');
+    log('SYSTEM', 'Encerrando processos...', colors.yellow);
+
+    redis.kill('SIGINT');
+    backend.kill('SIGINT');
+    frontend.kill('SIGINT');
+
+    setTimeout(() => {
+      redis.kill('SIGKILL');
+      backend.kill('SIGKILL');
+      frontend.kill('SIGKILL');
+      process.exit(0);
+    }, 3000);
+  });
+
+  process.on('SIGTERM', () => {
+    redis.kill('SIGTERM');
+    backend.kill('SIGTERM');
+    frontend.kill('SIGTERM');
     process.exit(0);
-  }, 3000);
-});
-
-process.on('SIGTERM', () => {
-  redis.kill('SIGTERM');
-  backend.kill('SIGTERM');
-  frontend.kill('SIGTERM');
-  process.exit(0);
-});
+  });
+})();
 
 // Informações úteis
 setTimeout(() => {
   console.log('\n╔═══════════════════════════════════════════════════════╗');
   console.log('║   SERVIDORES INICIADOS                                ║');
   console.log('╚═══════════════════════════════════════════════════════╝');
-  console.log(`${colors.green}Redis:${colors.reset}    localhost:6380`);
+  console.log(`${colors.green}Redis:${colors.reset}    localhost:${REDIS_PORT}`);
   console.log(`${colors.cyan}Backend:${colors.reset}  http://localhost:4000 (ou conforme PORT no .env)`);
   console.log(`${colors.magenta}Frontend:${colors.reset} http://localhost:5173 (ou conforme Vite)`);
   console.log(`\n${colors.yellow}Pressione Ctrl+C para parar todos os servidores${colors.reset}\n`);

@@ -12,6 +12,13 @@ export interface PublicInventorySourceView {
   };
 }
 
+function toPublicRegionId(regionId?: string): string | undefined {
+  if (!regionId) return undefined;
+  return /^[0-9a-f]{24}$/i.test(regionId)
+    ? `region-${regionId.slice(-8)}`
+    : regionId;
+}
+
 export class PublicInventoryPresenter {
   static item(view: PublicInventorySourceView): PublicInventoryItem {
     const item = view.item;
@@ -24,7 +31,7 @@ export class PublicInventoryPresenter {
       boardNumber: item.numeroPlaca,
       operationalNumber: item.numeroOperacional,
       region: {
-        id: item.regiaoId,
+        id: toPublicRegionId(item.regiaoId),
         name: view.source?.regiaoNome,
       },
       location: {

@@ -13,10 +13,11 @@ const options: swaggerJsdoc.Options = {
         url: process.env.SWAGGER_DEV_URL || 'http://localhost:4000',
         description: 'Servidor de Desenvolvimento',
       },
-      {
-        url: process.env.SWAGGER_PROD_URL || 'https://inmidia.futureoutdoors.com.br',
-        description: 'Servidor de Produção (same-origin)',
-      },
+      // Production server only shown when SWAGGER_PROD_URL is explicitly configured.
+      // Omitting it removes the hardcoded domain from the Swagger UI dropdown.
+      ...(process.env.SWAGGER_PROD_URL
+        ? [{ url: process.env.SWAGGER_PROD_URL, description: 'Servidor de Produção (same-origin)' }]
+        : []),
     ],
     components: {
       securitySchemes: {

@@ -21,6 +21,7 @@
     "migrate:alugueis:dry": "ts-node scripts/migrate-alugueis-to-unified-period.ts --dry-run",
     "migrate:fields": "ts-node scripts/migrate-database-suffix.ts",
     "migrate:fields:dry": "ts-node scripts/migrate-database-suffix.ts --dry-run",
+    "public-api:keygen": "node scripts/generate-public-api-key.mjs",
     "bkp": "node scripts/backupManual.js",
     "lint": "eslint src --ext .ts",
     "type-check": "tsc --noEmit",

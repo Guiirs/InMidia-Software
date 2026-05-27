@@ -36,12 +36,28 @@ import AppError from '@shared/container/AppError';
 // Initialize Express app
 const app: Application = express();
 
-// Trust all upstream proxies (Cloudflare → OLS → Coolify Docker).
-// Without this, req.ip resolves to the OLS/Docker-gateway address instead of the real
-// client IP, which breaks rate-limit key isolation (all users share one bucket).
-// The backend is never publicly exposed — only reachable through OLS — so trusting all
-// proxies is safe here. Use 'loopback,uniquelocal' if the backend ever becomes semi-public.
-app.set('trust proxy', true);
+// ─── Trust Proxy ─────────────────────────────────────────────────────────────
+//
+// Controlled by TRUST_PROXY_HOPS env var — never use `true` with express-rate-limit
+// because it trusts any X-Forwarded-For value and triggers ERR_ERL_PERMISSIVE_TRUST_PROXY.
+//
+// Values:
+//   0 (local dev)  → trust proxy: false  — req.ip = socket address (127.0.0.1)
+//   1              → trust proxy: 1      — trust one hop (single reverse proxy)
+//   2 (production) → trust proxy: 2      — Cloudflare (hop 1) + OLS (hop 2)
+//
+// Production chain: browser → Cloudflare → OLS → Docker/backend
+// CF-Connecting-IP is always preferred in getClientIp() regardless of this setting.
+{
+  const hops = parseInt(process.env.TRUST_PROXY_HOPS || '0', 10);
+  if (hops > 0) {
+    app.set('trust proxy', hops);
+    logger.info(`[App] trust proxy = ${hops} (TRUST_PROXY_HOPS=${hops})`);
+  } else {
+    app.set('trust proxy', false);
+    logger.info('[App] trust proxy = false (local dev — TRUST_PROXY_HOPS=0 or unset)');
+  }
+}
 
 // ─── CORS — must be the FIRST app.use() call ────────────────────────────────
 //
@@ -235,8 +251,9 @@ app.use('/api/v1/sse/stream',       sseRateLimiter);
 app.use('/api/v4/realtime/stream',  sseRateLimiter);
 
 // Upload endpoints — 30 uploads/min per user (R2 has per-operation cost).
-app.use('/api/v1/media/upload',     uploadRateLimiter);
-app.use('/api/v1/placa',            uploadRateLimiter);  // gallery upload
+app.use('/api/v4/media/upload',     uploadRateLimiter);  // canonical — used by frontend mediaService.js
+app.use('/api/v1/media/upload',     uploadRateLimiter);  // v1 compat
+app.use('/api/v1/placa',            uploadRateLimiter);  // gallery upload (v1 placas with images)
 
 // Metrics middleware (must be after rate limiting but before routes)
 app.use(metricsMiddleware);
@@ -272,6 +289,14 @@ app.get('/api/v1/health', (_req: Request, res: Response) => {
 });
 
 app.get('/api/health', (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'healthy',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'healthy',
     uptime: process.uptime(),
