@@ -144,6 +144,33 @@ describe('GET /api/v1/sync/snapshot', () => {
     expect(res.body.data.placas.disponiveis).toBe(1);
   });
 
+  it('snapshot usa o empresaId autenticado e nao mistura dados de outro tenant', async () => {
+    await createTestPlaca(regiaoId, { numero_placa: 'SYNC-A-ONLY' });
+
+    const tenantBRegiao = await createTestRegiao({
+      nome: 'Regiao B',
+      codigo: 'RB',
+      empresaId: new Types.ObjectId(EMPRESA_B_ID),
+    });
+    await createTestPlaca(tenantBRegiao._id.toString(), {
+      numero_placa: 'SYNC-B-ONLY',
+      empresaId: new Types.ObjectId(EMPRESA_B_ID),
+    });
+
+    const resA = await request(app)
+      .get('/api/v1/sync/snapshot')
+      .set('Authorization', `Bearer ${token}`);
+
+    const resB = await request(app)
+      .get('/api/v1/sync/snapshot')
+      .set('Authorization', `Bearer ${tokenEmpresaB}`);
+
+    expect(resA.status).toBe(200);
+    expect(resB.status).toBe(200);
+    expect(resA.body.data.placas.total).toBe(1);
+    expect(resB.body.data.placas.total).toBe(1);
+  });
+
   it('syncCursor.value é ISO 8601 válido em modo local', async () => {
     const res = await request(app)
       .get('/api/v1/sync/snapshot')
@@ -208,6 +235,12 @@ describe('GET /api/v1/sync/events', () => {
   });
 
   it('isola eventos por empresa: evento da empresa A não aparece para empresa B', async () => {
+    await createTestRegiao({
+      nome: 'Tenant B Base',
+      codigo: 'TBB',
+      empresaId: new Types.ObjectId(EMPRESA_B_ID),
+    });
+
     const snapshotB = await request(app)
       .get('/api/v1/sync/snapshot')
       .set('Authorization', `Bearer ${tokenEmpresaB}`);

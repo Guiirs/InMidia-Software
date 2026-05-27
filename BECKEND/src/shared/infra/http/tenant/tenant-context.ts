@@ -49,6 +49,9 @@ export function requireEmpresaId(req: Request): string {
   const byTenantContext = normalizeEmpresaId(req.tenantContext?.empresaId);
   if (byTenantContext) return byTenantContext;
 
+  const byRequestEmpresaId = normalizeEmpresaId(req.empresaId);
+  if (byRequestEmpresaId) return byRequestEmpresaId;
+
   const byUser = normalizeEmpresaId(req.user?.empresaId);
   if (byUser) return byUser;
 

@@ -36,6 +36,7 @@ import app from '../../shared/infra/http/app';
 // Modelos — importados para garantir o registro no Mongoose
 import Regiao from '../../modules/regioes/Regiao';
 import Placa from '../../modules/placas/Placa';
+import Empresa from '../../modules/empresas/Empresa';
 
 export { app };
 
@@ -43,6 +44,35 @@ export { app };
 
 export const TEST_EMPRESA_ID = new Types.ObjectId().toString();
 export const TEST_USER_ID = new Types.ObjectId().toString();
+const registeredTenantIds = new Set<string>([TEST_EMPRESA_ID]);
+
+async function ensureTestEmpresa(empresaId: string): Promise<void> {
+  if (!Types.ObjectId.isValid(empresaId)) {
+    return;
+  }
+
+  const objectId = new Types.ObjectId(empresaId);
+  const existingEmpresa = await Empresa.exists({ _id: objectId });
+  if (existingEmpresa) {
+    return;
+  }
+
+  const cnpj = `${Date.now()}${Math.floor(Math.random() * 1000000)}`
+    .slice(0, 14)
+    .padEnd(14, '0');
+
+  await Empresa.create({
+    _id: objectId,
+    nome: `Empresa Teste ${empresaId.slice(-4)}`,
+    cnpj,
+  });
+}
+
+async function ensureRegisteredTestEmpresas(): Promise<void> {
+  for (const empresaId of registeredTenantIds) {
+    await ensureTestEmpresa(empresaId);
+  }
+}
 
 // ─── JWT helpers ──────────────────────────────────────────────────────────────
 
@@ -60,6 +90,8 @@ export function generateTestToken(overrides?: Partial<{
     email: overrides?.email ?? 'test@inmidia.com',
     username: overrides?.username ?? 'testuser',
   };
+
+  registeredTenantIds.add(payload.empresaId);
   return jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '1h' });
 }
 
@@ -75,6 +107,7 @@ export async function setupIntegrationDb(): Promise<void> {
     await mongoose.disconnect();
   }
   await mongoose.connect(uri);
+  await ensureRegisteredTestEmpresas();
 }
 
 export async function clearDatabase(): Promise<void> {
@@ -82,6 +115,7 @@ export async function clearDatabase(): Promise<void> {
   await Promise.all(
     Object.values(collections).map(col => col.deleteMany({}))
   );
+  await ensureRegisteredTestEmpresas();
 }
 
 export async function teardownIntegrationDb(): Promise<void> {
@@ -92,21 +126,31 @@ export async function teardownIntegrationDb(): Promise<void> {
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 export async function createTestRegiao(overrides?: Record<string, unknown>): Promise<any> {
+  const empresaIdValue = overrides?.empresaId
+    ? String(overrides.empresaId)
+    : TEST_EMPRESA_ID;
+  await ensureTestEmpresa(empresaIdValue);
+
   return Regiao.create({
     nome: 'Região Teste',
     codigo: 'RT',
     ativo: true,
-    empresaId: new Types.ObjectId(TEST_EMPRESA_ID),
+    empresaId: new Types.ObjectId(empresaIdValue),
     ...overrides,
   });
 }
 
 export async function createTestPlaca(regiaoId: string, overrides?: Record<string, unknown>): Promise<any> {
+  const empresaIdValue = overrides?.empresaId
+    ? String(overrides.empresaId)
+    : TEST_EMPRESA_ID;
+  await ensureTestEmpresa(empresaIdValue);
+
   return Placa.create({
     numero_placa: `TEST-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     disponivel: true,
     regiaoId: new Types.ObjectId(regiaoId),
-    empresaId: new Types.ObjectId(TEST_EMPRESA_ID),
+    empresaId: new Types.ObjectId(empresaIdValue),
     localizacao: 'Rua de Teste, 123',
     ...overrides,
   });

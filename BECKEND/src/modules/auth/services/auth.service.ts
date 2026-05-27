@@ -5,12 +5,19 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
 import crypto from 'crypto';
 import { randomUUID } from 'crypto';
-import { Result, InvalidCredentialsError, NotFoundError, BusinessRuleViolationError } from '@shared/core';
+import {
+  Result,
+  InvalidCredentialsError,
+  NotFoundError,
+  BusinessRuleViolationError,
+  isDomainError,
+} from '@shared/core';
 import config from '@config/config';
 import { tokenBlacklist } from '@shared/infra/auth/token-blacklist.service';
 import { sessionRepository } from '../repositories/session.repository';
 import { verifyUserPassword } from '../utils/verify-user-password';
 import type { IAuthRepository } from '../repositories/auth.repository';
+import Empresa from '@modules/empresas/Empresa';
 import type {
   LoginInput,
   ChangePasswordInput,
@@ -18,6 +25,18 @@ import type {
   ChangePasswordResponse,
   JwtPayload,
 } from '../dtos/auth.dto';
+import type { IUser } from '../../../types/models';
+import {
+  DuplicatedEmailUsersError,
+  EmpresaNotFoundForUserError,
+  TenantContextInconsistentError,
+  UserWithoutEmpresaError,
+} from '../auth.errors';
+import {
+  isEmailIdentifier,
+  normalizeAuthIdentifier,
+  resolveCanonicalEmpresaId,
+} from '../auth-tenant.utils';
 
 const ACCESS_COOKIE = 'inmidia_access';
 const REFRESH_COOKIE = 'inmidia_refresh';
@@ -37,6 +56,58 @@ export interface LogoutResult {
 
 export class AuthService {
   constructor(private readonly repository: IAuthRepository) {}
+
+  private async resolveValidatedEmpresaId(
+    user: IUser
+  ): Promise<Result<string, UserWithoutEmpresaError | EmpresaNotFoundForUserError>> {
+    const empresaId = resolveCanonicalEmpresaId(user);
+
+    if (!empresaId) {
+      return Result.fail(new UserWithoutEmpresaError(user._id.toString()));
+    }
+
+    const empresaExists = await Empresa.exists({ _id: empresaId });
+    if (!empresaExists) {
+      return Result.fail(new EmpresaNotFoundForUserError(empresaId, user._id.toString()));
+    }
+
+    return Result.ok(empresaId);
+  }
+
+  private selectLoginUser(
+    users: IUser[],
+    rawIdentifier: string
+  ): Result<IUser | null, DuplicatedEmailUsersError> {
+    const activeUsers = users.filter((user) => user.ativo !== false);
+    const trimmedIdentifier = String(rawIdentifier || '').trim();
+    const normalizedIdentifier = normalizeAuthIdentifier(rawIdentifier);
+
+    if (isEmailIdentifier(rawIdentifier)) {
+      const emailUsers = activeUsers.filter(
+        (user) => normalizeAuthIdentifier(user.email) === normalizedIdentifier
+      );
+
+      if (emailUsers.length > 1) {
+        return Result.fail(new DuplicatedEmailUsersError(normalizedIdentifier));
+      }
+
+      return Result.ok(emailUsers[0] ?? null);
+    }
+
+    const usernameUsers = activeUsers.filter((user) => user.username === trimmedIdentifier);
+    if (usernameUsers.length > 0) {
+      return Result.ok(usernameUsers[0] ?? null);
+    }
+
+    const emailUsers = activeUsers.filter(
+      (user) => normalizeAuthIdentifier(user.email) === normalizedIdentifier
+    );
+    if (emailUsers.length > 1) {
+      return Result.fail(new DuplicatedEmailUsersError(normalizedIdentifier));
+    }
+
+    return Result.ok(emailUsers[0] ?? null);
+  }
 
   // ─── Token Generators ────────────────────────────────────────────────────────
 
@@ -62,22 +133,44 @@ export class AuthService {
   async login(
     input: LoginInput,
     meta: { ip: string; userAgent: string }
-  ): Promise<Result<LoginResponse & { refreshToken: string; refreshExpiresAt: Date; family: string }, InvalidCredentialsError | NotFoundError>> {
+  ): Promise<
+    Result<
+      LoginResponse & { refreshToken: string; refreshExpiresAt: Date; family: string },
+      | InvalidCredentialsError
+      | NotFoundError
+      | DuplicatedEmailUsersError
+      | UserWithoutEmpresaError
+      | EmpresaNotFoundForUserError
+    >
+  > {
     try {
-      const userResult = await this.repository.findByUsernameOrEmail(input.usernameOrEmail);
+      const userResult = await this.repository.findLoginUsers(input.usernameOrEmail);
 
-      if (userResult.isFailure || !userResult.value) {
+      if (userResult.isFailure) {
         return Result.fail(new InvalidCredentialsError());
       }
 
-      const user = userResult.value;
+      const selectedUser = this.selectLoginUser(userResult.value, input.usernameOrEmail);
+      if (selectedUser.isFailure) {
+        return Result.fail(selectedUser.error);
+      }
+
+      const user = selectedUser.value;
+      if (!user) {
+        return Result.fail(new InvalidCredentialsError());
+      }
 
       const passwordVerification = await verifyUserPassword(user, input.password);
       if (!passwordVerification.isMatch) {
         return Result.fail(new InvalidCredentialsError());
       }
 
-      const empresaId = ((user as any).empresa || (user as any).empresaId).toString();
+      const empresaIdResult = await this.resolveValidatedEmpresaId(user);
+      if (empresaIdResult.isFailure) {
+        return Result.fail(empresaIdResult.error);
+      }
+
+      const empresaId = empresaIdResult.value;
 
       const payload: JwtPayload = {
         id: user._id.toString(),
@@ -114,7 +207,11 @@ export class AuthService {
           createdAt: user.createdAt,
         },
       });
-    } catch {
+    } catch (error) {
+      if (isDomainError(error)) {
+        return Result.fail(error as InvalidCredentialsError | NotFoundError | DuplicatedEmailUsersError | UserWithoutEmpresaError | EmpresaNotFoundForUserError);
+      }
+
       return Result.fail(new InvalidCredentialsError());
     }
   }
@@ -124,7 +221,15 @@ export class AuthService {
   async refresh(
     rawRefreshToken: string,
     meta: { ip: string; userAgent: string }
-  ): Promise<Result<RefreshResult, InvalidCredentialsError>> {
+  ): Promise<
+    Result<
+      RefreshResult,
+      | InvalidCredentialsError
+      | UserWithoutEmpresaError
+      | EmpresaNotFoundForUserError
+      | TenantContextInconsistentError
+    >
+  > {
     try {
       const session = await sessionRepository.findValidByRawToken(rawRefreshToken);
 
@@ -159,7 +264,19 @@ export class AuthService {
       }
 
       const user = userResult.value;
-      const empresaId = session.empresaId.toString();
+      const empresaIdResult = await this.resolveValidatedEmpresaId(user);
+      if (empresaIdResult.isFailure) {
+        return Result.fail(empresaIdResult.error);
+      }
+
+      const empresaId = empresaIdResult.value;
+      if (session.empresaId.toString() !== empresaId) {
+        return Result.fail(
+          new TenantContextInconsistentError(
+            `Sessao refresh vinculada a empresa ${session.empresaId.toString()} difere da empresa ${empresaId} do usuario ${user._id.toString()}.`
+          )
+        );
+      }
 
       const payload: JwtPayload = {
         id: user._id.toString(),
@@ -189,7 +306,17 @@ export class AuthService {
         family: newSession.family,
         expiresAt: newSession.expiresAt,
       });
-    } catch {
+    } catch (error) {
+      if (isDomainError(error)) {
+        return Result.fail(
+          error as
+            | InvalidCredentialsError
+            | UserWithoutEmpresaError
+            | EmpresaNotFoundForUserError
+            | TenantContextInconsistentError
+        );
+      }
+
       return Result.fail(new InvalidCredentialsError());
     }
   }

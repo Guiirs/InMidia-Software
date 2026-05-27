@@ -76,6 +76,7 @@ const apiKeyAuthMiddleware = async (
     // Success! Attach empresa to request
     req.empresa = empresa;
     req.tenantContext = createTenantContextFromApiKey(empresa);
+    req.empresaId = req.tenantContext.empresaId;
     requireEmpresaId(req);
 
     logger.info(

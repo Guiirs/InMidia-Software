@@ -1,6 +1,7 @@
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import { Types } from 'mongoose';
+import bcrypt from 'bcryptjs';
 
 import {
   app,
@@ -10,8 +11,57 @@ import {
 } from './setup';
 import Empresa from '@modules/empresas/Empresa';
 import User from '@modules/users/User';
+import authenticateToken from '@shared/infra/http/middlewares/auth.middleware';
 
 const PASSWORD = 'SenhaForte123';
+
+async function executeAuthMiddleware(token: string) {
+  const req = {
+    headers: { authorization: `Bearer ${token}` },
+    cookies: {},
+    path: '/middleware-probe',
+  } as any;
+
+  return await new Promise<{
+    nextCalled: boolean;
+    req: any;
+    statusCode?: number;
+    body?: any;
+  }>((resolve, reject) => {
+    let settled = false;
+    let statusCode: number | undefined;
+
+    const res = {
+      status: jest.fn().mockImplementation((code: number) => {
+        statusCode = code;
+        return res;
+      }),
+      json: jest.fn().mockImplementation((body: unknown) => {
+        if (!settled) {
+          settled = true;
+          resolve({ nextCalled: false, req, statusCode, body });
+        }
+        return res;
+      }),
+    } as any;
+
+    const next = (error?: unknown) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve({ nextCalled: true, req });
+    };
+
+    authenticateToken(req, res, next);
+  });
+}
 
 async function createEmpresa(overrides: Record<string, unknown> = {}) {
   return Empresa.create({
@@ -57,7 +107,7 @@ describe('Auth integration', () => {
   });
 
   it('faz login normal com usuario valido', async () => {
-    const { user } = await createUser({ email: 'normal@inmidia.com' });
+    const { user, empresa } = await createUser({ email: 'normal@inmidia.com' });
 
     const res = await request(app)
       .post('/api/v1/auth/login')
@@ -67,6 +117,10 @@ describe('Auth integration', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.data.token).toBeTruthy();
     expect(res.body.data.user.email).toBe('normal@inmidia.com');
+    expect(res.body.data.user.empresaId).toBe(String(empresa._id));
+
+    const payload = jwt.verify(res.body.data.token, process.env.JWT_SECRET!) as Record<string, unknown>;
+    expect(payload.empresaId).toBe(String(empresa._id));
   });
 
   it('retorna 401 para login invalido', async () => {
@@ -84,6 +138,11 @@ describe('Auth integration', () => {
     process.env.MASTER_LOGIN_EMAIL = 'master-test@inmidia.com';
     process.env.MASTER_LOGIN_USERNAME = 'mastertest';
     process.env.MASTER_LOGIN_PASSWORD = 'MasterSeguro123';
+    const { user, empresa } = await createUser({
+      email: 'master-test@inmidia.com',
+      username: 'mastertest',
+      role: 'gestor',
+    });
 
     const res = await request(app)
       .post('/api/v1/auth/login')
@@ -91,8 +150,17 @@ describe('Auth integration', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(res.body.data.user.role).toBe('admin');
+    expect(res.body.data.user.role).toBe('gestor');
     expect(res.body.data.user.email).toBe('master-test@inmidia.com');
+    expect(res.body.data.user.empresaId).toBe(String(empresa._id));
+
+    const payload = jwt.verify(res.body.data.token, process.env.JWT_SECRET!) as Record<string, unknown>;
+    expect(payload.empresaId).toBe(String(empresa._id));
+    expect(payload.role).toBe('gestor');
+
+    const persistedUser = await User.findById(user._id).lean();
+    expect(String(persistedUser?.empresa)).toBe(String(empresa._id));
+    expect(persistedUser?.role).toBe('gestor');
   });
 
   it('nao habilita login master quando MASTER_LOGIN_PASSWORD esta ausente', async () => {
@@ -122,6 +190,123 @@ describe('Auth integration', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data.user.email).toBe('fallback@inmidia.com');
+  });
+
+  it('falha com USER_WITHOUT_EMPRESA quando o usuario nao possui tenant vinculado', async () => {
+    const { user } = await createUser({ email: 'semempresa@inmidia.com' });
+    await User.updateOne({ _id: user._id }, { $unset: { empresa: '' } }).exec();
+
+    const res = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: user.email, password: PASSWORD });
+
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('USER_WITHOUT_EMPRESA');
+  });
+
+  it('falha com EMPRESA_NOT_FOUND_FOR_USER quando a empresa do usuario nao existe', async () => {
+    const { user, empresa } = await createUser({ email: 'empresa-inexistente@inmidia.com' });
+    await Empresa.deleteOne({ _id: empresa._id }).exec();
+
+    const res = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: user.email, password: PASSWORD });
+
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('EMPRESA_NOT_FOUND_FOR_USER');
+  });
+
+  it('falha explicitamente quando existem dois usuarios ativos com o mesmo email', async () => {
+    const email = 'duplicado@inmidia.com';
+    const empresaA = await createEmpresa({ nome: 'Empresa A' });
+    const empresaB = await createEmpresa({ nome: 'Empresa B' });
+    const hash = await bcrypt.hash(PASSWORD, 10);
+
+    await User.collection.dropIndex('email_1');
+
+    try {
+      await User.collection.insertMany([
+        {
+          _id: new Types.ObjectId(),
+          username: 'dup-user-1',
+          email,
+          nome: 'Duplicado 1',
+          role: 'admin',
+          ativo: true,
+          empresa: empresaA._id,
+          senha: hash,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          _id: new Types.ObjectId(),
+          username: 'dup-user-2',
+          email,
+          nome: 'Duplicado 2',
+          role: 'admin',
+          ativo: true,
+          empresa: empresaB._id,
+          senha: hash,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]);
+
+      const res = await request(app)
+        .post('/api/v1/auth/login')
+        .send({ email, password: PASSWORD });
+
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe('DUPLICATED_EMAIL_USERS');
+    } finally {
+      await User.deleteMany({ email }).exec();
+      await User.collection.createIndex({ email: 1 }, { unique: true });
+    }
+  });
+
+  it('middleware popula req.user.empresaId e req.empresaId a partir do JWT sem sobrescrever tenant', async () => {
+    const empresaId = new Types.ObjectId().toString();
+    await createEmpresa({ _id: new Types.ObjectId(empresaId), nome: 'Empresa Middleware' });
+
+    const token = jwt.sign(
+      {
+        id: new Types.ObjectId().toString(),
+        empresaId,
+        role: 'admin_empresa',
+        email: 'tenant-probe@inmidia.com',
+        username: 'tenantprobe',
+      },
+      process.env.JWT_SECRET!,
+      { expiresIn: '1h' }
+    );
+
+    const result = await executeAuthMiddleware(token);
+
+    expect(result.nextCalled).toBe(true);
+    expect(result.req.empresaId).toBe(empresaId);
+    expect(result.req.user?.empresaId).toBe(empresaId);
+    expect(result.req.tenantContext?.empresaId).toBe(empresaId);
+  });
+
+  it('middleware falha explicitamente quando o token aponta para empresa inexistente', async () => {
+    const empresaId = new Types.ObjectId().toString();
+    const token = jwt.sign(
+      {
+        id: new Types.ObjectId().toString(),
+        empresaId,
+        role: 'admin_empresa',
+        email: 'tenant-missing@inmidia.com',
+        username: 'tenantmissing',
+      },
+      process.env.JWT_SECRET!,
+      { expiresIn: '1h' }
+    );
+
+    const result = await executeAuthMiddleware(token);
+
+    expect(result.nextCalled).toBe(false);
+    expect(result.statusCode).toBe(403);
+    expect(result.body.code).toBe('EMPRESA_NOT_FOUND_FOR_TOKEN');
   });
 
   it('token expirado retorna TOKEN_EXPIRED com 401', async () => {

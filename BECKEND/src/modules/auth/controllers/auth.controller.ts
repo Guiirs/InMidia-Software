@@ -4,7 +4,7 @@
 
 import { Request, Response } from 'express';
 import { Log } from '@shared/core';
-import { getErrorStatusCode } from '@shared/core';
+import { getErrorStatusCode, isDomainError } from '@shared/core';
 import type { AuthService } from '../services/auth.service';
 import { ACCESS_COOKIE, REFRESH_COOKIE } from '../services/auth.service';
 import type { IAuthRequest } from '../../../types/express';
@@ -12,14 +12,20 @@ import jwt, { SignOptions } from 'jsonwebtoken';
 import config from '@config/config';
 import Empresa from '@modules/empresas/Empresa';
 import User from '@modules/users/User';
-import crypto from 'crypto';
-import bcrypt from 'bcryptjs';
 import { defaultAuditService } from '@modules/audit/audit.service';
 import { tokenBlacklist } from '@shared/infra/auth/token-blacklist.service';
 import { sessionRepository } from '../repositories/session.repository';
 import { randomUUID } from 'crypto';
-import { verifyUserPassword } from '../utils/verify-user-password';
 import { getClientIp as getProxyClientIp, getRequestId } from '@shared/infra/http/proxy.utils';
+import {
+  DuplicatedEmailUsersError,
+  EmpresaNotFoundForUserError,
+  UserWithoutEmpresaError,
+} from '../auth.errors';
+import {
+  normalizeAuthIdentifier,
+  resolveCanonicalEmpresaId,
+} from '../auth-tenant.utils';
 
 type Params = Record<string, string>;
 
@@ -87,11 +93,7 @@ export class AuthController {
 
     const masterEmail = masterEmailRaw.toLowerCase();
     const masterUsername = masterUsernameRaw;
-    const masterNome = process.env.MASTER_LOGIN_NOME || 'Master';
-    const masterEmpresaNome = process.env.MASTER_EMPRESA_NOME || 'Empresa Principal';
-    const masterEmpresaCnpj = process.env.MASTER_EMPRESA_CNPJ || '00000000000000';
-
-    const identifier = String(loginInput.usernameOrEmail || '').trim().toLowerCase();
+    const identifier = normalizeAuthIdentifier(loginInput.usernameOrEmail);
     const password = String(loginInput.password || '');
 
     const identifierMatch =
@@ -99,62 +101,41 @@ export class AuthController {
 
     if (!identifierMatch || password !== masterPassword) return null;
 
-    let empresa = await Empresa.findOne({ cnpj: masterEmpresaCnpj }).exec();
-    if (!empresa) empresa = await Empresa.findOne().sort({ createdAt: 1 }).exec();
-
-    if (!empresa) {
-      const apiKey = crypto.randomBytes(20).toString('hex');
-      const apiKeyPrefix = `mast_${crypto.randomBytes(2).toString('hex')}`;
-      const apiKeyHash = await bcrypt.hash(apiKey, 10);
-      empresa = new Empresa({
-        nome: masterEmpresaNome,
-        cnpj: masterEmpresaCnpj,
-        apiKey,
-        api_key_prefix: apiKeyPrefix,
-        api_key_hash: apiKeyHash,
-      });
-      await empresa.save();
-    }
-
-    let user = await User.findOne({
+    const candidateUsers = await User.find({
       $or: [{ email: masterEmail }, { username: masterUsername }],
     })
       .select('+senha +password')
       .exec();
 
-    if (!user) {
-      user = new User({
-        username: masterUsername,
-        email: masterEmail,
-        nome: masterNome,
-        role: 'admin',
-        empresa: empresa._id,
-        password: masterPassword,
-      } as any);
-      await user.save();
-    } else {
-      let changed = false;
-      const passwordVerification = await verifyUserPassword(user, masterPassword);
-      if ((user as any).empresa?.toString() !== empresa._id.toString()) { (user as any).empresa = empresa._id; changed = true; }
-      if (user.role !== 'admin') { (user as any).role = 'admin'; changed = true; }
-      if (user.email !== masterEmail) { (user as any).email = masterEmail; changed = true; }
-      if (user.username !== masterUsername) { (user as any).username = masterUsername; changed = true; }
-      if (user.nome !== masterNome) { (user as any).nome = masterNome; changed = true; }
-      if (!passwordVerification.isMatch) {
-        const passwordField =
-          passwordVerification.fieldUsed === 'senha' ||
-          typeof (user as any).senha === 'string'
-            ? 'senha'
-            : 'password';
-        (user as any)[passwordField] = masterPassword;
-        changed = true;
-      }
-      if (changed) await user.save();
+    const activeUsers = candidateUsers.filter((candidate) => candidate.ativo !== false);
+    const matchingEmailUsers = activeUsers.filter(
+      (candidate) => normalizeAuthIdentifier(candidate.email) === masterEmail
+    );
+
+    if (matchingEmailUsers.length > 1) {
+      throw new DuplicatedEmailUsersError(masterEmail);
+    }
+
+    const user =
+      matchingEmailUsers[0] ??
+      activeUsers.find((candidate) => candidate.username === masterUsername) ??
+      null;
+
+    if (!user) return null;
+
+    const empresaId = resolveCanonicalEmpresaId(user);
+    if (!empresaId) {
+      throw new UserWithoutEmpresaError(user._id.toString());
+    }
+
+    const empresa = await Empresa.findById(empresaId).exec();
+    if (!empresa) {
+      throw new EmpresaNotFoundForUserError(empresaId, user._id.toString());
     }
 
     const options: SignOptions = { expiresIn: config.accessTokenExpiresIn as any, jwtid: randomUUID() };
     const token = jwt.sign(
-      { id: user._id.toString(), empresaId: empresa._id.toString(), role: 'admin', username: user.username, email: user.email },
+      { id: user._id.toString(), empresaId: empresa._id.toString(), role: user.role, username: user.username, email: user.email },
       config.jwtSecret,
       options
     );
@@ -169,7 +150,7 @@ export class AuthController {
         email: user.email,
         nome: user.nome,
         telefone: user.telefone,
-        role: 'admin' as const,
+        role: user.role,
         empresaId: empresa._id.toString(),
         createdAt: user.createdAt,
       },
@@ -194,8 +175,18 @@ export class AuthController {
       let masterLogin = null;
       try {
         masterLogin = await this.loginWithMasterCredential(loginInput);
-      } catch (masterConfigError) {
-        Log.error('[AuthController] Configuracao de login master invalida', { error: masterConfigError });
+      } catch (masterLoginError) {
+        if (isDomainError(masterLoginError)) {
+          const statusCode = getErrorStatusCode(masterLoginError);
+          res.status(statusCode).json({
+            success: false,
+            error: masterLoginError.message,
+            code: masterLoginError.code,
+          });
+          return;
+        }
+
+        Log.error('[AuthController] Configuracao de login master invalida', { error: masterLoginError });
         res.status(500).json({ success: false, error: 'Configuracao de login master invalida', code: 'MASTER_LOGIN_CONFIG_INVALID' });
         return;
       }
@@ -282,14 +273,19 @@ export class AuthController {
         entityType: 'session',
         entityId: 'unknown',
         entityLabel: String(loginInput.usernameOrEmail || ''),
-        metadata: { reason: 'invalid_credentials' },
+        metadata: { reason: loginResult.error.code },
         severity: 'warning',
         ip,
         userAgent,
         correlationId,
       });
 
-      res.status(401).json({ success: false, error: 'Credenciais inválidas', code: 'INVALID_CREDENTIALS' });
+      const statusCode = getErrorStatusCode(loginResult.error);
+      res.status(statusCode).json({
+        success: false,
+        error: loginResult.error.message,
+        code: loginResult.error.code,
+      });
 
     } catch (error) {
       Log.error('[AuthController] Erro ao fazer login', { error });
@@ -334,7 +330,18 @@ export class AuthController {
           correlationId,
         });
 
-        res.status(401).json({ success: false, error: 'Refresh token inválido ou expirado', code: 'REFRESH_TOKEN_INVALID' });
+        const statusCode = getErrorStatusCode(result.error);
+        res.status(statusCode).json({
+          success: false,
+          error:
+            result.error.code === 'INVALID_CREDENTIALS'
+              ? 'Refresh token inválido ou expirado'
+              : result.error.message,
+          code:
+            result.error.code === 'INVALID_CREDENTIALS'
+              ? 'REFRESH_TOKEN_INVALID'
+              : result.error.code,
+        });
         return;
       }
 

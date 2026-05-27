@@ -9,6 +9,8 @@ import { createPermissionContextFromRequest } from '../permissions/permission-co
 import { tokenBlacklist } from '@shared/infra/auth/token-blacklist.service';
 import { ACCESS_COOKIE } from '@modules/auth/services/auth.service';
 import { getClientIp, getRequestId, getRequestOrigin } from '@shared/infra/http/proxy.utils';
+import Empresa from '@modules/empresas/Empresa';
+import { EmpresaNotFoundForTokenError } from '@modules/auth/auth.errors';
 
 /**
  * Extrai token JWT do request.
@@ -90,6 +92,18 @@ const authenticateToken = (
           return;
         }
 
+        const empresaExists = await Empresa.exists({ _id: user.empresaId });
+        if (!empresaExists) {
+          const tenantError = new EmpresaNotFoundForTokenError(user.empresaId);
+          logger.error(`[Auth] empresa do token nao encontrada empresa=${user.empresaId} rid=${rid} ip=${ip}`);
+          res.status(tenantError.statusCode).json({
+            success: false,
+            code: tenantError.code,
+            message: tenantError.message,
+          });
+          return;
+        }
+
         // Verifica se o token foi revogado (blacklist)
         if (user.jti) {
           const revoked = await tokenBlacklist.isRevoked(user.jti);
@@ -104,8 +118,9 @@ const authenticateToken = (
           }
         }
 
-        req.user = user;
+        req.user = { ...user, empresaId: String(user.empresaId) };
         req.tenantContext = createTenantContextFromJwt(user);
+        req.empresaId = String(user.empresaId);
         requireEmpresaId(req);
         req.permissionContext = createPermissionContextFromRequest(req);
 

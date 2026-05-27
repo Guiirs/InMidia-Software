@@ -40,6 +40,7 @@ declare global {
       admin?: IAdminPayload;
       tenantContext?: ITenantContext;
       permissionContext?: PermissionContext;
+      empresaId?: string;
       empresa?: {
         _id: ObjectId;
         nome: string;

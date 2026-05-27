@@ -9,9 +9,9 @@ import type { IUser } from '../../../types/models';
 
 export interface IAuthRepository {
   /**
-   * Busca usuário por username ou email (com senha)
+   * Busca usuários candidatos ao login por username ou email (com senha)
    */
-  findByUsernameOrEmail(usernameOrEmail: string): Promise<Result<IUser | null, NotFoundError>>;
+  findLoginUsers(usernameOrEmail: string): Promise<Result<IUser[], NotFoundError>>;
 
   /**
    * Busca usuário por ID (com senha)
@@ -52,20 +52,23 @@ export interface IAuthRepository {
 export class AuthRepository implements IAuthRepository {
   constructor(private readonly model: Model<IUser>) {}
 
-  async findByUsernameOrEmail(usernameOrEmail: string): Promise<Result<IUser | null, NotFoundError>> {
+  async findLoginUsers(usernameOrEmail: string): Promise<Result<IUser[], NotFoundError>> {
     try {
-      const user = await this.model
-        .findOne({
+      const normalizedInput = String(usernameOrEmail || '').trim();
+      const normalizedEmail = normalizedInput.toLowerCase();
+
+      const users = await this.model
+        .find({
           $or: [
-            { username: usernameOrEmail },
-            { email: usernameOrEmail.toLowerCase() }
+            { username: normalizedInput },
+            { email: normalizedEmail }
           ]
         })
         .select('+senha +password')
-        .lean<IUser | null>()
+        .lean<IUser[]>()
         .exec();
 
-      return Result.ok(user);
+      return Result.ok(users);
     } catch (error: any) {
       return Result.fail(
         new NotFoundError('Usuário', usernameOrEmail)

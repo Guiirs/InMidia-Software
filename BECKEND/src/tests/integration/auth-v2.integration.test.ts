@@ -4,6 +4,7 @@
  */
 
 import request from 'supertest';
+import { Types } from 'mongoose';
 import {
   app,
   clearDatabase,
@@ -164,6 +165,25 @@ describe('Auth V2 — HttpOnly Cookies + Refresh + Revogação', () => {
 
       expect(res.status).toBe(401);
       expect(res.body.code).toBe('REFRESH_TOKEN_INVALID');
+    });
+
+    it('falha explicitamente quando a sessao refresh diverge da empresa do usuario', async () => {
+      const { user } = await createUser();
+      const loginRes = await doLogin(user.email);
+      const cookies = loginRes.headers['set-cookie'] as unknown as string[];
+      const refreshCookie = (cookies.find((c) => c.includes('inmidia_refresh')) || '').split(';')[0];
+
+      await RefreshToken.updateMany(
+        { userId: user._id },
+        { empresaId: new Types.ObjectId() }
+      ).exec();
+
+      const res = await request(app)
+        .post('/api/v1/auth/refresh')
+        .set('Cookie', refreshCookie ?? '');
+
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe('TENANT_CONTEXT_INCONSISTENT');
     });
   });
 
