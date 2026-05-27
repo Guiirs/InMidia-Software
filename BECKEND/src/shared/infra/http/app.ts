@@ -1,5 +1,5 @@
 import express, { Request, Response, NextFunction, Application } from 'express';
-import cors from 'cors';
+import cors, { type CorsOptions } from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import swaggerUi from 'swagger-ui-express';
@@ -90,33 +90,35 @@ const allowedOrigins = Array.from(
   )
 );
 
-logger.info(`[CORS] credentials=${corsCredentialsEnabled} origins=${allowedOrigins.length}`);
+logger.info(`[CORS] credentials=${corsCredentialsEnabled} origins=[${allowedOrigins.join(', ')}]`);
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Permite requests sem Origin (curl, health checks internos, Railway probes)
-      if (!origin) {
-        callback(null, true);
-        return;
-      }
+const corsOptions: CorsOptions = {
+  origin: (origin, callback) => {
+    // Permite requests sem Origin (curl, health checks internos, Railway probes)
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
 
-      const requestOrigin = normalizeOrigin(origin);
-      if (allowedOrigins.includes(requestOrigin)) {
-        callback(null, true);
-        return;
-      }
+    const requestOrigin = normalizeOrigin(origin);
+    if (allowedOrigins.includes(requestOrigin)) {
+      callback(null, true);
+      return;
+    }
 
-      logger.warn(`[CORS] Origem bloqueada: ${origin}`);
-      callback(new Error(`CORS blocked for origin: ${origin}`));
-    },
-    credentials: corsCredentialsEnabled,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    // Adiciona 'Cookie' explicitamente + headers necessários para auth híbrida
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'x-correlation-id', 'x-request-id'],
-    exposedHeaders: ['X-Gateway-Module', 'X-Response-Time', 'X-Request-Id'],
-  })
-);
+    logger.warn(`[CORS] Origem bloqueada: ${origin}`);
+    callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
+  credentials: corsCredentialsEnabled,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'x-correlation-id', 'x-request-id'],
+  exposedHeaders: ['X-Gateway-Module', 'X-Response-Time', 'X-Request-Id'],
+  maxAge: 86400,
+};
+
+// Handle CORS preflight for all routes before any auth/gateway middleware
+app.options('*', cors(corsOptions));
+app.use(cors(corsOptions));
 
 // ─── Cookie Parser ─────────────────────────────────────────────────────────────
 // Deve vir ANTES de qualquer middleware que leia req.cookies
