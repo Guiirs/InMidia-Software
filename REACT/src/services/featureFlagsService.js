@@ -1,5 +1,4 @@
-import apiClient from './apiClient.js';
-import { v4Base, dataOf } from './v4ServiceUtils.js';
+import { requestV4 } from './v4ServiceUtils.js';
 
 /**
  * Busca as feature flags do tenant autenticado.
@@ -15,8 +14,9 @@ export const FEATURE_FLAGS_DEFAULTS = {
 };
 
 export async function getFeatureFlags() {
-  const res = await apiClient.get(v4Base('/features'));
-  const data = dataOf(res);
+  const data = await requestV4('get', '/features', {
+    operation: 'features.flags.read',
+  });
   if (data && typeof data === 'object' && !Array.isArray(data)) {
     return { ...FEATURE_FLAGS_DEFAULTS, ...data };
   }

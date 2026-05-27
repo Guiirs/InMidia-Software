@@ -1,22 +1,22 @@
 import apiClient from './apiClient.js';
-import { API_BASE_URL } from '../utils/config.js';
+import {
+  API_V1_BASE_URL,
+  API_V4_BASE_URL,
+  buildApiRequest,
+  buildApiV1Request,
+  buildApiV4Request,
+} from '../utils/config.js';
 
 function ensurePath(path) {
   return path.startsWith('/') ? path : `/${path}`;
 }
 
-function toApiVersionBase(version = 'v4') {
-  return API_BASE_URL
-    .replace(/\/api\/v\d+$/i, `/api/${version}`)
-    .replace(/\/api$/i, `/api/${version}`);
-}
-
 export function v4Base(path) {
-  return `${toApiVersionBase('v4')}${ensurePath(path)}`;
+  return `${API_V4_BASE_URL}${ensurePath(path)}`;
 }
 
 export function v1Base(path) {
-  return `${toApiVersionBase('v1')}${ensurePath(path)}`;
+  return `${API_V1_BASE_URL}${ensurePath(path)}`;
 }
 
 export function dataOf(response) {
@@ -62,13 +62,14 @@ export async function requestFirstAvailable(method, paths, { operation, params, 
   let lastError = null;
 
   for (const path of list) {
+    const requestConfig = normalizeRequestConfig(path, config);
+
     try {
       const response = await apiClient.request({
         method,
-        url: path,
         params,
         data,
-        ...(config ?? {}),
+        ...requestConfig,
       });
       return dataOf(response);
     } catch (error) {
@@ -85,5 +86,40 @@ export async function requestFirstAvailable(method, paths, { operation, params, 
 }
 
 export async function requestV4(method, path, { operation, params, data, config } = {}) {
-  return requestFirstAvailable(method, [v4Base(path)], { operation, params, data, config });
+  return requestFirstAvailable(method, [path], {
+    operation, params, data,
+    config: { ...buildApiV4Request(path), ...(config ?? {}) },
+  });
+}
+
+function normalizeRequestConfig(path, config) {
+  if (config?.baseURL && config?.url) {
+    return { ...config };
+  }
+
+  if (config?.baseURL) {
+    return {
+      ...config,
+      url: ensurePath(path),
+    };
+  }
+
+  if (typeof path === 'string' && /\/api\/v4(?=\/|$)|\/v4(?=\/|$)/i.test(path)) {
+    return {
+      ...buildApiV4Request(path),
+      ...(config ?? {}),
+    };
+  }
+
+  if (typeof path === 'string' && /\/api\/v1(?=\/|$)|\/v1(?=\/|$)/i.test(path)) {
+    return {
+      ...buildApiV1Request(path),
+      ...(config ?? {}),
+    };
+  }
+
+  return {
+    ...buildApiRequest(path),
+    ...(config ?? {}),
+  };
 }

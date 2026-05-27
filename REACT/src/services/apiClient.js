@@ -5,13 +5,13 @@
  */
 
 import axios from 'axios';
-import { API_BASE_URL } from '../utils/config';
+import { API_V1_BASE_URL } from '../utils/config';
 import { showToastGlobal } from '../components/ToastNotification/ToastNotification';
 
 const isDev = import.meta.env.DEV;
 
 if (isDev) {
-  console.info(`[apiClient] Base URL em uso: ${API_BASE_URL}`);
+  console.info(`[apiClient] Base URL em uso: ${API_V1_BASE_URL}`);
 }
 
 /* Guard contra dispatch repetido de session-expired em cascata de 403s */
@@ -28,7 +28,7 @@ const attemptTokenRefresh = async () => {
   if (_refreshPromise) return _refreshPromise;
 
   _refreshPromise = axios
-    .post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true })
+    .post(`${API_V1_BASE_URL}/auth/refresh`, {}, { withCredentials: true })
     .then((res) => {
       const newToken = res.data?.data?.token;
       if (newToken) {
@@ -76,9 +76,9 @@ const readStoredUser = () => {
 
 const buildFinalUrl = (config = {}) => {
   try {
-    return new URL(config.url || '', config.baseURL || API_BASE_URL).toString();
+    return new URL(config.url || '', config.baseURL || API_V1_BASE_URL).toString();
   } catch {
-    return `${config.baseURL || API_BASE_URL}${config.url || ''}`;
+    return `${config.baseURL || API_V1_BASE_URL}${config.url || ''}`;
   }
 };
 
@@ -87,7 +87,7 @@ const getRequestContext = (config = {}) => {
   const headers = config.headers || {};
 
   return {
-    baseURL: config.baseURL || API_BASE_URL,
+    baseURL: config.baseURL || API_V1_BASE_URL,
     url: buildFinalUrl(config),
     method: (config.method || 'get').toUpperCase(),
     authorization: Boolean(headers.Authorization || headers.authorization),
@@ -105,7 +105,7 @@ const getRequestContext = (config = {}) => {
 // -----------------------------------------------------------------------------
 
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_V1_BASE_URL,
   // withCredentials envia cookies HttpOnly automaticamente (inmidia_access, inmidia_refresh)
   withCredentials: true,
   headers: {

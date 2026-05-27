@@ -29,6 +29,10 @@ function lastRequest() {
   return apiClient.request.mock.calls.at(-1)?.[0];
 }
 
+function requestPath(request) {
+  return `${request?.baseURL || ''}${request?.url || ''}`;
+}
+
 describe('inventoryV4Service', () => {
   beforeEach(() => {
     apiClient.request.mockReset();
@@ -47,7 +51,7 @@ describe('inventoryV4Service', () => {
     mockData({ regions: [{ id: 'r1', name: 'Norte', totalBoards: 1, boards: [] }], total: 1 });
     await getInventoryRegions();
 
-    const urls = apiClient.request.mock.calls.map(([request]) => request.url);
+    const urls = apiClient.request.mock.calls.map(([request]) => requestPath(request));
     expect(urls).toEqual(expect.arrayContaining([
       expect.stringContaining('/api/v4/inventory/summary'),
       expect.stringContaining('/api/v4/inventory/boards'),
@@ -62,8 +66,9 @@ describe('inventoryV4Service', () => {
     await updateBoard('b1', { id: 'b1', codigo: 'B-EDIT', localizacao: 'Rua Editada' });
 
     expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
       method: 'patch',
-      url: expect.stringContaining('/api/v4/inventory/boards/b1'),
+      url: '/v4/inventory/boards/b1',
       data: expect.objectContaining({ numero_placa: 'B-EDIT', nomeDaRua: 'Rua Editada' }),
     }));
 
@@ -71,8 +76,9 @@ describe('inventoryV4Service', () => {
     await toggleBoardAvailability('b1');
 
     expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
       method: 'patch',
-      url: expect.stringContaining('/api/v4/inventory/boards/b1/availability'),
+      url: '/v4/inventory/boards/b1/availability',
     }));
   });
 
@@ -291,8 +297,9 @@ describe('inventoryV4Service', () => {
     await uploadBoardImage('b1', new File(['x'], 'placa.webp', { type: 'image/webp' }), { category: 'MAIN', setAsMain: true });
 
     expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
       method: 'post',
-      url: expect.stringContaining('/api/v1/placas/b1/images'),
+      url: '/v1/placas/b1/images',
     }));
     expect(lastRequest().data).toBeInstanceOf(FormData);
     expect(lastRequest().data.get('category')).toBe('MAIN');
@@ -302,15 +309,17 @@ describe('inventoryV4Service', () => {
     mockData({ id: 'b1', codigo: 'B-IMG', disponivel: true, status: 'available' });
     await setBoardMainImage('b1', 'img-1');
     expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
       method: 'patch',
-      url: expect.stringContaining('/api/v1/placas/b1/images/img-1/main'),
+      url: '/v1/placas/b1/images/img-1/main',
     }));
 
     mockData({ id: 'b1', codigo: 'B-IMG', disponivel: true, status: 'available' });
     await removeBoardImage('b1', 'img-1');
     expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
       method: 'delete',
-      url: expect.stringContaining('/api/v1/placas/b1/images/img-1'),
+      url: '/v1/placas/b1/images/img-1',
     }));
   });
 

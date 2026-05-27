@@ -3,9 +3,9 @@
  * Connects to /api/v4/clients
  */
 
-import apiClient from './apiClient';
+import { requestV4 } from './v4ServiceUtils.js';
 
-const BASE = '/api/v4/clients';
+const BASE = '/clients';
 
 export const clientService = {
   /** List clients with optional filters */
@@ -13,50 +13,61 @@ export const clientService = {
     const qs = new URLSearchParams(
       Object.entries(params).filter(([, v]) => v !== undefined && v !== '')
     ).toString();
-    const response = await apiClient.get(`${BASE}${qs ? `?${qs}` : ''}`);
-    return response.data;
+    return requestV4('get', `${BASE}${qs ? `?${qs}` : ''}`, {
+      operation: 'clients.list.read',
+    });
   },
 
   /** Get single client by id */
   getById: async (id) => {
-    const response = await apiClient.get(`${BASE}/${id}`);
-    return response.data;
+    return requestV4('get', `${BASE}/${id}`, {
+      operation: 'clients.single.read',
+    });
   },
 
   /** Search clients (autocomplete) */
   search: async (q, limit = 10) => {
-    const response = await apiClient.get(`${BASE}/search`, { params: { q, limit } });
-    return response.data;
+    return requestV4('get', `${BASE}/search`, {
+      operation: 'clients.search.read',
+      params: { q, limit },
+    });
   },
 
   /** Create client */
   create: async (data) => {
-    const response = await apiClient.post(BASE, data);
-    return response.data;
+    return requestV4('post', BASE, {
+      operation: 'clients.create',
+      data,
+    });
   },
 
   /** Update client (partial) */
   update: async (id, data) => {
-    const response = await apiClient.patch(`${BASE}/${id}`, data);
-    return response.data;
+    return requestV4('patch', `${BASE}/${id}`, {
+      operation: 'clients.update',
+      data,
+    });
   },
 
   /** Archive client */
   archive: async (id) => {
-    const response = await apiClient.post(`${BASE}/${id}/archive`);
-    return response.data;
+    return requestV4('post', `${BASE}/${id}/archive`, {
+      operation: 'clients.archive',
+    });
   },
 
   /** Restore archived client */
   restore: async (id) => {
-    const response = await apiClient.post(`${BASE}/${id}/restore`);
-    return response.data;
+    return requestV4('post', `${BASE}/${id}/restore`, {
+      operation: 'clients.restore',
+    });
   },
 
   /** Get client timeline */
   timeline: async (id) => {
-    const response = await apiClient.get(`${BASE}/${id}/timeline`);
-    return response.data;
+    return requestV4('get', `${BASE}/${id}/timeline`, {
+      operation: 'clients.timeline.read',
+    });
   },
 };
 

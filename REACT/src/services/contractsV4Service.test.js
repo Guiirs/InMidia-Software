@@ -29,6 +29,10 @@ function lastRequest() {
   return apiClient.request.mock.calls.at(-1)?.[0];
 }
 
+function requestPath(request) {
+  return `${request?.baseURL || ''}${request?.url || ''}`;
+}
+
 describe('contractsV4Service', () => {
   beforeEach(() => {
     apiClient.request.mockReset();
@@ -50,7 +54,7 @@ describe('contractsV4Service', () => {
     mockData({ timeline: [], total: 0 });
     await getContractsTimeline();
 
-    const urls = apiClient.request.mock.calls.map(([request]) => request.url);
+    const urls = apiClient.request.mock.calls.map(([request]) => requestPath(request));
     expect(urls).toEqual(expect.arrayContaining([
       expect.stringContaining('/api/v4/contracts/summary'),
       expect.stringContaining('/api/v4/contracts/list'),
@@ -66,37 +70,42 @@ describe('contractsV4Service', () => {
     mockData({ id: 'c1', status: 'active' });
     await createContract({ boardId: 'b1' });
     expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
       method: 'post',
-      url: expect.stringContaining('/api/v4/contracts'),
+      url: '/v4/contracts',
     }));
 
     mockData({ id: 'c1', status: 'active' });
     await updateContract('c1', { observacoes: 'ok' });
     expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
       method: 'patch',
-      url: expect.stringContaining('/api/v4/contracts/c1'),
+      url: '/v4/contracts/c1',
     }));
 
     mockData({ id: 'c1', status: 'completed' });
     await changeContractStatus('c1', 'completed');
     expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
       method: 'patch',
-      url: expect.stringContaining('/api/v4/contracts/c1/status'),
+      url: '/v4/contracts/c1/status',
       data: { status: 'completed' },
     }));
 
     mockData({ id: 'c1', status: 'cancelled' });
     await cancelContract('c1', { reason: 'teste' });
     expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
       method: 'post',
-      url: expect.stringContaining('/api/v4/contracts/c1/cancel'),
+      url: '/v4/contracts/c1/cancel',
     }));
 
     mockData({ id: 'c1', status: 'active' });
     await renewContract('c1', { newEndDate: '2026-08-01' });
     expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
       method: 'post',
-      url: expect.stringContaining('/api/v4/contracts/c1/renew'),
+      url: '/v4/contracts/c1/renew',
     }));
   });
 

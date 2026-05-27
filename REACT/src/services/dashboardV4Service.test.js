@@ -23,6 +23,10 @@ function lastRequest() {
   return apiClient.request.mock.calls.at(-1)?.[0];
 }
 
+function requestPath(request) {
+  return `${request?.baseURL || ''}${request?.url || ''}`;
+}
+
 describe('dashboardV4Service', () => {
   beforeEach(() => {
     apiClient.request.mockReset();
@@ -42,7 +46,10 @@ describe('dashboardV4Service', () => {
 
     const result = await getDashboardKpis();
 
-    expect(lastRequest().url).toContain('/api/v4/dashboard/kpis');
+    expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
+      url: '/v4/dashboard/kpis',
+    }));
     expect(result.hero).toMatchObject({ totalBoards: 10, occupiedBoards: 6, revenueLabel: 'R$ 12.000' });
     expect(result.mainKpis).toHaveLength(4);
     expect(result.operationMix.map((item) => item.value)).toEqual([6, 4, 0]);
@@ -64,7 +71,7 @@ describe('dashboardV4Service', () => {
       priorityActions: [expect.objectContaining({ label: 'Alerta', tone: 'danger' })],
     });
 
-    const urls = apiClient.request.mock.calls.map(([request]) => request.url);
+    const urls = apiClient.request.mock.calls.map(([request]) => requestPath(request));
     expect(urls).toEqual(expect.arrayContaining([
       expect.stringContaining('/api/v4/dashboard/overview'),
       expect.stringContaining('/api/v4/dashboard/activity'),

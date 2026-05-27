@@ -7,7 +7,7 @@
  */
 
 import apiClient from './apiClient';
-import { API_BASE_URL } from '../utils/config';
+import { API_V1_BASE_URL } from '../utils/config';
 import { serializeCursor } from '../contracts';
 
 /**
@@ -74,7 +74,7 @@ export async function fetchStreamToken() {
  * @returns {string} URL completa
  */
 export function buildStreamUrl(token, cursor) {
-  const base = API_BASE_URL.replace(/\/$/, '');
+  const base = API_V1_BASE_URL.replace(/\/$/, '');
   const params = new URLSearchParams({ token });
 
   if (cursor) {

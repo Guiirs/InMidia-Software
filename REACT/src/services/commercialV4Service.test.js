@@ -31,6 +31,10 @@ function lastRequest() {
   return apiClient.request.mock.calls.at(-1)?.[0];
 }
 
+function requestPath(request) {
+  return `${request?.baseURL || ''}${request?.url || ''}`;
+}
+
 describe('commercialV4Service', () => {
   beforeEach(() => {
     apiClient.request.mockReset();
@@ -52,7 +56,7 @@ describe('commercialV4Service', () => {
     mockData({ activities: [], total: 0 });
     await listCommercialActivities();
 
-    const urls = apiClient.request.mock.calls.map(([request]) => request.url);
+    const urls = apiClient.request.mock.calls.map(([request]) => requestPath(request));
     expect(urls).toEqual(expect.arrayContaining([
       expect.stringContaining('/api/v4/commercial/pipeline'),
       expect.stringContaining('/api/v4/commercial/opportunities'),
@@ -68,51 +72,58 @@ describe('commercialV4Service', () => {
     mockData({ opportunity: { id: 'o1', value: 1000, stage: 'lead' } });
     await createOpportunity({ value: 1000 });
     expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
       method: 'post',
-      url: expect.stringContaining('/api/v4/commercial/opportunities'),
+      url: '/v4/commercial/opportunities',
     }));
 
     mockData({ opportunity: { id: 'o1', value: 1200, stage: 'lead' } });
     await updateOpportunity('o1', { value: 1200 });
     expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
       method: 'patch',
-      url: expect.stringContaining('/api/v4/commercial/opportunities/o1'),
+      url: '/v4/commercial/opportunities/o1',
     }));
 
     mockData({ opportunity: { id: 'o1', stage: 'proposal' } });
     await changeOpportunityStage('o1', 'proposal');
     expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
       method: 'patch',
-      url: expect.stringContaining('/api/v4/commercial/opportunities/o1/stage'),
+      url: '/v4/commercial/opportunities/o1/stage',
       data: { stage: 'proposal' },
     }));
 
     mockData({ proposal: { id: 'p1', status: 'draft' } });
     await createProposal({ opportunityId: 'o1' });
     expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
       method: 'post',
-      url: expect.stringContaining('/api/v4/commercial/proposals'),
+      url: '/v4/commercial/proposals',
     }));
 
     mockData({ proposal: { id: 'p1', status: 'sent' } });
     await updateProposal('p1', { status: 'sent' });
     expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
       method: 'patch',
-      url: expect.stringContaining('/api/v4/commercial/proposals/p1'),
+      url: '/v4/commercial/proposals/p1',
     }));
 
     mockData({ proposal: { id: 'p1', status: 'converted' }, conversion: { id: 'c1' } });
     await convertProposal('p1', {});
     expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
       method: 'post',
-      url: expect.stringContaining('/api/v4/commercial/proposals/p1/convert'),
+      url: '/v4/commercial/proposals/p1/convert',
     }));
 
     mockData({ activity: { id: 'a1', type: 'note' } });
     await createCommercialActivity({ type: 'note' });
     expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
       method: 'post',
-      url: expect.stringContaining('/api/v4/commercial/activities'),
+      url: '/v4/commercial/activities',
     }));
   });
 

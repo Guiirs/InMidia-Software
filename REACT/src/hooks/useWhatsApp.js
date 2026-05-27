@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import whatsappService from '../services/whatsappService';
 import { useToast } from '../components/ToastNotification/ToastNotification';
-import { API_BASE_URL } from '../utils/config';
+import { API_V1_BASE_URL } from '../utils/config';
 
 export function useWhatsApp() {
   const [sseConnection, setSseConnection] = useState(null);
@@ -66,7 +66,7 @@ export function useWhatsApp() {
       // Build SSE URL without new URL() — it throws when API_BASE_URL is a
       // same-origin relative path ('/api/v1') because new URL() requires an
       // absolute base. EventSource accepts relative URLs natively.
-      const base = API_BASE_URL.replace(/\/$/, '');
+      const base = API_V1_BASE_URL.replace(/\/$/, '');
       const token = localStorage.getItem('token');
       const params = new URLSearchParams();
       if (token) params.set('token', token);

@@ -29,6 +29,10 @@ function lastRequest() {
   return apiClient.request.mock.calls.at(-1)?.[0];
 }
 
+function requestPath(request) {
+  return `${request?.baseURL || ''}${request?.url || ''}`;
+}
+
 describe('campaignsV4Service', () => {
   beforeEach(() => {
     apiClient.request.mockReset();
@@ -50,7 +54,7 @@ describe('campaignsV4Service', () => {
     mockData({ totalTracked: 0, byStatus: {}, activeBudget: 0, generatedAt: '' });
     await getCampaignsPerformance();
 
-    const urls = apiClient.request.mock.calls.map(([request]) => request.url);
+    const urls = apiClient.request.mock.calls.map(([request]) => requestPath(request));
     expect(urls).toEqual(expect.arrayContaining([
       expect.stringContaining('/api/v4/campaigns/summary'),
       expect.stringContaining('/api/v4/campaigns'),
@@ -66,37 +70,42 @@ describe('campaignsV4Service', () => {
     mockData({ campaign: { id: 'c1', name: 'Verão', status: 'draft' } });
     await createCampaign({ name: 'Verão', status: 'draft' });
     expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
       method: 'post',
-      url: expect.stringContaining('/api/v4/campaigns'),
+      url: '/v4/campaigns',
       data: expect.objectContaining({ name: 'Verão' }),
     }));
 
     mockData({ campaign: { id: 'c1', name: 'Verão Updated', status: 'scheduled' } });
     await updateCampaign('c1', { name: 'Verão Updated', status: 'scheduled' });
     expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
       method: 'patch',
-      url: expect.stringContaining('/api/v4/campaigns/c1'),
+      url: '/v4/campaigns/c1',
     }));
 
     mockData({ campaign: { id: 'c1', status: 'paused' } });
     await pauseCampaign('c1');
     expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
       method: 'patch',
-      url: expect.stringContaining('/api/v4/campaigns/c1/pause'),
+      url: '/v4/campaigns/c1/pause',
     }));
 
     mockData({ campaign: { id: 'c1', status: 'active' } });
     await activateCampaign('c1');
     expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
       method: 'patch',
-      url: expect.stringContaining('/api/v4/campaigns/c1/activate'),
+      url: '/v4/campaigns/c1/activate',
     }));
 
     mockData({ deleted: true, id: 'c1' });
     await deleteCampaign('c1');
     expect(lastRequest()).toEqual(expect.objectContaining({
+      baseURL: '/api',
       method: 'delete',
-      url: expect.stringContaining('/api/v4/campaigns/c1'),
+      url: '/v4/campaigns/c1',
     }));
   });
 
