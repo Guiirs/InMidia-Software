@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import Placa from '@modules/placas/Placa';
 import Regiao from '@modules/regioes/Regiao';
 import {
@@ -13,7 +14,7 @@ const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 24;
 
 const PLACA_PUBLIC_SELECT =
-  '_id numero_placa endereco nomeDaRua localizacao imagemPrincipal imagem tipo tamanho statusComercial regiaoId updatedAt';
+  '_id empresaId numero_placa endereco nomeDaRua localizacao imagemPrincipal imagem tipo tamanho statusComercial statusOperacional regiaoId latitude longitude updatedAt';
 
 const REGIAO_POPULATE = {
   path: 'regiaoId',
@@ -182,6 +183,31 @@ export async function getPlacaBySlug(
   }
 
   return doc ? toPublicPlaca(doc) : null;
+}
+
+export async function getPlacaByIdOrSlug(
+  empresaId: string,
+  idOrSlug: string,
+): Promise<PublicPlacaPayload | null> {
+  const trimmed = idOrSlug.trim();
+  if (!trimmed) return null;
+
+  if (Types.ObjectId.isValid(trimmed)) {
+    const doc = await Placa.findById(trimmed)
+      .select(PLACA_PUBLIC_SELECT)
+      .populate(REGIAO_POPULATE)
+      .lean();
+
+    if (
+      doc &&
+      String(doc.empresaId ?? '') === String(empresaId) &&
+      doc.statusOperacional !== 'ARCHIVED'
+    ) {
+      return toPublicPlaca(doc);
+    }
+  }
+
+  return getPlacaBySlug(empresaId, trimmed.toLowerCase());
 }
 
 export async function listRegioes(empresaId: string): Promise<PublicRegiaoPayload[]> {

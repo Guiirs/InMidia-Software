@@ -13,6 +13,7 @@ import swaggerUi from 'swagger-ui-express';
 import swaggerConfig from '@config/swaggerConfig';
 import logger from '@shared/container/logger';
 import config from '@config/config';
+import { classifyHttpResponse, formatHttpAccessLog, resolveHttpSlowMs } from './http-access-log';
 
 // ── Redis bootstrap — MUST be imported before any service that uses Redis ──
 // This triggers redisManager.connect() via config/redis.ts side-effects.
@@ -183,14 +184,29 @@ app.use((req: Request, res: Response, next: NextFunction): void => {
     const origin = (req.headers['origin'] as string)?.split(',')[0]?.trim() || '-';
     logger.debug(`[HTTP] ${req.method} ${req.path} ip=${ip} proto=${proto} origin=${origin} rid=${requestId}`);
 
+    const slowThresholdMs = resolveHttpSlowMs();
+
     // Latency log: fires when the response finishes (or SSE stream closes).
     // For SSE, duration == total connection time, which is still useful for capacity planning.
     res.on('finish', () => {
       const ms = Date.now() - startMs;
       const status = res.statusCode;
-      // Only emit for slow requests (>500ms) or errors to keep log volume manageable.
-      if (ms > 500 || status >= 500) {
-        logger.warn(`[HTTP] SLOW/ERR ${req.method} ${req.path} ${status} ${ms}ms rid=${requestId} ip=${ip}`);
+      const classification = classifyHttpResponse(status, ms, slowThresholdMs);
+      const message = formatHttpAccessLog({
+        label: classification.label,
+        method: req.method,
+        path: req.path,
+        status,
+        durationMs: ms,
+        requestId,
+        ip,
+      });
+
+      if (classification.shouldLogInProduction) {
+        if (classification.level === 'error') logger.error(message);
+        else logger.warn(message);
+      } else if (process.env.LOG_HTTP === 'true') {
+        logger.debug(message);
       }
     });
   }

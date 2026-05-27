@@ -127,6 +127,53 @@ export async function getPlacaBySlug(
   }
 }
 
+/** GET /api/public/placas/:id */
+export async function getPlacaById(
+  req: PublicPlatesRequest,
+  res: Response,
+  _next: NextFunction,
+): Promise<void> {
+  try {
+    const id = typeof req.params.id === 'string' ? req.params.id.trim() : '';
+
+    if (!id) {
+      res.status(400).json(
+        PublicErrorPresenter.error(
+          { code: 'PUBLIC_API_KEY_INVALID', message: 'Identificador invalido.', status: 400 },
+          requestId(req),
+        ),
+      );
+      return;
+    }
+
+    setCacheHeaders(res);
+    const placa = await service.getPlacaByIdOrSlug(empresaId(req), id);
+
+    if (!placa) {
+      res.status(404).json(
+        PublicErrorPresenter.error(
+          { code: 'PUBLIC_API_NOT_FOUND', message: 'Placa nÃ£o encontrada.', status: 404 },
+          requestId(req),
+        ),
+      );
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: placa,
+      meta: { requestId: requestId(req), timestamp: new Date().toISOString() },
+    });
+  } catch {
+    res.status(500).json(
+      PublicErrorPresenter.error(
+        { code: 'PUBLIC_API_INTERNAL_ERROR', message: 'Erro ao buscar placa.', status: 500 },
+        requestId(req),
+      ),
+    );
+  }
+}
+
 /** GET /api/public/regioes */
 export async function getRegioes(
   req: PublicPlatesRequest,
