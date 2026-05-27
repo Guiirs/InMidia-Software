@@ -1,10 +1,14 @@
 /**
  * Queue Service — BullMQ with fault-tolerant Redis guard.
  *
- * If Redis is unavailable at startup or later:
- *  - Queue/Worker/QueueEvents are never created (no dangling connections)
- *  - Jobs fall back to synchronous in-process execution
- *  - BullMQ error events are always handled (no unhandledRejection crash)
+ * Startup behavior:
+ *  - waitUntilReady(3 s) before deciding whether Redis is available
+ *  - If Redis connects within 3 s → BullMQ initialized
+ *  - If not → direct in-process fallback, retry every 30 s
+ *  - If Redis disconnects later → BullMQ torn down, fallback activates
+ *  - If Redis reconnects → BullMQ re-initialized automatically
+ *
+ * All BullMQ error events are handled — no unhandledRejection crash.
  */
 
 import { Queue, Worker, QueueEvents, Job } from 'bullmq';
@@ -21,29 +25,52 @@ class QueueService {
   private pdfQueue: Queue | null      = null;
   private pdfWorker: Worker | null    = null;
   private queueEvents: QueueEvents | null = null;
+  private retryTimer: ReturnType<typeof setInterval> | null = null;
 
   private constructor() {
-    this._tryInitBullMQ();
+    // Diagnostic: log Redis state at the moment QueueService is created
+    logger.info(`[QueueService] Inicializando — Redis state=${redisManager.getState()}`);
 
-    // Re-attempt BullMQ init when Redis connects (recovers from cold-start without Redis)
-    const checkInterval = setInterval(() => {
-      if (this.pdfQueue) {
-        clearInterval(checkInterval);
-        return;
-      }
-      if (redisManager.isConnected()) {
-        logger.info('[QueueService] Redis disponível — iniciando BullMQ');
-        this._tryInitBullMQ();
-        clearInterval(checkInterval);
-      }
-    }, 5_000);
+    // Try after a short wait so redisManager has time to connect
+    void this._deferredInit();
+
+    // React to future Redis state changes
+    redisManager.on('ready',    () => this._onRedisReady());
+    redisManager.on('degraded', () => this._onRedisDegraded());
   }
 
-  private _tryInitBullMQ(): void {
-    if (!redisManager.isConnected()) {
-      logger.warn('[QueueService] Redis indisponível — processamento direto ativo (sem fila)');
-      return;
+  private async _deferredInit(): Promise<void> {
+    // Wait up to 3 s for Redis — handles the async startup gap
+    const connected = await redisManager.waitUntilReady(3_000);
+
+    logger.info(
+      `[QueueService] Redis após waitUntilReady(3000ms): ` +
+      `${connected ? '✅ conectado — iniciando BullMQ' : '⚠️ indisponível — modo direto ativo'}`
+    );
+
+    if (connected) {
+      this._initBullMQ();
+    } else {
+      this._startRetry();
     }
+  }
+
+  private _onRedisReady(): void {
+    if (this.pdfQueue) return; // already initialized
+    logger.info('[QueueService] Redis conectou (evento ready) — inicializando BullMQ');
+    this._stopRetry();
+    this._initBullMQ();
+  }
+
+  private _onRedisDegraded(): void {
+    if (!this.pdfQueue) return; // already in fallback
+    logger.warn('[QueueService] Redis degraded — destruindo BullMQ, ativando fallback direto');
+    void this._destroyBullMQ();
+    this._startRetry();
+  }
+
+  private _initBullMQ(): void {
+    if (!redisManager.isConnected()) return;
 
     try {
       const connection = { url: config.redisUrl };
@@ -52,8 +79,8 @@ class QueueService {
         connection,
         defaultJobOptions: {
           removeOnComplete: 50,
-          removeOnFail: 100,
-          attempts: 3,
+          removeOnFail:    100,
+          attempts:        3,
           backoff: { type: 'exponential', delay: 2_000 },
         },
       });
@@ -62,31 +89,46 @@ class QueueService {
 
       this.pdfWorker = new Worker(
         'pdf-generation',
-        (job: Job<PDFJobData>) => this._processWithQueue(job),
+        (job: Job<PDFJobData>) => processPDFJob(job.data),
         { connection, concurrency: 2, limiter: { max: 10, duration: 1_000 } },
       );
 
-      // ── Error handlers are MANDATORY for BullMQ — unhandled errors crash Node ──
-      this.pdfQueue.on('error',      (err) => logger.error(`[QueueService] Queue error: ${err.message}`));
-      this.pdfWorker.on('error',     (err) => logger.error(`[QueueService] Worker error: ${err.message}`));
-      this.pdfWorker.on('failed',    (job, err) => logger.error(`[QueueService] Job ${job?.id} falhou: ${err.message}`));
+      // All error handlers are REQUIRED — unhandled BullMQ errors crash Node
+      this.pdfQueue.on('error',      (e) => logger.error(`[QueueService] Queue error: ${e.message}`));
+      this.pdfWorker.on('error',     (e) => logger.error(`[QueueService] Worker error: ${e.message}`));
+      this.pdfWorker.on('failed',    (job, e) => logger.error(`[QueueService] Job ${job?.id} falhou: ${e.message}`));
       this.pdfWorker.on('completed', (job) => logger.info(`[QueueService] Job ${job.id} concluído`));
-      this.queueEvents.on('error',   (err) => logger.error(`[QueueService] QueueEvents error: ${err.message}`));
+      this.queueEvents.on('error',   (e) => logger.error(`[QueueService] QueueEvents error: ${e.message}`));
 
-      logger.info('[QueueService] BullMQ inicializado com sucesso');
+      logger.info('[QueueService] ✅ BullMQ inicializado');
     } catch (err: any) {
       logger.error(`[QueueService] Falha ao inicializar BullMQ: ${err.message}`);
-      this._destroyBullMQ();
+      void this._destroyBullMQ();
     }
   }
 
-  private _destroyBullMQ(): void {
-    try { this.pdfWorker?.removeAllListeners(); } catch {}
-    try { this.pdfQueue?.removeAllListeners(); } catch {}
-    try { this.queueEvents?.removeAllListeners(); } catch {}
-    this.pdfQueue      = null;
-    this.pdfWorker     = null;
-    this.queueEvents   = null;
+  private async _destroyBullMQ(): Promise<void> {
+    try { this.pdfWorker?.removeAllListeners();   await this.pdfWorker?.close();   } catch {}
+    try { this.queueEvents?.removeAllListeners(); await this.queueEvents?.close(); } catch {}
+    try { this.pdfQueue?.removeAllListeners();    await this.pdfQueue?.close();    } catch {}
+    this.pdfWorker   = null;
+    this.queueEvents = null;
+    this.pdfQueue    = null;
+  }
+
+  private _startRetry(): void {
+    if (this.retryTimer) return;
+    this.retryTimer = setInterval(() => {
+      if (redisManager.isConnected() && !this.pdfQueue) {
+        logger.info('[QueueService] Retry: Redis disponível — inicializando BullMQ');
+        this._stopRetry();
+        this._initBullMQ();
+      }
+    }, 30_000);
+  }
+
+  private _stopRetry(): void {
+    if (this.retryTimer) { clearInterval(this.retryTimer); this.retryTimer = null; }
   }
 
   static getInstance(): QueueService {
@@ -112,8 +154,8 @@ class QueueService {
     const jobData: PDFJobData = { jobId, entityId, entityType, empresaId, user, options };
 
     if (!this.pdfQueue) {
-      logger.warn(`[QueueService] Sem fila — processando job ${jobId} diretamente`);
-      await this._processDirect(jobData);
+      logger.warn(`[QueueService] Sem fila — processando ${jobId} diretamente (Redis: ${redisManager.getState()})`);
+      await processPDFJob(jobData);
       return jobId;
     }
 
@@ -128,8 +170,10 @@ class QueueService {
 
   async getQueueStats(): Promise<QueueStats> {
     if (!this.pdfQueue) {
-      return { waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0,
-               note: 'Queue indisponível — Redis offline' };
+      return {
+        waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0,
+        note: `Fila indisponível (Redis: ${redisManager.getState()})`,
+      };
     }
 
     const [waiting, active, completed, failed, delayed] = await Promise.all([
@@ -141,30 +185,18 @@ class QueueService {
     ]);
 
     return {
-      waiting:   waiting.length,
-      active:    active.length,
-      completed: completed.length,
-      failed:    failed.length,
-      delayed:   delayed.length,
+      waiting: waiting.length, active: active.length,
+      completed: completed.length, failed: failed.length, delayed: delayed.length,
     };
   }
 
   async close(): Promise<void> {
     logger.info('[QueueService] Encerrando...');
-    try { if (this.pdfWorker)   await this.pdfWorker.close(); }   catch (e: any) { logger.warn(`[QueueService] worker close: ${e.message}`); }
-    try { if (this.queueEvents) await this.queueEvents.close(); } catch (e: any) { logger.warn(`[QueueService] events close: ${e.message}`); }
-    try { if (this.pdfQueue)    await this.pdfQueue.close(); }    catch (e: any) { logger.warn(`[QueueService] queue close: ${e.message}`); }
+    this._stopRetry();
+    redisManager.removeAllListeners('ready');
+    redisManager.removeAllListeners('degraded');
+    await this._destroyBullMQ();
     logger.info('[QueueService] Encerrado');
-  }
-
-  // ─── Internal ──────────────────────────────────────────────────────────────
-
-  private async _processWithQueue(job: Job<PDFJobData>): Promise<void> {
-    await processPDFJob(job.data);
-  }
-
-  private async _processDirect(jobData: PDFJobData): Promise<void> {
-    await processPDFJob(jobData);
   }
 }
 

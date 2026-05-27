@@ -1,14 +1,22 @@
+// Load environment variables FIRST — must run before any config import reads process.env
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express, { Request, Response, NextFunction, Application } from 'express';
 import cors, { type CorsOptions } from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import swaggerUi from 'swagger-ui-express';
-import dotenv from 'dotenv';
 
 // Config
 import swaggerConfig from '@config/swaggerConfig';
 import logger from '@shared/container/logger';
 import config from '@config/config';
+
+// ── Redis bootstrap — MUST be imported before any service that uses Redis ──
+// This triggers redisManager.connect() via config/redis.ts side-effects.
+// Without this import, redisManager.connect() is never called.
+import '@config/redis';
 
 // Gateway
 import { bootstrapGateway, getGatewayInfo } from '@gateway/index';
@@ -18,15 +26,11 @@ import { errorHandler, sanitize, globalRateLimiter } from './middlewares';
 import { metricsMiddleware, getMetrics } from '@shared/infra/monitoring/metrics';
 import { renderSyncPrometheusMetrics } from '@modules/sync/sync.service';
 
-// TokenBlacklist uses the shared RedisManager — no explicit connect() needed here.
-// RedisManager boots when config/redis.ts is first imported (above).
+// Services that use Redis — imported AFTER @config/redis so redisManager is already booting
 import '@shared/infra/auth/token-blacklist.service';
 
 // Utils
 import AppError from '@shared/container/AppError';
-
-// Load environment variables
-dotenv.config();
 
 // Initialize Express app
 const app: Application = express();
