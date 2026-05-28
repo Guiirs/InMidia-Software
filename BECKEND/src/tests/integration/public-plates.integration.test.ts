@@ -18,6 +18,8 @@ const API_KEY_SECRET = 'segredo-publico';
 const API_KEY_VALUE = `${API_KEY_PREFIX}_${API_KEY_SECRET}`;
 const ORIGINAL_R2_PUBLIC_URL = process.env.R2_PUBLIC_URL;
 const ORIGINAL_R2_FOLDER_NAME = process.env.R2_FOLDER_NAME;
+const ORIGINAL_PUBLIC_API_BASE_URL = process.env.PUBLIC_API_BASE_URL;
+const PUBLIC_API_BASE_URL = 'https://inmidia.futureoutdoors.com.br';
 
 async function createPublicEmpresa() {
   return Empresa.create({
@@ -41,6 +43,8 @@ describe('Public plates integration', () => {
     else process.env.R2_PUBLIC_URL = ORIGINAL_R2_PUBLIC_URL;
     if (ORIGINAL_R2_FOLDER_NAME === undefined) delete process.env.R2_FOLDER_NAME;
     else process.env.R2_FOLDER_NAME = ORIGINAL_R2_FOLDER_NAME;
+    if (ORIGINAL_PUBLIC_API_BASE_URL === undefined) delete process.env.PUBLIC_API_BASE_URL;
+    else process.env.PUBLIC_API_BASE_URL = ORIGINAL_PUBLIC_API_BASE_URL;
     await clearDatabase();
   });
 
@@ -57,6 +61,7 @@ describe('Public plates integration', () => {
   });
 
   it('GET /api/v1/public/placas retorna 200 com array de placas e sem campos sensiveis', async () => {
+    process.env.PUBLIC_API_BASE_URL = PUBLIC_API_BASE_URL;
     const empresa = await createPublicEmpresa();
     const regiao = await createTestRegiao({
       empresaId: empresa._id,
@@ -85,6 +90,7 @@ describe('Public plates integration', () => {
     expect(res.body.success).toBe(true);
     expect(Array.isArray(res.body.data)).toBe(true);
     expect(res.body.data).toHaveLength(1);
+    const expectedImageUrl = `${PUBLIC_API_BASE_URL}/api/v1/public/placas/${res.body.data[0].id}/imagem`;
     expect(res.body.data[0]).toMatchObject({
       id: expect.any(String),
       codigo: 'PUB-001',
@@ -92,7 +98,9 @@ describe('Public plates integration', () => {
       localizacao: 'Av. Paulista, 1000',
       regiao: 'Centro',
       status: 'disponivel',
-      imagemUrl: 'https://cdn.example.com/placas/pub-001.jpg',
+      imagemUrl: expectedImageUrl,
+      imagem: expectedImageUrl,
+      imagemMeta: expect.objectContaining({ url: expectedImageUrl }),
       latitude: -23.561684,
       longitude: -46.656139,
     });
@@ -104,8 +112,7 @@ describe('Public plates integration', () => {
   });
 
   it('GET /api/v1/public/placas normaliza imagemUrl e imagem como URL absoluta', async () => {
-    process.env.R2_PUBLIC_URL = 'https://pub-storage.example.com';
-    process.env.R2_FOLDER_NAME = 'inmidia-uploads-sistema';
+    process.env.PUBLIC_API_BASE_URL = PUBLIC_API_BASE_URL;
 
     const empresa = await createPublicEmpresa();
     const regiao = await createTestRegiao({
@@ -152,14 +159,17 @@ describe('Public plates integration', () => {
       res.body.data.map((placa: any) => [placa.codigo, placa])
     );
 
-    expect(byCodigo['PUB-IMG-001'].imagemUrl).toBe('https://pub-storage.example.com/inmidia-uploads-sistema/placa-relativa.jpg');
-    expect(byCodigo['PUB-IMG-001'].imagem).toBe('https://pub-storage.example.com/inmidia-uploads-sistema/placa-relativa.jpg');
-    expect(byCodigo['PUB-IMG-002'].imagemUrl).toBe('https://pub-storage.example.com/inmidia-uploads-sistema/placa-com-prefixo.jpg');
-    expect(byCodigo['PUB-IMG-002'].imagem).toBe('https://pub-storage.example.com/inmidia-uploads-sistema/placa-com-prefixo.jpg');
-    expect(byCodigo['PUB-IMG-003'].imagemUrl).toBe('https://cdn.example.com/placas/pronta.jpg');
-    expect(byCodigo['PUB-IMG-003'].imagem).toBe('https://cdn.example.com/placas/pronta.jpg');
+    for (const codigo of ['PUB-IMG-001', 'PUB-IMG-002', 'PUB-IMG-003']) {
+      const expectedUrl = `${PUBLIC_API_BASE_URL}/api/v1/public/placas/${byCodigo[codigo].id}/imagem`;
+      expect(byCodigo[codigo].imagemUrl).toBe(expectedUrl);
+      expect(byCodigo[codigo].imagem).toBe(expectedUrl);
+      expect(byCodigo[codigo].imagemMeta.url).toBe(expectedUrl);
+      expect(expectedUrl).not.toContain('//api/');
+      expect(expectedUrl).not.toContain('localhost');
+    }
     expect(byCodigo['PUB-IMG-004'].imagemUrl).toBeNull();
     expect(byCodigo['PUB-IMG-004'].imagem).toBeNull();
+    expect(byCodigo['PUB-IMG-004'].imagemMeta).toBeNull();
   });
 
   it('GET /api/v1/public/placas/:id retorna a placa por id com chave valida', async () => {

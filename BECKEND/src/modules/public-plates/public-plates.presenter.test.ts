@@ -7,10 +7,12 @@ const EXPECTED_PROXY = `${PROXY_BASE}/api/v1/public/placas/${PLACA_ID}/imagem`;
 describe('public plates presenter — proxy de imagem', () => {
   const origBase = process.env.PUBLIC_API_BASE_URL;
   const origR2 = process.env.R2_PUBLIC_URL;
+  const origNodeEnv = process.env.NODE_ENV;
 
   beforeEach(() => {
     process.env.PUBLIC_API_BASE_URL = PROXY_BASE;
     process.env.R2_PUBLIC_URL = 'https://pub-storage.r2.dev';
+    process.env.NODE_ENV = 'test';
   });
 
   afterEach(() => {
@@ -18,6 +20,7 @@ describe('public plates presenter — proxy de imagem', () => {
     else process.env.PUBLIC_API_BASE_URL = origBase;
     if (origR2 === undefined) delete process.env.R2_PUBLIC_URL;
     else process.env.R2_PUBLIC_URL = origR2;
+    process.env.NODE_ENV = origNodeEnv || 'test';
   });
 
   // ── imagemUrl aponta para o proxy ──────────────────────────────────────────
@@ -100,6 +103,56 @@ describe('public plates presenter — proxy de imagem', () => {
   it('buildProxyImageUrl funciona sem PUBLIC_API_BASE_URL (relativa)', () => {
     delete process.env.PUBLIC_API_BASE_URL;
     expect(buildProxyImageUrl(PLACA_ID)).toBe(`/api/v1/public/placas/${PLACA_ID}/imagem`);
+  });
+
+  it('PUBLIC_API_BASE_URL sem trailing slash retorna URL absoluta', () => {
+    process.env.PUBLIC_API_BASE_URL = 'https://inmidia.futureoutdoors.com.br';
+    expect(buildProxyImageUrl(PLACA_ID)).toBe(EXPECTED_PROXY);
+  });
+
+  it('PUBLIC_API_BASE_URL com trailing slash retorna URL absoluta sem barra dupla', () => {
+    process.env.PUBLIC_API_BASE_URL = 'https://inmidia.futureoutdoors.com.br/';
+    const url = buildProxyImageUrl(PLACA_ID);
+
+    expect(url).toBe(EXPECTED_PROXY);
+    expect(url).not.toContain('//api/');
+  });
+
+  it('PUBLIC_API_BASE_URL localhost em producao nao vaza localhost no payload', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.PUBLIC_API_BASE_URL = 'http://localhost:4000';
+    const url = buildProxyImageUrl(PLACA_ID);
+
+    expect(url).toBe(`/api/v1/public/placas/${PLACA_ID}/imagem`);
+    expect(url).not.toContain('localhost');
+  });
+
+  it('imagemUrl, imagem e imagemMeta.url usam URL absoluta do proxy', () => {
+    const placa = toPublicPlaca({
+      _id: PLACA_ID,
+      numero_placa: 'CAU-37',
+      imagemPrincipal: 'cau-37.jpg',
+    });
+
+    expect(placa.imagemUrl).toBe(EXPECTED_PROXY);
+    expect(placa.imagem).toBe(EXPECTED_PROXY);
+    expect(placa.imagemMeta?.url).toBe(EXPECTED_PROXY);
+  });
+
+  it('payload de imagem nao retorna undefined, //api ou localhost', () => {
+    const placa = toPublicPlaca({
+      _id: PLACA_ID,
+      numero_placa: 'CAU-37',
+      imagemPrincipal: 'cau-37.jpg',
+    });
+    const serialized = JSON.stringify(placa);
+
+    expect(Object.values(placa)).not.toContain(undefined);
+    expect(serialized).not.toContain('//api/');
+    expect(serialized).not.toContain('localhost');
+    expect(placa.imagemUrl).not.toBeNull();
+    expect(placa.imagem).not.toBeNull();
+    expect(placa.imagemMeta?.url).not.toBeNull();
   });
 
   // ── Payload não expõe dados internos ──────────────────────────────────────

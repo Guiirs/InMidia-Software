@@ -8,8 +8,11 @@ import {
 } from './public-plates.controller';
 import { getPlacaImagem, imageRateLimiter } from './public-plates-image.controller';
 import { imageAccessMiddleware } from './image-hotlink.middleware';
+import { validatePublicApiBaseUrlAtStartup } from './public-plates.presenter';
 
 const router = Router();
+
+validatePublicApiBaseUrlAtStartup();
 
 router.get('/placas', requirePublicKey, getPlacas);
 // Proxy público de imagem — SEM requirePublicKey (WordPress/JetEngine usa <img src="">)

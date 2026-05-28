@@ -4,6 +4,7 @@
  * imagemUrl e imagem apontam para o proxy seguro interno (/api/v1/public/placas/:id/imagem),
  * nunca para URLs diretas do R2 ou do bucket privado.
  */
+import logger from '@shared/container/logger';
 
 /** Metadata rica de imagem — novo campo adicionado na v2 do payload. */
 export interface PublicImageMeta {
@@ -83,8 +84,60 @@ const statusComercialMap: Record<string, PublicPlacaPayload['disponibilidade']> 
   UNAVAILABLE: 'indisponivel',
 };
 
-function getPublicApiBaseUrl(): string {
-  return (process.env.PUBLIC_API_BASE_URL || '').replace(/\/+$/, '');
+let warnedMissingPublicApiBaseUrl = false;
+let warnedInvalidPublicApiBaseUrl = false;
+
+function warnMissingPublicApiBaseUrl(): void {
+  if (warnedMissingPublicApiBaseUrl) return;
+  warnedMissingPublicApiBaseUrl = true;
+  logger.warn('[PUBLIC_API] PUBLIC_API_BASE_URL ausente. Usando fallback relativo. Integrações externas podem falhar.');
+}
+
+function warnInvalidPublicApiBaseUrl(value: string, reason: string): void {
+  if (warnedInvalidPublicApiBaseUrl) return;
+  warnedInvalidPublicApiBaseUrl = true;
+  logger.warn(`[PUBLIC_API] PUBLIC_API_BASE_URL invalida reason=${reason} value=${value}. Usando fallback relativo. Integrações externas podem falhar.`);
+}
+
+function isProductionUnsafeHost(hostname: string): boolean {
+  const normalized = hostname.toLowerCase();
+  return (
+    normalized === 'localhost' ||
+    normalized === '0.0.0.0' ||
+    normalized === '127.0.0.1' ||
+    normalized === '::1' ||
+    normalized.endsWith('.local')
+  );
+}
+
+export function getPublicApiBaseUrl(): string {
+  const configured = process.env.PUBLIC_API_BASE_URL?.trim();
+  if (!configured) {
+    warnMissingPublicApiBaseUrl();
+    return '';
+  }
+
+  const normalized = configured.replace(/\/+$/, '');
+
+  try {
+    const url = new URL(normalized);
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      warnInvalidPublicApiBaseUrl(configured, 'invalid_protocol');
+      return '';
+    }
+    if (process.env.NODE_ENV === 'production' && isProductionUnsafeHost(url.hostname)) {
+      warnInvalidPublicApiBaseUrl(configured, 'unsafe_production_host');
+      return '';
+    }
+    return normalized;
+  } catch {
+    warnInvalidPublicApiBaseUrl(configured, 'invalid_url');
+    return '';
+  }
+}
+
+export function validatePublicApiBaseUrlAtStartup(): void {
+  void getPublicApiBaseUrl();
 }
 
 /**
