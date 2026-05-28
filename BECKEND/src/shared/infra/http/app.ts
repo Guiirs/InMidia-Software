@@ -14,6 +14,8 @@ import swaggerConfig from '@config/swaggerConfig';
 import logger from '@shared/container/logger';
 import config from '@config/config';
 import { classifyHttpResponse, formatHttpAccessLog, resolveHttpSlowMs } from './http-access-log';
+import { securityScanGuard } from './security-scan-guard';
+import { rootInfoHandler } from './root-info';
 
 // ── Redis bootstrap — MUST be imported before any service that uses Redis ──
 // This triggers redisManager.connect() via config/redis.ts side-effects.
@@ -189,6 +191,8 @@ app.use((req: Request, res: Response, next: NextFunction): void => {
     // Latency log: fires when the response finishes (or SSE stream closes).
     // For SSE, duration == total connection time, which is still useful for capacity planning.
     res.on('finish', () => {
+      if (res.locals.skipHttpAccessLog) return;
+
       const ms = Date.now() - startMs;
       const status = res.statusCode;
       const classification = classifyHttpResponse(status, ms, slowThresholdMs);
@@ -213,6 +217,8 @@ app.use((req: Request, res: Response, next: NextFunction): void => {
 
   next();
 });
+
+app.use(securityScanGuard);
 
 // --- Security Headers (Helmet) ---
 //
@@ -286,6 +292,8 @@ app.use(sanitize);
 
 // Static files
 app.use(express.static('public'));
+
+app.get('/', rootInfoHandler);
 
 // Health check endpoint (no rate limit)
 app.get('/api/v1/status', (_req: Request, res: Response) => {

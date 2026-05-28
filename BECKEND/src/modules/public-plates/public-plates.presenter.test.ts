@@ -171,14 +171,41 @@ describe('public plates presenter — proxy de imagem', () => {
     expect(placa.jetImage).toEqual({
       id: 0,
       url: EXPECTED_PROXY,
-      alt: 'Placa 01',
-      title: 'Placa 01',
+      alt: '01',
+      title: '01',
     });
     expect(placa.image).toEqual({
       url: EXPECTED_PROXY,
-      alt: 'Placa 01',
-      title: 'Placa 01',
+      alt: '01',
+      title: '01',
     });
+  });
+
+  it('campos JetEngine/Elementor usam nome como alt/title sem prefixo extra', () => {
+    const placa = toPublicPlaca({
+      _id: PLACA_ID,
+      numero_placa: '01',
+      nome: 'Placa 01',
+      imagemPrincipal: '01.jpg',
+    });
+
+    expect(placa.jetImage?.alt).toBe('Placa 01');
+    expect(placa.jetImage?.title).toBe('Placa 01');
+    expect(placa.image?.alt).toBe('Placa 01');
+    expect(placa.image?.title).toBe('Placa 01');
+  });
+
+  it('campos JetEngine/Elementor usam Placa como fallback de alt/title', () => {
+    const placa = toPublicPlaca({
+      _id: PLACA_ID,
+      numero_placa: '',
+      imagemPrincipal: 'sem-codigo.jpg',
+    });
+
+    expect(placa.jetImage?.alt).toBe('Placa');
+    expect(placa.jetImage?.title).toBe('Placa');
+    expect(placa.image?.alt).toBe('Placa');
+    expect(placa.image?.title).toBe('Placa');
   });
 
   it('campos JetEngine/Elementor sao null quando placa nao tem imagem', () => {

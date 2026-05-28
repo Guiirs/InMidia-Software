@@ -188,6 +188,21 @@ export function toSlug(value: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
+export function buildImageAltTitle(placa: { nome?: unknown; codigo?: unknown; numero_placa?: unknown }): string {
+  const nome = typeof placa.nome === 'string' ? placa.nome.trim() : '';
+  if (nome) return nome;
+
+  const codigo =
+    typeof placa.codigo === 'string'
+      ? placa.codigo.trim()
+      : typeof placa.numero_placa === 'string'
+        ? placa.numero_placa.trim()
+        : '';
+  if (codigo) return codigo;
+
+  return 'Placa';
+}
+
 export function toPublicPlaca(raw: any): PublicPlacaPayload {
   const regiaoDoc = typeof raw.regiaoId === 'object' && raw.regiaoId !== null
     ? raw.regiaoId
@@ -198,7 +213,7 @@ export function toPublicPlaca(raw: any): PublicPlacaPayload {
   const disponibilidade = statusComercialMap[statusComercial] ?? 'desconhecido';
   const id = raw._id?.toString?.() ?? String(raw._id ?? '');
   const codigo = raw.numero_placa ?? '';
-  const imageLabel = codigo ? `Placa ${codigo}` : 'Placa';
+  const imageLabel = buildImageAltTitle({ nome: raw.nome, codigo, numero_placa: raw.numero_placa });
 
   // Determina se a placa tem imagem cadastrada (sem expor a URL real do storage)
   const storedPath: string | null =

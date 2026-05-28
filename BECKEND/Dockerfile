@@ -70,6 +70,12 @@ RUN npm run build
 # no CI, sem precisar incluí-los na imagem de produção.
 RUN find dist -type f \( -name "*.map" -o -name "*.d.ts" \) -delete
 
+# Certificados customizados de MongoDB (quando usados por DB_TLS_CA_FILE).
+# O TypeScript não copia arquivos não-TS para dist, então preservamos o diretório
+# esperado em runtime e copiamos qualquer CA versionado em src/shared/infra/db/certs.
+RUN mkdir -p dist/shared/infra/db/certs \
+    && if [ -d src/shared/infra/db/certs ]; then cp -R src/shared/infra/db/certs/. dist/shared/infra/db/certs/; fi
+
 
 # ╔══════════════════════════════════════════════════════════════════════════════╗
 # ║  STAGE 3 · production                                                      ║
@@ -169,7 +175,7 @@ EXPOSE 4000
 #   timeout=8s:       deve ser < interval. 8s é conservador para uma rota /health.
 #   retries=3:        3 falhas consecutivas → container marcado unhealthy.
 HEALTHCHECK --interval=30s --timeout=8s --start-period=60s --retries=3 \
-    CMD curl -fsS "http://localhost:${PORT}/api/health" || exit 1
+    CMD curl -fsS "http://localhost:${PORT}/health" || exit 1
 
 # ── Entrypoint com init system ────────────────────────────────────────────────
 # dumb-init como PID 1:
