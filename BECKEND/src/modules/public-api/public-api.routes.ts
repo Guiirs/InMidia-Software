@@ -3,6 +3,8 @@ import * as publicApiController from './public-api.controller';
 import { requirePublicApiScope } from './middlewares/public-api-auth.middleware';
 import { shortCache, availabilityCache, mediaCache } from './middlewares/public-cache.middleware';
 import { getPlacaById, getPlacas, requirePublicKey } from '@modules/public-plates/public-plates.controller';
+import { getPlacaImagem, imageRateLimiter } from '@modules/public-plates/public-plates-image.controller';
+import { imageAccessMiddleware } from '@modules/public-plates/image-hotlink.middleware';
 
 const router = Router();
 
@@ -26,6 +28,8 @@ router.get('/v1/geo', shortCache, requirePublicApiScope('geo:read'), publicApiCo
 // Legacy compatibility routes kept for existing integrations.
 router.get('/placas/disponiveis', shortCache, requirePublicApiScope('inventory:read'), publicApiController.getAvailablePlacas);
 router.get('/placas', shortCache, requirePublicKey, getPlacas);
+// Proxy público de imagem — SEM requirePublicKey (WordPress/JetEngine usa <img src="">)
+router.get('/placas/:id/imagem', imageRateLimiter, imageAccessMiddleware, getPlacaImagem);
 router.get('/placas/:id', shortCache, requirePublicKey, getPlacaById);
 
 export default router;

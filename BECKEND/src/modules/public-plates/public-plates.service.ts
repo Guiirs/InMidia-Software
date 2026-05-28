@@ -14,7 +14,10 @@ const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 24;
 
 const PLACA_PUBLIC_SELECT =
-  '_id empresaId numero_placa endereco nomeDaRua localizacao imagemPrincipal imagem tipo tamanho statusComercial statusOperacional regiaoId latitude longitude updatedAt';
+  '_id empresaId numero_placa endereco nomeDaRua localizacao imagemPrincipal imagem imagens tipo tamanho statusComercial statusOperacional regiaoId latitude longitude updatedAt';
+
+const PLACA_IMAGE_SELECT =
+  '_id empresaId statusOperacional imagemPrincipal imagem imagens updatedAt';
 
 const REGIAO_POPULATE = {
   path: 'regiaoId',
@@ -216,6 +219,85 @@ export async function listRegioes(empresaId: string): Promise<PublicRegiaoPayloa
     .sort({ nome: 1 })
     .lean();
   return docs.map(toPublicRegiao);
+}
+
+export interface PlacaImageDoc {
+  imagemPrincipal?: string | null;
+  imagem?: string | null;
+  imagens?: Array<{ key: string; isMain?: boolean }> | null;
+  updatedAt?: Date | string | null;
+}
+
+/**
+ * Busca campos de imagem de uma placa para o proxy público (sem API key).
+ * Aceita MongoDB ObjectId ou numero_placa. Não faz full-scan (sem empresaId).
+ * Valida apenas que a placa não está arquivada.
+ */
+export async function getPlacaDocForImagePublic(
+  idOrSlug: string,
+): Promise<PlacaImageDoc | null> {
+  const trimmed = idOrSlug.trim();
+  if (!trimmed) return null;
+
+  const notArchived = { statusOperacional: { $ne: 'ARCHIVED' } };
+
+  if (Types.ObjectId.isValid(trimmed)) {
+    const doc = await Placa.findOne({ _id: trimmed, ...notArchived })
+      .select(PLACA_IMAGE_SELECT)
+      .lean();
+    return doc ? (doc as PlacaImageDoc) : null;
+  }
+
+  // Fallback por numero_placa — campo indexado, sem full-scan
+  const upper = trimmed.toUpperCase();
+  const doc = await Placa.findOne({ numero_placa: upper, ...notArchived })
+    .select(PLACA_IMAGE_SELECT)
+    .lean();
+  return doc ? (doc as PlacaImageDoc) : null;
+}
+
+/**
+ * Busca campos de imagem de uma placa para o proxy autenticado (com API key / empresaId).
+ * Valida tenant isolation: placa deve pertencer à empresa informada.
+ */
+export async function getPlacaDocForImage(
+  empresaId: string,
+  idOrSlug: string,
+): Promise<PlacaImageDoc | null> {
+  const trimmed = idOrSlug.trim();
+  if (!trimmed) return null;
+
+  const baseFilter = {
+    empresaId,
+    statusOperacional: { $ne: 'ARCHIVED' },
+  };
+
+  if (Types.ObjectId.isValid(trimmed)) {
+    const doc = await Placa.findOne({ _id: trimmed, ...baseFilter })
+      .select(PLACA_IMAGE_SELECT)
+      .lean();
+    if (doc) return doc as PlacaImageDoc;
+  }
+
+  // Slug fallback: numero_placa uppercase ou slug match
+  const upper = trimmed.toUpperCase();
+  let doc = await Placa.findOne({ ...baseFilter, numero_placa: upper })
+    .select(PLACA_IMAGE_SELECT)
+    .lean();
+
+  if (!doc) {
+    const candidates = await Placa.find({ ...baseFilter })
+      .select('_id numero_placa')
+      .lean();
+    const match = candidates.find((c: any) => toSlug(c.numero_placa ?? '') === trimmed.toLowerCase());
+    if (match) {
+      doc = await Placa.findOne({ _id: (match as any)._id, ...baseFilter })
+        .select(PLACA_IMAGE_SELECT)
+        .lean();
+    }
+  }
+
+  return doc ? (doc as PlacaImageDoc) : null;
 }
 
 export async function getDisponibilidade(empresaId: string): Promise<PublicDisponibilidadePayload> {
