@@ -42,6 +42,25 @@ const statusComercialMap: Record<string, PublicPlacaPayload['disponibilidade']> 
   UNAVAILABLE: 'indisponivel',
 };
 
+function getPublicStorageBaseUrl(): string {
+  return (process.env.R2_PUBLIC_URL || process.env.VITE_R2_PUBLIC_URL || '').replace(/\/+$/, '');
+}
+
+export function normalizePublicImageUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+
+  const raw = value.trim();
+  if (!raw) return null;
+  if (/^https?:\/\//i.test(raw)) return raw;
+
+  const baseUrl = getPublicStorageBaseUrl();
+  const folderName = (process.env.R2_FOLDER_NAME || 'inmidia-uploads-sistema').replace(/^\/+|\/+$/g, '');
+  const key = raw.replace(/^\/+/, '');
+  const storageKey = key.includes('/') ? key : `${folderName}/${key}`;
+
+  return baseUrl ? `${baseUrl}/${storageKey}` : storageKey;
+}
+
 export function toSlug(value: string): string {
   return value
     .toLowerCase()
@@ -57,7 +76,7 @@ export function toPublicPlaca(raw: any): PublicPlacaPayload {
     : null;
 
   const endereco = raw.endereco || raw.nomeDaRua || raw.localizacao || null;
-  const imagem = raw.imagemPrincipal || raw.imagem || null;
+  const imagem = normalizePublicImageUrl(raw.imagemPrincipal || raw.imagem);
   const statusComercial: string = raw.statusComercial ?? 'AVAILABLE';
   const disponibilidade = statusComercialMap[statusComercial] ?? 'desconhecido';
   const id = raw._id?.toString?.() ?? String(raw._id ?? '');

@@ -16,6 +16,8 @@ import {
 const API_KEY_PREFIX = 'pubtest';
 const API_KEY_SECRET = 'segredo-publico';
 const API_KEY_VALUE = `${API_KEY_PREFIX}_${API_KEY_SECRET}`;
+const ORIGINAL_R2_PUBLIC_URL = process.env.R2_PUBLIC_URL;
+const ORIGINAL_R2_FOLDER_NAME = process.env.R2_FOLDER_NAME;
 
 async function createPublicEmpresa() {
   return Empresa.create({
@@ -35,6 +37,10 @@ describe('Public plates integration', () => {
 
   afterEach(async () => {
     publicApiKeyManager.clearCache();
+    if (ORIGINAL_R2_PUBLIC_URL === undefined) delete process.env.R2_PUBLIC_URL;
+    else process.env.R2_PUBLIC_URL = ORIGINAL_R2_PUBLIC_URL;
+    if (ORIGINAL_R2_FOLDER_NAME === undefined) delete process.env.R2_FOLDER_NAME;
+    else process.env.R2_FOLDER_NAME = ORIGINAL_R2_FOLDER_NAME;
     await clearDatabase();
   });
 
@@ -95,6 +101,65 @@ describe('Public plates integration', () => {
     expect(res.body.data[0].notes).toBeUndefined();
     expect(res.body.data[0].contratos).toBeUndefined();
     expect(res.body.data[0].cliente).toBeUndefined();
+  });
+
+  it('GET /api/v1/public/placas normaliza imagemUrl e imagem como URL absoluta', async () => {
+    process.env.R2_PUBLIC_URL = 'https://pub-storage.example.com';
+    process.env.R2_FOLDER_NAME = 'inmidia-uploads-sistema';
+
+    const empresa = await createPublicEmpresa();
+    const regiao = await createTestRegiao({
+      empresaId: empresa._id,
+      nome: 'Centro',
+      codigo: 'CENTRO',
+    });
+
+    await createTestPlaca(regiao._id.toString(), {
+      empresaId: empresa._id,
+      numero_placa: 'PUB-IMG-001',
+      imagemPrincipal: 'placa-relativa.jpg',
+      statusComercial: 'AVAILABLE',
+    });
+
+    await createTestPlaca(regiao._id.toString(), {
+      empresaId: empresa._id,
+      numero_placa: 'PUB-IMG-002',
+      imagemPrincipal: 'inmidia-uploads-sistema/placa-com-prefixo.jpg',
+      statusComercial: 'AVAILABLE',
+    });
+
+    await createTestPlaca(regiao._id.toString(), {
+      empresaId: empresa._id,
+      numero_placa: 'PUB-IMG-003',
+      imagemPrincipal: 'https://cdn.example.com/placas/pronta.jpg',
+      statusComercial: 'AVAILABLE',
+    });
+
+    await createTestPlaca(regiao._id.toString(), {
+      empresaId: empresa._id,
+      numero_placa: 'PUB-IMG-004',
+      imagemPrincipal: null,
+      imagem: null,
+      statusComercial: 'AVAILABLE',
+    });
+
+    const res = await request(app)
+      .get('/api/v1/public/placas?limit=10')
+      .set('x-api-key', API_KEY_VALUE);
+
+    expect(res.status).toBe(200);
+    const byCodigo = Object.fromEntries(
+      res.body.data.map((placa: any) => [placa.codigo, placa])
+    );
+
+    expect(byCodigo['PUB-IMG-001'].imagemUrl).toBe('https://pub-storage.example.com/inmidia-uploads-sistema/placa-relativa.jpg');
+    expect(byCodigo['PUB-IMG-001'].imagem).toBe('https://pub-storage.example.com/inmidia-uploads-sistema/placa-relativa.jpg');
+    expect(byCodigo['PUB-IMG-002'].imagemUrl).toBe('https://pub-storage.example.com/inmidia-uploads-sistema/placa-com-prefixo.jpg');
+    expect(byCodigo['PUB-IMG-002'].imagem).toBe('https://pub-storage.example.com/inmidia-uploads-sistema/placa-com-prefixo.jpg');
+    expect(byCodigo['PUB-IMG-003'].imagemUrl).toBe('https://cdn.example.com/placas/pronta.jpg');
+    expect(byCodigo['PUB-IMG-003'].imagem).toBe('https://cdn.example.com/placas/pronta.jpg');
+    expect(byCodigo['PUB-IMG-004'].imagemUrl).toBeNull();
+    expect(byCodigo['PUB-IMG-004'].imagem).toBeNull();
   });
 
   it('GET /api/v1/public/placas/:id retorna a placa por id com chave valida', async () => {
