@@ -137,6 +137,10 @@ describe('public plates presenter — proxy de imagem', () => {
     expect(placa.imagemUrl).toBe(EXPECTED_PROXY);
     expect(placa.imagem).toBe(EXPECTED_PROXY);
     expect(placa.imagemMeta?.url).toBe(EXPECTED_PROXY);
+    expect(placa.jetImageUrl).toBe(EXPECTED_PROXY);
+    expect(placa.jet_image_url).toBe(EXPECTED_PROXY);
+    expect(placa.jetImage?.url).toBe(EXPECTED_PROXY);
+    expect(placa.image?.url).toBe(EXPECTED_PROXY);
   });
 
   it('payload de imagem nao retorna undefined, //api ou localhost', () => {
@@ -153,6 +157,62 @@ describe('public plates presenter — proxy de imagem', () => {
     expect(placa.imagemUrl).not.toBeNull();
     expect(placa.imagem).not.toBeNull();
     expect(placa.imagemMeta?.url).not.toBeNull();
+  });
+
+  it('campos JetEngine/Elementor usam formato compativel', () => {
+    const placa = toPublicPlaca({
+      _id: PLACA_ID,
+      numero_placa: '01',
+      imagemPrincipal: 'https://pub-storage.r2.dev/inmidia-uploads-sistema/01.jpg',
+    });
+
+    expect(placa.jetImageUrl).toBe(EXPECTED_PROXY);
+    expect(placa.jet_image_url).toBe(EXPECTED_PROXY);
+    expect(placa.jetImage).toEqual({
+      id: 0,
+      url: EXPECTED_PROXY,
+      alt: 'Placa 01',
+      title: 'Placa 01',
+    });
+    expect(placa.image).toEqual({
+      url: EXPECTED_PROXY,
+      alt: 'Placa 01',
+      title: 'Placa 01',
+    });
+  });
+
+  it('campos JetEngine/Elementor sao null quando placa nao tem imagem', () => {
+    const placa = toPublicPlaca({
+      _id: PLACA_ID,
+      numero_placa: '01',
+      imagemPrincipal: null,
+      imagem: null,
+      imagens: [],
+    });
+
+    expect(placa.jetImageUrl).toBeNull();
+    expect(placa.jet_image_url).toBeNull();
+    expect(placa.jetImage).toBeNull();
+    expect(placa.image).toBeNull();
+  });
+
+  it('campos JetEngine/Elementor nao expoem R2 ou paths internos', () => {
+    const placa = toPublicPlaca({
+      _id: PLACA_ID,
+      numero_placa: 'CAU-37',
+      imagemPrincipal: 'https://abc.r2.cloudflarestorage.com/bucket/cau-37.jpg',
+    });
+    const imagePayload = JSON.stringify({
+      jetImageUrl: placa.jetImageUrl,
+      jet_image_url: placa.jet_image_url,
+      jetImage: placa.jetImage,
+      image: placa.image,
+    });
+
+    expect(imagePayload).not.toContain('r2.dev');
+    expect(imagePayload).not.toContain('cloudflarestorage.com');
+    expect(imagePayload).not.toContain('inmidia-uploads-sistema');
+    expect(imagePayload).toContain(EXPECTED_PROXY);
   });
 
   // ── Payload não expõe dados internos ──────────────────────────────────────

@@ -16,6 +16,19 @@ export interface PublicImageMeta {
   updatedAt: string | null;
 }
 
+export interface PublicJetImagePayload {
+  id: 0;
+  url: string;
+  alt: string;
+  title: string;
+}
+
+export interface PublicImagePayload {
+  url: string;
+  alt: string;
+  title: string;
+}
+
 export interface PublicPlacaPayload {
   id: string;
   slug: string;
@@ -36,6 +49,10 @@ export interface PublicPlacaPayload {
   imagem: string | null;
   /** Metadata rica de imagem (novo campo v2). Null se placa não tiver imagem. */
   imagemMeta: PublicImageMeta | null;
+  jetImageUrl: string | null;
+  jet_image_url: string | null;
+  jetImage: PublicJetImagePayload | null;
+  image: PublicImagePayload | null;
   disponibilidade: 'disponivel' | 'reservado' | 'ocupado' | 'indisponivel' | 'desconhecido';
   updatedAt: string | null;
 }
@@ -181,6 +198,7 @@ export function toPublicPlaca(raw: any): PublicPlacaPayload {
   const disponibilidade = statusComercialMap[statusComercial] ?? 'desconhecido';
   const id = raw._id?.toString?.() ?? String(raw._id ?? '');
   const codigo = raw.numero_placa ?? '';
+  const imageLabel = codigo ? `Placa ${codigo}` : 'Placa';
 
   // Determina se a placa tem imagem cadastrada (sem expor a URL real do storage)
   const storedPath: string | null =
@@ -202,6 +220,21 @@ export function toPublicPlaca(raw: any): PublicPlacaPayload {
         updatedAt: resolvedUpdatedAt,
       }
     : null;
+  const jetImage: PublicJetImagePayload | null = proxyUrl
+    ? {
+        id: 0,
+        url: proxyUrl,
+        alt: imageLabel,
+        title: imageLabel,
+      }
+    : null;
+  const image: PublicImagePayload | null = proxyUrl
+    ? {
+        url: proxyUrl,
+        alt: imageLabel,
+        title: imageLabel,
+      }
+    : null;
 
   return {
     id,
@@ -220,6 +253,10 @@ export function toPublicPlaca(raw: any): PublicPlacaPayload {
     medidas: raw.tamanho ?? null,
     imagem: proxyUrl,
     imagemMeta,
+    jetImageUrl: proxyUrl,
+    jet_image_url: proxyUrl,
+    jetImage,
+    image,
     disponibilidade,
     updatedAt: resolvedUpdatedAt,
   };
