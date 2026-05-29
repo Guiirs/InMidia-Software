@@ -493,6 +493,7 @@ class PIService {
                 if (placasRemovidas.length > 0) {
                     const deleted = await Aluguel.deleteMany({
                         pi_code: piAtualizada.pi_code,
+                        empresaId,
                         placa: { $in: placasRemovidas }
                     });
                     logger.info(`[PIService] ${deleted.deletedCount} aluguéis removidos (pi_code: ${piAtualizada.pi_code})`);
@@ -525,7 +526,8 @@ class PIService {
             if (period) {
                 const updated = await Aluguel.updateMany(
                     {
-                        pi_code: piAtualizada.pi_code
+                        pi_code: piAtualizada.pi_code,
+                        empresaId
                     },
                     {
                         $set: {
@@ -594,7 +596,8 @@ class PIService {
 
             // Remove todos os aluguéis associados a esta PI usando pi_code para garantir consistência
             const alugueisRemovidos = await Aluguel.deleteMany({
-                pi_code: pi.pi_code
+                pi_code: pi.pi_code,
+                empresaId
             });
             logger.info(`[PIService] PI ${piId} deletada. ${alugueisRemovidos.deletedCount} aluguéis removidos (pi_code: ${pi.pi_code})`);
             
@@ -1129,54 +1132,63 @@ class PIService {
      * [PARA O CRON JOB] Marca como vencida toda PI cujo período expirou sem virar contrato.
      * Cobre status V4.1 (DRAFT, PENDING_APPROVAL, APPROVED) e legado (em_andamento).
      * Para PIs APPROVED, cancela as reservas temporais antes de mudar o status.
+     *
+     * Isolamento multi-tenant: itera por empresa usando Empresa.find({}) (modelo global)
+     * e processa cada tenant isoladamente, garantindo que updateMany sempre inclui empresaId.
      */
     static async updateVencidas() {
         const hoje = new Date();
         logger.info(`[PIService-Cron] Verificando PIs vencidas... (Data: ${hoje.toISOString()})`);
 
-        // Statuses that can expire (CONTRACT_GENERATED / CANCELLED / REJECTED / concluida / vencida never expire)
         const expirableStatuses = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'em_andamento'];
 
         try {
-            const pisVencidas = await PropostaInterna.find({
-                status: { $in: expirableStatuses },
-                $or: [
-                    { endDate:  { $lt: hoje } },
-                    { dataFim:  { $lt: hoje } },
-                ],
-            }).lean();
+            // Iterar por empresa: Empresa é modelo global, não tenant-scoped.
+            const empresas = await Empresa.find({}).select('_id').lean();
+            let totalVencidas = 0;
+            let totalCancelledReservations = 0;
 
-            if (pisVencidas.length === 0) {
-                logger.info('[PIService-Cron] Nenhuma PI vencida encontrada.');
-                return;
-            }
-
-            logger.info(`[PIService-Cron] ${pisVencidas.length} PIs vencidas encontradas.`);
-
-            // Cancel temporal reservations for APPROVED PIs (they hold confirmed reservations)
-            const approvedExpired = pisVencidas.filter((pi: any) => pi.status === 'APPROVED');
-            let cancelledReservations = 0;
-            for (const pi of approvedExpired) {
+            for (const empresa of empresas) {
+                const empresaId = String(empresa._id);
                 try {
-                    await temporalEngine.cancelTemporalReservation('PI', String(pi._id), String(pi.empresaId));
-                    cancelledReservations++;
-                    logger.info(`[PIService-Cron] Reserva temporal cancelada: PI ${pi._id} (${(pi as any).pi_code ?? ''})`);
-                } catch (err: any) {
-                    // Non-fatal: log and continue — the PI status update is more important
-                    logger.warn(`[PIService-Cron] Não foi possível cancelar reserva temporal da PI ${pi._id}: ${err.message}`);
+                    const pisVencidas = await PropostaInterna.find({
+                        empresaId,
+                        status: { $in: expirableStatuses },
+                        $or: [
+                            { endDate: { $lt: hoje } },
+                            { dataFim: { $lt: hoje } },
+                        ],
+                    }).lean();
+
+                    if (pisVencidas.length === 0) continue;
+
+                    logger.info(`[PIService-Cron] Empresa ${empresaId}: ${pisVencidas.length} PIs vencidas.`);
+
+                    // Cancel temporal reservations for APPROVED PIs
+                    const approvedExpired = pisVencidas.filter((pi: any) => pi.status === 'APPROVED');
+                    for (const pi of approvedExpired) {
+                        try {
+                            await temporalEngine.cancelTemporalReservation('PI', String(pi._id), empresaId);
+                            totalCancelledReservations++;
+                        } catch (err: any) {
+                            logger.warn(`[PIService-Cron] Não foi possível cancelar reserva PI ${pi._id}: ${err.message}`);
+                        }
+                    }
+
+                    const ids = pisVencidas.map((pi: any) => pi._id);
+                    const result = await PropostaInterna.updateMany(
+                        { _id: { $in: ids }, empresaId },
+                        { $set: { status: 'vencida' } },
+                    );
+                    totalVencidas += result.modifiedCount;
+                } catch (empresaErr: any) {
+                    logger.error(`[PIService-Cron] Erro ao processar empresa ${empresaId}: ${empresaErr.message}`);
                 }
             }
 
-            // Mark all expired PIs as 'vencida' (mapped to legacy status for compatibility)
-            const ids = pisVencidas.map((pi: any) => pi._id);
-            const result = await PropostaInterna.updateMany(
-                { _id: { $in: ids } },
-                { $set: { status: 'vencida' } }
-            );
-
             logger.info(
-                `[PIService-Cron] ${result.modifiedCount} PIs marcadas como vencida. ` +
-                `Reservas canceladas: ${cancelledReservations}/${approvedExpired.length}.`
+                `[PIService-Cron] ${totalVencidas} PIs marcadas como vencida. ` +
+                `Reservas canceladas: ${totalCancelledReservations}.`
             );
         } catch (error: any) {
             logger.error(`[PIService-Cron] Erro ao atualizar PIs vencidas: ${error.message}`, { stack: error.stack });

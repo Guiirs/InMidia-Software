@@ -92,6 +92,8 @@ export function normalizePlaca(raw) {
     // Status
     statusOperacional: p.statusOperacional ?? 'ACTIVE',
     statusComercial: p.statusComercial ?? 'AVAILABLE',
+    commercialStatus: p.commercialStatus ?? p.statusComercial ?? undefined,
+    temporalStatus: p.temporalStatus ?? undefined,
     // Mídia
     imagemPrincipal,
     mainImageUrl: imagemPrincipal ?? null,
@@ -127,17 +129,10 @@ export function normalizePlaca(raw) {
     // Dimensões / valor
     tipo: p.tipo ?? undefined,
     tamanho: p.tamanho ?? undefined,
-    valor_mensal: typeof p.valor_mensal === 'number' ? p.valor_mensal : undefined,
     // Observações
     notes: p.notes ?? p.observacoes ?? '',
     observacoes: p.observacoes ?? p.notes ?? '',
     // Aluguel
-    aluguel_ativo: Boolean(p.aluguel_ativo),
-    aluguel_futuro: Boolean(p.aluguel_futuro),
-    statusAluguel: p.statusAluguel ?? undefined,
-    cliente_nome: p.cliente_nome ?? undefined,
-    aluguel_data_inicio: p.aluguel_data_inicio ?? undefined,
-    aluguel_data_fim: p.aluguel_data_fim ?? undefined,
     // Auditoria
     archivedAt: p.archivedAt ?? undefined,
   };

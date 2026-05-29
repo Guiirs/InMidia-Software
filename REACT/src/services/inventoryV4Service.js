@@ -55,7 +55,6 @@ function boardToCanonical(raw) {
     regiaoId: raw.regiaoId ?? raw.regionId ?? regiao.id,
     regionId: raw.regionId ?? raw.regiaoId ?? regiao.id,
     regiao_nome: regiao.nome,
-    valor_mensal: Number(raw.valorMensal ?? 0),
     imagem: raw.imagem ?? imagemPrincipal,
     imagemPrincipal,
     mainImageUrl: imagemPrincipal,
@@ -97,9 +96,8 @@ function boardToCanonical(raw) {
     notes: raw.notes ?? raw.observacoes ?? '',
     observacoes: raw.observacoes ?? raw.notes ?? '',
     archivedAt: raw.archivedAt ?? null,
-    aluguel_ativo: raw.status === 'occupied',
-    aluguel_futuro: raw.status === 'reserved',
-    statusAluguel: raw.status,
+    commercialStatus: raw.commercialStatus ?? undefined,
+    temporalStatus: raw.commercialStatus ?? undefined,
     aluguel_data_inicio: active?.startDate ?? undefined,
     aluguel_data_fim: active?.endDate ?? undefined,
   };
@@ -122,7 +120,6 @@ function boardPayloadFromUi(board = {}) {
   if (typeof board.regiaoId === 'string') payload.regiaoId = board.regiaoId;
   if (typeof board.regionalLot === 'string' && board.regionalLot) payload.regionalLot = board.regionalLot;
   if (typeof board.imageUrl === 'string' && !board.imageUrl.startsWith('blob:')) payload.imageUrl = board.imageUrl;
-  if (typeof board.disponivel === 'boolean') payload.disponivel = board.disponivel;
   if (typeof board.statusOperacional === 'string') payload.statusOperacional = board.statusOperacional;
   if (typeof board.tamanho === 'string') payload.tamanho = board.tamanho;
   if (typeof board.notes === 'string') payload.notes = board.notes;
@@ -232,7 +229,6 @@ export async function createBoard(boardData = {}) {
   // Status canônicos
   if (typeof boardData.statusOperacional === 'string') data.statusOperacional = boardData.statusOperacional;
   // Dimensões / receita
-  if (typeof boardData.disponivel === 'boolean') data.disponivel = boardData.disponivel;
   if (typeof boardData.tamanho === 'string') data.tamanho = boardData.tamanho;
   // Observações
   if (typeof boardData.notes === 'string') data.notes = boardData.notes;

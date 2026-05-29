@@ -9,16 +9,17 @@ import type { IAuditLog } from '../AuditLog';
 import type { CreateAuditLogInput, ListAuditLogsQuery, AuditLogEntity, PaginatedAuditLogsResponse } from '../dtos/audit.dto';
 
 export interface IAuditRepository {
-  create(data: CreateAuditLogInput): Promise<Result<AuditLogEntity, DomainError>>;
-  findById(id: string): Promise<Result<AuditLogEntity | null, DomainError>>;
-  list(query: ListAuditLogsQuery): Promise<Result<PaginatedAuditLogsResponse, DomainError>>;
-  findByResourceId(resourceId: string): Promise<Result<AuditLogEntity[], DomainError>>;
+  create(data: CreateAuditLogInput, empresaId: string): Promise<Result<AuditLogEntity, DomainError>>;
+  findById(id: string, empresaId?: string, isSuperadmin?: boolean): Promise<Result<AuditLogEntity | null, DomainError>>;
+  list(query: ListAuditLogsQuery, empresaId?: string, isSuperadmin?: boolean): Promise<Result<PaginatedAuditLogsResponse, DomainError>>;
+  findByResourceId(resourceId: string, empresaId?: string, isSuperadmin?: boolean): Promise<Result<AuditLogEntity[], DomainError>>;
 }
 
 export class AuditRepository implements IAuditRepository {
   constructor(private readonly model: Model<IAuditLog>) {}
 
-  async create(data: CreateAuditLogInput): Promise<Result<AuditLogEntity, DomainError>> {
+  async create(data: CreateAuditLogInput, empresaId: string): Promise<Result<AuditLogEntity, DomainError>> {
+    if (!empresaId) throw new Error('[AuditRepository] empresaId é obrigatório para create');
     try {
       const changes = {
         old: data.oldData,
@@ -26,6 +27,7 @@ export class AuditRepository implements IAuditRepository {
       };
 
       const auditLog = new this.model({
+        empresaId,
         user: data.userId,
         action: data.action,
         resource: data.resource,
@@ -35,7 +37,7 @@ export class AuditRepository implements IAuditRepository {
       });
 
       await auditLog.save();
-      
+
       return Result.ok(auditLog.toObject<AuditLogEntity>());
     } catch (error: any) {
       return Result.fail(
@@ -44,10 +46,16 @@ export class AuditRepository implements IAuditRepository {
     }
   }
 
-  async findById(id: string): Promise<Result<AuditLogEntity | null, DomainError>> {
+  async findById(id: string, empresaId?: string, isSuperadmin = false): Promise<Result<AuditLogEntity | null, DomainError>> {
+    if (!isSuperadmin && !empresaId) {
+      throw new Error('[AuditRepository] empresaId é obrigatório para findById (não-superadmin)');
+    }
     try {
+      const filter: FilterQuery<IAuditLog> = { _id: id };
+      if (!isSuperadmin) filter.empresaId = empresaId;
+
       const log = await this.model
-        .findById(id)
+        .findOne(filter)
         .populate('user', 'nome email')
         .lean<AuditLogEntity | null>()
         .exec();
@@ -60,14 +68,18 @@ export class AuditRepository implements IAuditRepository {
     }
   }
 
-  async list(query: ListAuditLogsQuery): Promise<Result<PaginatedAuditLogsResponse, DomainError>> {
+  async list(query: ListAuditLogsQuery, empresaId?: string, isSuperadmin = false): Promise<Result<PaginatedAuditLogsResponse, DomainError>> {
+    if (!isSuperadmin && !empresaId) {
+      throw new Error('[AuditRepository] empresaId é obrigatório para list (não-superadmin)');
+    }
     try {
       const page = query.page || 1;
       const limit = query.limit || 50;
       const skip = (page - 1) * limit;
 
-      // Construir filtros
       const filter: FilterQuery<IAuditLog> = {};
+
+      if (!isSuperadmin) filter.empresaId = empresaId;
 
       if (query.userId) {
         filter.user = query.userId;
@@ -95,7 +107,6 @@ export class AuditRepository implements IAuditRepository {
         }
       }
 
-      // Buscar logs e total
       const [logs, total] = await Promise.all([
         this.model
           .find(filter)
@@ -126,10 +137,16 @@ export class AuditRepository implements IAuditRepository {
     }
   }
 
-  async findByResourceId(resourceId: string): Promise<Result<AuditLogEntity[], DomainError>> {
+  async findByResourceId(resourceId: string, empresaId?: string, isSuperadmin = false): Promise<Result<AuditLogEntity[], DomainError>> {
+    if (!isSuperadmin && !empresaId) {
+      throw new Error('[AuditRepository] empresaId é obrigatório para findByResourceId (não-superadmin)');
+    }
     try {
+      const filter: FilterQuery<IAuditLog> = { resourceId };
+      if (!isSuperadmin) filter.empresaId = empresaId;
+
       const logs = await this.model
-        .find({ resourceId })
+        .find(filter)
         .populate('user', 'nome email')
         .sort({ timestamp: -1 })
         .lean<AuditLogEntity[]>()

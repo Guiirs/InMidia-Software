@@ -307,24 +307,18 @@ app.get('/api/v1/status', (_req: Request, res: Response) => {
 app.get('/api/v1/health', (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'healthy',
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
   });
 });
 
 app.get('/api/health', (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'healthy',
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
   });
 });
 
 app.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'healthy',
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
   });
 });
 

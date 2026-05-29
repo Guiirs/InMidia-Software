@@ -2,6 +2,7 @@
 import cron from 'node-cron';
 import logger from '../shared/container/logger';
 import whatsappService from '../modules/whatsapp/whatsapp.service';
+import Empresa from '../modules/empresas/Empresa';
 
 /**
  * Configura envio diário de relatórios WhatsApp
@@ -24,18 +25,22 @@ export function scheduleWhatsAppReports(): void {
     logger.info(`[WhatsApp Cron] ⏰ Agendando relatórios diários para ${reportHour}`);
     logger.info(`[WhatsApp Cron] Cron expression: ${cronExpression}`);
 
-    // Agenda tarefa
+    // Agenda tarefa — itera por empresa (Empresa é modelo global)
     cron.schedule(cronExpression, async () => {
         try {
             logger.info('[WhatsApp Cron] 🚀 Executando envio de relatório diário...');
-            
-            const sucesso = await whatsappService.enviarRelatorioDisponibilidade();
-            
-            if (sucesso) {
-                logger.info('[WhatsApp Cron] ✅ Relatório diário enviado com sucesso!');
-            } else {
-                logger.warn('[WhatsApp Cron] ⚠️ Falha ao enviar relatório diário');
+            const empresas = await Empresa.find({}).select('_id').lean();
+            let enviados = 0;
+            for (const emp of empresas) {
+                const empresaId = String(emp._id);
+                try {
+                    const sucesso = await whatsappService.enviarRelatorioDisponibilidade(null, empresaId);
+                    if (sucesso) enviados++;
+                } catch (empErr: any) {
+                    logger.warn(`[WhatsApp Cron] Falha para empresa ${empresaId}: ${empErr.message}`);
+                }
             }
+            logger.info(`[WhatsApp Cron] ✅ Relatórios enviados: ${enviados}/${empresas.length}`);
         } catch (error) {
             const err = error as Error;
             logger.error(`[WhatsApp Cron] ❌ Erro ao enviar relatório: ${err.message}`);
@@ -51,17 +56,18 @@ export function scheduleWhatsAppReports(): void {
 /**
  * Envia relatório sob demanda (para testes)
  */
-export async function enviarRelatorioAgora(): Promise<boolean> {
+export async function enviarRelatorioAgora(empresaId: string): Promise<boolean> {
+    if (!empresaId) throw new Error('[WhatsApp] empresaId é obrigatório para enviarRelatorioAgora()');
     try {
-        logger.info('[WhatsApp] Enviando relatório sob demanda...');
-        const sucesso = await whatsappService.enviarRelatorioDisponibilidade();
-        
+        logger.info(`[WhatsApp] Enviando relatório sob demanda para empresa ${empresaId}...`);
+        const sucesso = await whatsappService.enviarRelatorioDisponibilidade(null, empresaId);
+
         if (sucesso) {
             logger.info('[WhatsApp] ✅ Relatório enviado!');
         } else {
             logger.error('[WhatsApp] ❌ Falha ao enviar relatório');
         }
-        
+
         return sucesso;
     } catch (error) {
         const err = error as Error;

@@ -1,5 +1,6 @@
 import Placa from '@modules/placas/Placa';
 import Aluguel from '@modules/alugueis/Aluguel';
+import { InventoryProjectionService, boardStatusFromCommercialProjection } from './inventory-projection.service';
 
 type BoardStatus = 'occupied' | 'available' | 'reserved' | 'maintenance' | 'critical';
 
@@ -81,6 +82,12 @@ export class InventorySummaryService {
       alugueisPorPlaca.get(placaId)!.push(aluguel);
     });
 
+    const inventoryProjection = await new InventoryProjectionService().resolveCommercialProjection({
+      empresaId,
+      placaIds: placas.map((placa: any) => String(placa._id)),
+      at: now,
+    });
+
     const totals = {
       totalBoards: placas.length,
       occupiedBoards: 0,
@@ -109,7 +116,10 @@ export class InventorySummaryService {
 
     placas.forEach((placa: any) => {
       const boardRentals = alugueisPorPlaca.get(String(placa._id)) ?? [];
-      const status = getBoardStatus(placa, boardRentals, now);
+      const projectionStatus = inventoryProjection.statusByPlateId.get(String(placa._id));
+      const status = projectionStatus
+        ? boardStatusFromCommercialProjection(projectionStatus)
+        : getBoardStatus(placa, boardRentals, now);
       const value = toNumber(placa.valor_mensal);
       const regiaoRaw = placa.regiaoId;
       const regionId = toId(regiaoRaw) || 'sem-regiao';

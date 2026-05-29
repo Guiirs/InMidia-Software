@@ -1,4 +1,5 @@
 import Contrato from '@modules/contratos/Contrato';
+import Empresa from '@modules/empresas/Empresa';
 import Placa from '@modules/placas/Placa';
 import PropostaInterna from '@modules/propostas-internas/PropostaInterna';
 import TemporalReservation, { type ITemporalReservation } from './TemporalReservation';
@@ -14,8 +15,11 @@ type SchedulerResult = {
 };
 
 export class TemporalSchedulerService {
-  async expirePastReservations(now: Date = new Date()): Promise<{ expiredCount: number }> {
+  async expirePastReservations(empresaId: string, now: Date = new Date()): Promise<{ expiredCount: number }> {
+    if (!empresaId) throw new Error('[TemporalScheduler] empresaId é obrigatório para expirePastReservations');
+
     const reservations = await TemporalReservation.find({
+      empresaId,
       sourceType: { $ne: 'MANUAL_BLOCK' },
       status: { $in: ['RESERVED', 'ACTIVE'] },
       endDate: { $lt: now },
@@ -24,7 +28,7 @@ export class TemporalSchedulerService {
     if (reservations.length === 0) return { expiredCount: 0 };
 
     const result = await TemporalReservation.updateMany(
-      { _id: { $in: reservations.map((reservation) => reservation._id) } },
+      { _id: { $in: reservations.map((reservation) => reservation._id) }, empresaId },
       { $set: { status: 'EXPIRED' } },
     );
 
@@ -41,11 +45,14 @@ export class TemporalSchedulerService {
     return { expiredCount: result.modifiedCount ?? 0 };
   }
 
-  async detectContractsEndingSoon(days = 30, now: Date = new Date()) {
+  async detectContractsEndingSoon(empresaId: string, days = 30, now: Date = new Date()) {
+    if (!empresaId) throw new Error('[TemporalScheduler] empresaId é obrigatório para detectContractsEndingSoon');
+
     const until = new Date(now);
     until.setDate(until.getDate() + days);
 
     const reservations = await TemporalReservation.find({
+      empresaId,
       sourceType: 'CONTRACT',
       status: 'ACTIVE',
       endDate: { $gte: now, $lte: until },
@@ -74,15 +81,18 @@ export class TemporalSchedulerService {
     return { contractsEndingSoon: reservations.length, reservations };
   }
 
-  async detectExpiredPendingRelease(now: Date = new Date()) {
+  async detectExpiredPendingRelease(empresaId: string, now: Date = new Date()) {
+    if (!empresaId) throw new Error('[TemporalScheduler] empresaId é obrigatório para detectExpiredPendingRelease');
+
     const reservations = await TemporalReservation.find({
+      empresaId,
       sourceType: { $ne: 'MANUAL_BLOCK' },
       status: 'EXPIRED',
       endDate: { $lt: now },
     }).lean<ITemporalReservation[]>();
 
     const plateIds = [...new Set(reservations.map((reservation) => String(reservation.plateId)))];
-    const blockedPlates = await Placa.find({ _id: { $in: plateIds }, disponivel: false }).lean<any[]>();
+    const blockedPlates = await Placa.find({ _id: { $in: plateIds }, disponivel: false, empresaId }).lean<any[]>();
     const blockedSet = new Set(blockedPlates.map((plate) => String(plate._id)));
     const pending = reservations.filter((reservation) => blockedSet.has(String(reservation.plateId)));
 
@@ -109,8 +119,11 @@ export class TemporalSchedulerService {
     return { expiredPendingRelease: pending.length, reservations: pending };
   }
 
-  async detectOrphanTemporalReservations() {
+  async detectOrphanTemporalReservations(empresaId: string) {
+    if (!empresaId) throw new Error('[TemporalScheduler] empresaId é obrigatório para detectOrphanTemporalReservations');
+
     const reservations = await TemporalReservation.find({
+      empresaId,
       sourceType: { $in: ['CONTRACT', 'PI'] },
     }).lean<ITemporalReservation[]>();
 
@@ -145,37 +158,50 @@ export class TemporalSchedulerService {
     return { orphanReservations: issues.length, reservations: issues };
   }
 
-  async detectTemporalIntegrityIssues(now: Date = new Date()) {
-    const report = await this.getTemporalIntegrityReport(now);
+  async detectTemporalIntegrityIssues(empresaId: string, now: Date = new Date()) {
+    if (!empresaId) throw new Error('[TemporalScheduler] empresaId é obrigatório para detectTemporalIntegrityIssues');
+
+    const report = await this.getTemporalIntegrityReport(empresaId, now);
     const totalIssues = Object.values(report).reduce((sum, value) => (
       Array.isArray(value) ? sum + value.length : sum
     ), 0);
 
     if (totalIssues > 0) {
-      const empresaIds = new Set<string>();
-      Object.values(report).forEach((items) => {
-        if (!Array.isArray(items)) return;
-        items.forEach((item: any) => item.empresaId && empresaIds.add(String(item.empresaId)));
-      });
-
-      await Promise.all([...empresaIds].map((empresaId) => temporalEngine.recordEvent({
+      await temporalEngine.recordEvent({
         empresaId,
         eventType: 'TEMPORAL_INTEGRITY_ISSUE_DETECTED',
         message: 'Inconsistencias temporais detectadas.',
         metadata: { totalIssues },
-      })));
+      });
     }
 
     return { integrityIssues: totalIssues, report };
   }
 
-  async runDailyTemporalMaintenance(days = 30, now: Date = new Date()): Promise<SchedulerResult> {
+  async runDailyTemporalMaintenance(empresaId?: string, days = 30, now: Date = new Date()): Promise<SchedulerResult> {
+    if (!empresaId) {
+      // Global scheduler: iterate per empresa, never mix tenant data
+      const empresas = await Empresa.find({}).select('_id').lean();
+      const results: SchedulerResult[] = [];
+      for (const emp of empresas) {
+        const result = await this.runDailyTemporalMaintenance(String(emp._id), days, now);
+        results.push(result);
+      }
+      return results.reduce((acc, r) => ({
+        expiredCount: (acc.expiredCount ?? 0) + (r.expiredCount ?? 0),
+        contractsEndingSoon: (acc.contractsEndingSoon ?? 0) + (r.contractsEndingSoon ?? 0),
+        expiredPendingRelease: (acc.expiredPendingRelease ?? 0) + (r.expiredPendingRelease ?? 0),
+        orphanReservations: (acc.orphanReservations ?? 0) + (r.orphanReservations ?? 0),
+        integrityIssues: (acc.integrityIssues ?? 0) + (r.integrityIssues ?? 0),
+      }), {} as SchedulerResult);
+    }
+
     const [expired, endingSoon, pendingRelease, orphan, integrity] = await Promise.all([
-      this.expirePastReservations(now),
-      this.detectContractsEndingSoon(days, now),
-      this.detectExpiredPendingRelease(now),
-      this.detectOrphanTemporalReservations(),
-      this.detectTemporalIntegrityIssues(now),
+      this.expirePastReservations(empresaId, now),
+      this.detectContractsEndingSoon(empresaId, days, now),
+      this.detectExpiredPendingRelease(empresaId, now),
+      this.detectOrphanTemporalReservations(empresaId),
+      this.detectTemporalIntegrityIssues(empresaId, now),
     ]);
 
     return {
@@ -187,16 +213,18 @@ export class TemporalSchedulerService {
     };
   }
 
-  async getTemporalIntegrityReport(now: Date = new Date()) {
+  async getTemporalIntegrityReport(empresaId: string, now: Date = new Date()) {
+    if (!empresaId) throw new Error('[TemporalScheduler] empresaId é obrigatório para getTemporalIntegrityReport');
+
     const [contracts, reservations, plates] = await Promise.all([
-      Contrato.find({ status: { $ne: 'cancelado' } }).populate('piId').lean<any[]>(),
-      TemporalReservation.find({}).lean<ITemporalReservation[]>(),
-      Placa.find({ disponivel: false }).lean<any[]>(),
+      Contrato.find({ empresaId, status: { $ne: 'cancelado' } }).populate('piId').lean<any[]>(),
+      TemporalReservation.find({ empresaId }).lean<ITemporalReservation[]>(),
+      Placa.find({ empresaId, disponivel: false }).lean<any[]>(),
     ]);
 
     const contractWithoutLedger = [];
     for (const contract of contracts) {
-      const ledger = await TemporalReservation.exists({ sourceType: 'CONTRACT', sourceId: String(contract._id) });
+      const ledger = await TemporalReservation.exists({ empresaId, sourceType: 'CONTRACT', sourceId: String(contract._id) });
       if (!ledger) contractWithoutLedger.push({ id: String(contract._id), empresaId: String(contract.empresaId) });
     }
 

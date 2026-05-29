@@ -8,6 +8,8 @@ import type {
   SalesFunnel,
   DashboardAlert,
 } from './dashboard.types';
+import { commercialAvailabilityProjection, type CommercialAvailabilityResult } from '@modules/commercial-availability';
+import { DashboardProjectionService } from './dashboard-projection.service';
 
 type AnyDoc = Record<string, any>;
 
@@ -39,6 +41,10 @@ function toRate(value: number): number {
   return Number(value.toFixed(2));
 }
 
+function isCommerciallyOccupied(status?: CommercialAvailabilityResult): boolean {
+  return status?.status === 'CONTRACTED_ACTIVE' || status?.status === 'RESERVED' || status?.status === 'FUTURE_RESERVED';
+}
+
 export class DashboardService {
   constructor(
     private readonly placaModel: Model<any>,
@@ -50,79 +56,25 @@ export class DashboardService {
 
   async getOverview(empresaId: string): Promise<Result<DashboardOverview, DomainError>> {
     try {
-      const empresaObjectId = new mongoose.Types.ObjectId(empresaId);
-
-      const now = new Date();
-
-      const [
-        totalPlacas,
-        placasDisponiveis,
-        propostasEmAberto,
-        contratosAtivos,
-        regioesAtivas,
-        activeAlugueis,
-        contratosComPi,
-      ] = await Promise.all([
-        this.placaModel.countDocuments({ empresaId: empresaObjectId }),
-        this.placaModel.countDocuments({ empresaId: empresaObjectId, disponivel: true }),
-        this.propostaModel.countDocuments({ empresaId: empresaObjectId, status: 'em_andamento' }),
-        this.contratoModel.countDocuments({ empresaId: empresaObjectId, status: 'ativo' }),
-        this.regiaoModel.countDocuments({ empresaId: empresaObjectId, ativo: true }),
-        this.aluguelModel.distinct('placaId', {
-          empresaId: empresaObjectId,
-          status: { $ne: 'cancelado' },
-          $or: [
-            { startDate: { $lte: now }, endDate: { $gte: now } },
-            { data_inicio: { $lte: now }, data_fim: { $gte: now } },
-          ],
-        }),
-        this.contratoModel.aggregate([
-          { $match: { empresaId: empresaObjectId, status: 'ativo' } },
-          {
-            $lookup: {
-              from: 'propostainternas',
-              localField: 'piId',
-              foreignField: '_id',
-              as: 'pi',
-            },
-          },
-          { $unwind: { path: '$pi', preserveNullAndEmptyArrays: true } },
-          {
-            $project: {
-              valorTotal: { $ifNull: ['$pi.valorTotal', 0] },
-              startDate: { $ifNull: ['$pi.startDate', '$pi.dataInicio'] },
-              endDate: { $ifNull: ['$pi.endDate', '$pi.dataFim'] },
-            },
-          },
-        ]),
-      ]);
-
-      const placasAlugadasOcupadas = activeAlugueis.length;
-      const taxaOcupacao = totalPlacas > 0 ? toRate((placasAlugadasOcupadas / totalPlacas) * 100) : 0;
-
-      const receitaEstimadaMensal = contratosComPi.reduce((sum: number, item: AnyDoc) => {
-        const valorTotal = Number(item.valorTotal || 0);
-        const start = safeDate(item.startDate);
-        const end = safeDate(item.endDate);
-
-        if (!start || !end || end <= start) {
-          return sum + valorTotal;
-        }
-
-        const totalDays = Math.max(1, (end.getTime() - start.getTime()) / DAY_MS);
-        const months = Math.max(1, totalDays / 30);
-        return sum + valorTotal / months;
-      }, 0);
+      const projection = new DashboardProjectionService({
+        placaModel: this.placaModel,
+        aluguelModel: this.aluguelModel,
+        regiaoModel: this.regiaoModel,
+        propostaModel: this.propostaModel,
+        contratoModel: this.contratoModel,
+      });
+      const overview = await projection.getOverview(empresaId);
+      const placasAlugadasOcupadas = overview.placasOcupadas + overview.placasReservadas;
 
       return Result.ok({
-        totalPlacas,
-        placasDisponiveis,
+        totalPlacas: overview.totalPlacas,
+        placasDisponiveis: overview.placasDisponiveis,
         placasAlugadasOcupadas,
-        taxaOcupacao,
-        propostasEmAberto,
-        contratosAtivos,
-        receitaEstimadaMensal: toMoney(receitaEstimadaMensal),
-        regioesAtivas,
+        taxaOcupacao: overview.totalPlacas > 0 ? toRate((placasAlugadasOcupadas / overview.totalPlacas) * 100) : 0,
+        propostasEmAberto: overview.propostasEmAberto,
+        contratosAtivos: overview.contratosAtivos,
+        receitaEstimadaMensal: overview.receitaEstimadaMensal,
+        regioesAtivas: overview.regioesAtivas,
       });
     } catch {
       return Result.fail(
@@ -234,17 +186,24 @@ export class DashboardService {
         alugueisMap.set(String(item._id), item);
       });
 
+      const commercialStatuses = await commercialAvailabilityProjection.resolveManyPlateCommercialStatuses({
+        empresaId,
+        placaIds: placas.map((placa: AnyDoc) => String(placa._id)),
+        at: now,
+      });
+
       const ranking = placas
         .map((placa: AnyDoc) => {
           const placaId = String(placa._id);
           const contratos = contratosMap.get(placaId);
           const alugueis = alugueisMap.get(placaId);
+          const commercialStatus = commercialStatuses.get(placaId);
 
           const quantidadeAlugueisContratos =
             Number(contratos?.quantidadeContratos || 0) + Number(alugueis?.quantidadeAlugueis || 0);
 
           const statusAtual: 'disponivel' | 'ocupada' =
-            alugueis?.ocupadaAgora || placa.disponivel === false ? 'ocupada' : 'disponivel';
+            isCommerciallyOccupied(commercialStatus) || alugueis?.ocupadaAgora ? 'ocupada' : 'disponivel';
 
           return {
             placaId,
@@ -324,6 +283,12 @@ export class DashboardService {
         alugueisByPlaca.set(key, list);
       });
 
+      const commercialStatuses = await commercialAvailabilityProjection.resolveManyPlateCommercialStatuses({
+        empresaId,
+        placaIds: placas.map((placa: AnyDoc) => String(placa._id)),
+        at: now,
+      });
+
       const idleBoards = placas
         .map((placa: AnyDoc) => {
           const placaId = String(placa._id);
@@ -368,7 +333,7 @@ export class DashboardService {
             baixaTaxaOcupacao,
             taxaOcupacao,
             regiao: placa.regiao,
-            status: placa.disponivel ? 'disponivel' : 'ocupada',
+            status: commercialStatuses.get(placaId)?.isCommerciallyAvailable ? 'disponivel' : 'ocupada',
             sugestaoAcao: suggestion,
           } satisfies IdleBoard;
         })
@@ -391,6 +356,16 @@ export class DashboardService {
 
   async getRegionPerformance(empresaId: string): Promise<Result<RegionPerformance[], DomainError>> {
     try {
+      const projection = new DashboardProjectionService({
+        placaModel: this.placaModel,
+        aluguelModel: this.aluguelModel,
+        regiaoModel: this.regiaoModel,
+        propostaModel: this.propostaModel,
+        contratoModel: this.contratoModel,
+      });
+      const regionResult = await projection.getRegionPerformance(empresaId);
+      return Result.ok(regionResult.data);
+
       const empresaObjectId = new mongoose.Types.ObjectId(empresaId);
       const now = new Date();
 
@@ -406,9 +381,7 @@ export class DashboardService {
             $group: {
               _id: '$regiaoId',
               totalPlacas: { $sum: 1 },
-              placasDisponiveis: {
-                $sum: { $cond: [{ $eq: ['$disponivel', true] }, 1, 0] },
-              },
+              placaIds: { $addToSet: '$_id' },
             },
           },
           {
@@ -425,6 +398,7 @@ export class DashboardService {
               _id: 1,
               regiao: { $ifNull: ['$regiaoDetalhes.nome', 'Sem Região'] },
               totalPlacas: 1,
+              placaIds: 1,
             },
           },
         ]),
@@ -505,11 +479,27 @@ export class DashboardService {
       const contratosMap = new Map<string, AnyDoc>();
       contratosByRegion.forEach((r: AnyDoc) => contratosMap.set(String(r._id), r));
 
+      const allRegionPlateIds = placasPorRegiao.flatMap((row: AnyDoc) =>
+        Array.isArray(row.placaIds) ? row.placaIds.map((id: unknown) => String(id)) : [],
+      );
+      const commercialStatuses = await commercialAvailabilityProjection.resolveManyPlateCommercialStatuses({
+        empresaId,
+        placaIds: allRegionPlateIds,
+        at: now,
+      });
+
       const result = placasPorRegiao
         .map((row: AnyDoc) => {
           const regiaoId = String(row._id);
           const totalPlacas = Number(row.totalPlacas || 0);
-          const placasAlugadas = Math.min(totalPlacas, Number(alugadasMap.get(regiaoId) || 0));
+          const projectedCommerciallyOccupied = (row.placaIds || [])
+            .map((id: unknown) => commercialStatuses.get(String(id)))
+            .filter(isCommerciallyOccupied)
+            .length;
+          const placasAlugadas = Math.min(
+            totalPlacas,
+            Math.max(projectedCommerciallyOccupied, Number(alugadasMap.get(regiaoId) || 0)),
+          );
           const taxaOcupacao = totalPlacas > 0 ? toRate((placasAlugadas / totalPlacas) * 100) : 0;
 
           const contratoData = contratosMap.get(regiaoId);

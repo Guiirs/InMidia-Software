@@ -93,18 +93,18 @@ export class TemporalController {
     }
   }
 
-  async getBackfillStatus(_req: AuthReq, res: Response, next: NextFunction): Promise<void> {
+  async getBackfillStatus(req: AuthReq, res: Response, next: NextFunction): Promise<void> {
     try {
-      const report = await temporalSchedulerService.getTemporalIntegrityReport();
+      const report = await temporalSchedulerService.getTemporalIntegrityReport(getEmpresaId(req));
       res.json({ success: true, data: report });
     } catch (error) {
       next(error);
     }
   }
 
-  async getIntegrityReport(_req: AuthReq, res: Response, next: NextFunction): Promise<void> {
+  async getIntegrityReport(req: AuthReq, res: Response, next: NextFunction): Promise<void> {
     try {
-      const report = await temporalSchedulerService.getTemporalIntegrityReport();
+      const report = await temporalSchedulerService.getTemporalIntegrityReport(getEmpresaId(req));
       res.json({ success: true, data: report });
     } catch (error) {
       next(error);

@@ -4,6 +4,7 @@ import { eventBus } from '../../modules/realtime/event-bus.service';
 import {
   app,
   clearDatabase,
+  ensureTestEmpresa,
   generateTestToken,
   setupIntegrationDb,
   TEST_EMPRESA_ID,
@@ -275,9 +276,11 @@ describe('Reports V4 integration', () => {
       .expect(201);
 
     // Tenant diferente deve ver reports.exports = 0
+    const otherTenantId = new Types.ObjectId().toString();
+    await ensureTestEmpresa(otherTenantId);
     const otherToken = generateTestToken({
       role: 'admin_empresa',
-      empresaId: new Types.ObjectId().toString(),
+      empresaId: otherTenantId,
     });
     const res = await request(app)
       .get('/api/v4/reports/by-domain')
@@ -294,9 +297,11 @@ describe('Reports V4 integration', () => {
       .send({ type: 'financial', filters: {}, format: 'csv' })
       .expect(201);
 
+    const otherTenantId = new Types.ObjectId().toString();
+    await ensureTestEmpresa(otherTenantId);
     const otherTenantToken = generateTestToken({
       role: 'admin_empresa',
-      empresaId: new Types.ObjectId().toString(),
+      empresaId: otherTenantId,
     });
 
     const res = await request(app)

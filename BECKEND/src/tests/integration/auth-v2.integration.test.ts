@@ -14,6 +14,7 @@ import {
 import Empresa from '@modules/empresas/Empresa';
 import User from '@modules/users/User';
 import RefreshToken from '@modules/auth/RefreshToken';
+import AuditLog from '@modules/audit/audit.model';
 
 const PASSWORD = 'SenhaV2Forte123!';
 
@@ -44,6 +45,15 @@ async function doLogin(email: string, password = PASSWORD) {
     .post('/api/v1/auth/login')
     .send({ email, password });
   return res;
+}
+
+async function findAuditLogWithRetry(filter: Record<string, unknown>) {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const audit = await AuditLog.findOne(filter).lean();
+    if (audit) return audit;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  return AuditLog.findOne(filter).lean();
 }
 
 describe('Auth V2 — HttpOnly Cookies + Refresh + Revogação', () => {
@@ -129,6 +139,13 @@ describe('Auth V2 — HttpOnly Cookies + Refresh + Revogação', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.data?.token).toBeDefined();
+
+      const audit = await findAuditLogWithRetry({ action: 'auth.refresh', module: 'auth' });
+      expect(audit).toBeTruthy();
+      expect(audit?.empresaId).toBeUndefined();
+      expect(audit?.actorType).toBe('system');
+      expect(audit?.actorUserId).toBeUndefined();
+      expect(audit?.actorLabel).toBe('system');
     });
 
     it('refresh token é rotacionado — token antigo não pode ser usado novamente', async () => {

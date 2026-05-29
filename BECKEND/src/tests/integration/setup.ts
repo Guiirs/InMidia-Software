@@ -17,9 +17,11 @@ dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 if (!process.env.JWT_SECRET) {
   process.env.JWT_SECRET = 'test-jwt-secret-arch2';
 }
+process.env.NODE_ENV = 'test';
 // Redis desabilitado — não há servidor Redis nos testes de integração
 process.env.REDIS_HOST = '';
 process.env.REDIS_ENABLED = 'false';
+process.env.REDIS_URL = '';
 delete process.env.METRICS_USER;
 delete process.env.METRICS_PASSWORD;
 
@@ -31,7 +33,7 @@ import jwt from 'jsonwebtoken';
 
 // Import estático do app — ts-jest resolve os aliases corretamente
 // dbMongo.ts pula a conexão quando NODE_ENV=test
-import app from '../../shared/infra/http/app';
+const app = require('../../shared/infra/http/app').default as import('express').Application;
 
 // Modelos — importados para garantir o registro no Mongoose
 import Regiao from '../../modules/regioes/Regiao';
@@ -46,7 +48,7 @@ export const TEST_EMPRESA_ID = new Types.ObjectId().toString();
 export const TEST_USER_ID = new Types.ObjectId().toString();
 const registeredTenantIds = new Set<string>([TEST_EMPRESA_ID]);
 
-async function ensureTestEmpresa(empresaId: string): Promise<void> {
+export async function ensureTestEmpresa(empresaId: string): Promise<void> {
   if (!Types.ObjectId.isValid(empresaId)) {
     return;
   }
@@ -119,6 +121,18 @@ export async function clearDatabase(): Promise<void> {
 }
 
 export async function teardownIntegrationDb(): Promise<void> {
+  try {
+    const { redisManager } = require('../../config/redis') as typeof import('../../config/redis');
+    await redisManager.disconnect();
+  } catch {
+    // Test teardown must not fail if Redis was never bootstrapped.
+  }
+  try {
+    const { closeMetrics } = require('../../shared/infra/monitoring/metrics') as typeof import('../../shared/infra/monitoring/metrics');
+    await closeMetrics();
+  } catch {
+    // Metrics collectors may not be loaded in narrow unit tests.
+  }
   await mongoose.disconnect();
   if (mongoServer) await mongoServer.stop();
 }

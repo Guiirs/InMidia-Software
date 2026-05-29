@@ -100,7 +100,8 @@ export class UserRepository implements IUserRepository {
 
   async updateProfile(
     id: string,
-    updateData: UpdateUserProfileInput
+    updateData: UpdateUserProfileInput,
+    empresaId?: string,
   ): Promise<Result<IUser, DomainError>> {
     try {
       const updateFields: any = {};
@@ -122,9 +123,13 @@ export class UserRepository implements IUserRepository {
         updateFields.senha = updateData.password;
       }
 
+      // Filter includes empresaId when available to enforce tenant boundary.
+      const filter: Record<string, unknown> = { _id: id };
+      if (empresaId) filter.empresaId = empresaId;
+
       const user = await this.model
-        .findByIdAndUpdate(
-          id,
+        .findOneAndUpdate(
+          filter,
           { $set: updateFields },
           { new: true, runValidators: true }
         )

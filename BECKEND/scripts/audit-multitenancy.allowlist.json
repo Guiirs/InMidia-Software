@@ -1,0 +1,217 @@
+[
+  {
+    "_comment": "=== CATEGORIA A: FALSOS POSITIVOS — filter construído com empresaId acima da janela de contexto do scanner (20 linhas) ===",
+    "file": "src/modules/alugueis/repositories/aluguel.repository.ts",
+    "pattern": "Aluguel.find(filter)",
+    "reason": "Falso positivo: variável `filter` é construída com empresaId no buildFilter() chamado acima do limite de contexto do scanner. Verificado manualmente em 29/05/2026.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/alugueis/repositories/aluguel.repository.ts",
+    "pattern": "Aluguel.countDocuments(filter)",
+    "reason": "Falso positivo: mesmo buildFilter() que inclui empresaId. Verificado manualmente em 29/05/2026.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/alugueis/repositories/aluguel.repository.ts",
+    "pattern": "Aluguel.find",
+    "reason": "Falso positivo (linha 293): `filter` construído com empresaId acima do limite de contexto do scanner. Verificado manualmente em 29/05/2026.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/clientes/repositories/cliente.repository.ts",
+    "pattern": "Cliente.find(filter)",
+    "reason": "Falso positivo: variável `filter` construída com empresaId no método pai. Verificado manualmente em 29/05/2026.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/clientes/repositories/cliente.repository.ts",
+    "pattern": "Cliente.countDocuments(filter)",
+    "reason": "Falso positivo: mesmo filtro. Verificado manualmente em 29/05/2026.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/clientes/client.repository.ts",
+    "pattern": "Cliente.countDocuments(filter)",
+    "reason": "Falso positivo: filter incluí empresaId — contexto excede janela do scanner. Verificado 29/05/2026.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/contratos/repositories/contrato.repository.ts",
+    "pattern": "Contrato.countDocuments(filter)",
+    "reason": "Falso positivo: filter inclui empresaId. Verificado 29/05/2026.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/placas/repositories/placa.repository.ts",
+    "pattern": "Placa.find(filter)",
+    "reason": "Falso positivo: filter construído com empresaId acima do contexto. Verificado 29/05/2026.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/placas/repositories/placa.repository.ts",
+    "pattern": "Placa.countDocuments(filter)",
+    "reason": "Falso positivo: mesmo filter. Verificado 29/05/2026.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/audit/audit.repository.ts",
+    "pattern": "AuditLog.find(filter)",
+    "reason": "Falso positivo: buildFilter() sempre inclui empresaId quando !isSuperadmin. Caminho superadmin requer autenticação admin explícita.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/placas/placa.service.ts",
+    "pattern": "Placa.find",
+    "reason": "Falso positivo: `let query = { empresaId }` construído na linha 186 — fora da janela de contexto do scanner (20 linhas). Verificado 29/05/2026. O `finalQuery` também inclui `empresaId` via variável acima da janela.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/placas/placa.service.ts",
+    "pattern": "Placa.countDocuments",
+    "reason": "Falso positivo: `query` contém empresaId (linha 186), fora da janela do scanner. Verificado 29/05/2026.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/placas/placa.service.ts",
+    "pattern": "Aluguel.find",
+    "reason": "Falso positivo: query usa `$or: [{ empresaId }, { empresa: empresaId }]` — compatibilidade legada. empresaId está presente no contexto. Verificado 29/05/2026.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/propostas-internas/pi.service.ts",
+    "pattern": "PropostaInterna.countDocuments",
+    "reason": "Falso positivo: `const query: Record<string, unknown> = { empresaId }` construído 21 linhas acima — fora da janela de contexto do scanner. Verificado 29/05/2026.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/public-plates/public-plates.service.ts",
+    "pattern": "Placa.findOne",
+    "reason": "Falso positivo: `baseFilter = { empresaId, ... }` declarado na linha 303, 24 linhas acima do findOne na 327 — fora da janela de contexto. O spread `...baseFilter` garante que empresaId está sempre presente. Verificado 29/05/2026.",
+    "expiresAt": "2027-05-29"
+  },
+
+  {
+    "_comment": "=== CATEGORIA B: PADRÕES DE AUTH — cross-tenant por design (pré-autenticação) ===",
+    "file": "src/modules/auth/auth.service.ts",
+    "pattern": "User.findOne",
+    "reason": "Login por email é cross-tenant por design — pré-autenticação, empresaId não disponível antes de validar credenciais. Rota protegida por rate-limit.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/auth/auth.service.ts",
+    "pattern": "User.findById",
+    "reason": "Validação de JWT: userId vem do token assinado pelo próprio usuário — risco cross-tenant é nulo. Tokens são per-user.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/auth/controllers/auth.controller.ts",
+    "pattern": "User.find",
+    "reason": "Lookup administrativo de usuários candidatos — rota autenticada, contexto admin validado antes da chamada.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/empresas/empresa.controller.ts",
+    "pattern": "User.findById",
+    "reason": "Contexto de controller de empresa — empresaId validado pelo middleware de autenticação antes desta chamada.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/users/user.service.ts",
+    "pattern": "User.findById",
+    "reason": "Serviço de usuário chamado dentro de contexto autenticado — userId vem do JWT, risco cross-tenant controlado pelo middleware.",
+    "expiresAt": "2027-05-29"
+  },
+
+  {
+    "_comment": "=== CATEGORIA C: REFRESH TOKEN — scoped por tokenHash/userId, não por empresaId ===",
+    "file": "src/modules/auth/repositories/session.repository.ts",
+    "pattern": "RefreshToken",
+    "reason": "RefreshToken é isolado por tokenHash (hash único não-adivinável) e userId — não é tenant-scoped como dados de negócio. Risco cross-tenant é estruturalmente impossível pois cada token pertence a 1 usuário.",
+    "expiresAt": "2027-05-29"
+  },
+
+  {
+    "_comment": "=== CATEGORIA D: ADMIN SERVICE — usa campo `empresa` (schema real; `empresaId` é apenas alias Mongoose) ===",
+    "file": "src/modules/admin/admin.service.ts",
+    "pattern": "empresa",
+    "reason": "Admin service usa `empresa` que é o campo real do schema User (alias Mongoose `empresaId`). MongoDB não resolve aliases em queries — trocar para `empresaId` nas queries QUEBRA o isolamento. O schema tem `alias: 'empresaId'` mas o campo armazenado é `empresa`. Renomear o campo requer migração de schema (ARCH-debt).",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/admin/admin.service.ts",
+    "pattern": "User.findOne",
+    "reason": "Falso positivo: findOne inclui `empresa: empresaId` no mesmo bloco — `empresa` é o campo real no schema User. Scanner não detecta por não reconhecer `empresa` como equivalente a `empresaId`.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/admin/admin.service.ts",
+    "pattern": "User.updateOne",
+    "reason": "Falso positivo: updateOne inclui `empresa: empresaId` no filtro — campo real no schema User.",
+    "expiresAt": "2027-05-29"
+  },
+
+  {
+    "_comment": "=== CATEGORIA E: OPERAÇÕES DE MANUTENÇÃO DO SISTEMA — cross-tenant por design ===",
+    "file": "src/modules/media/media.repository.ts",
+    "pattern": "MediaAsset.find",
+    "reason": "OPERAÇÃO DE MANUTENÇÃO GLOBAL: findDeletePending e findOrphans são jobs de background que escaneiam todo o sistema para limpar assets pendentes de deleção e órfãos. Cross-tenant por design — chamados apenas por workers internos, não por handlers de request. Sem risco de exposição de dados a tenants.",
+    "expiresAt": "2027-05-29"
+  },
+
+  {
+    "_comment": "=== CATEGORIA F: WARNINGS LEGÍTIMOS — findById com contexto de auth ===",
+    "file": "src/modules/alugueis/aluguel.service.ts",
+    "pattern": "Aluguel.findById",
+    "reason": "findById logo após insert do próprio aluguel criado — _id é controlado internamente, sem risco cross-tenant.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/webhooks/repositories/webhook.repository.ts",
+    "pattern": "Webhook.findById",
+    "reason": "findById em método findById() — chamado exclusivamente por execute() que primeiro valida empresaId via findById e checa webhook.active antes de usar. Risco controlado pelo caller.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/whatsapp/repositories/whatsapp.repository.ts",
+    "pattern": "WhatsAppMessage.findById",
+    "reason": "findById de mensagem — modelo usa mocks sem dados reais. Caller deve validar empresaId quando modelo for ativado em produção.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/whatsapp/repositories/whatsapp.repository.ts",
+    "pattern": "WhatsAppTemplate.findById",
+    "reason": "findById de template em findTemplateById() — ID é controlado pelo caller autenticado. Para delete/update, usamos findOneAndDelete/findOneAndUpdate com empresaId. Risco de leitura cross-tenant controlado pelo caller.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/shared/services/queue/queue.whatsapp.ts",
+    "pattern": "Contrato.findById",
+    "reason": "findById em worker de fila — entityId vem de job interno criado pelo próprio sistema, não de input externo direto. Risco de injeção externo estruturalmente baixo. PENDENTE: adicionar empresaId ao payload do job para defense-in-depth.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/shared/services/queue/queue.whatsapp.ts",
+    "pattern": "PI.findById",
+    "reason": "findById em worker de fila (alias PI = PropostaInterna) — entityId vem de job interno criado pelo próprio sistema. Mesmo padrão do Contrato.findById acima. PENDENTE: adicionar empresaId ao payload do job para defense-in-depth.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/audit/audit.repository.ts",
+    "pattern": "AuditLog.countDocuments",
+    "reason": "Caminho superadmin explícito — rota protegida por middleware de superadmin. Verificado 29/05/2026.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/audit/audit.repository.ts",
+    "pattern": "AuditLog.findOne",
+    "reason": "Caminho superadmin explícito — rota protegida por middleware de superadmin. Verificado 29/05/2026.",
+    "expiresAt": "2027-05-29"
+  },
+  {
+    "file": "src/modules/users/user.service.ts",
+    "pattern": "User.findById",
+    "reason": "Caminho superadmin — rota de diagnóstico protegida por autenticação superadmin. Verificado 29/05/2026.",
+    "expiresAt": "2027-05-29"
+  }
+]

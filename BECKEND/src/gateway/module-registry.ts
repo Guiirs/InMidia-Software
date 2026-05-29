@@ -52,6 +52,7 @@ import regionsRoutes from '@modules/regions/regions.routes';
 import clientsV4Routes from '@modules/clientes/clients.routes';
 import mediaRoutes from '@modules/media/media.routes';
 import publicPlatesRoutes from '@modules/public-plates/public-plates.routes';
+import diagnosticsRoutes from '@modules/diagnostics/diagnostics.routes';
 
 export interface ModuleDefinition {
   name: string;
@@ -447,6 +448,15 @@ export const modules: ModuleDefinition[] = [
     basePath: '/api/v1/checking',
     router: checkingRoutes,
     description: 'Health checks e monitoramento',
+    domain: 'system',
+    version: '1.0.0',
+    enabled: true,
+  },
+  {
+    name: 'diagnostics',
+    basePath: '/api/v1/diagnostics',
+    router: diagnosticsRoutes,
+    description: 'Diagnosticos internos operacionais protegidos por admin',
     domain: 'system',
     version: '1.0.0',
     enabled: true,

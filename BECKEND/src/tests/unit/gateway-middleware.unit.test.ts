@@ -2,6 +2,26 @@ import express from 'express';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 
+jest.mock('../../shared/infra/http/middlewares/auth.middleware', () => ({
+  __esModule: true,
+  default: (req: any, res: any, next: any) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      res.status(401).json({
+        success: false,
+        code: 'AUTH_REQUIRED',
+        message: 'Autenticacao obrigatoria.',
+      });
+      return;
+    }
+
+    const decoded = jwt.verify(authHeader.slice(7), process.env.JWT_SECRET!) as any;
+    req.user = decoded;
+    req.tenantContext = { empresaId: String(decoded.empresaId), authSource: 'jwt' };
+    next();
+  },
+}));
+
 describe('gatewayMiddleware policies', () => {
   const originalJwtSecret = process.env.JWT_SECRET;
 

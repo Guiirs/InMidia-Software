@@ -29,7 +29,10 @@
     "typecheck:active": "tsc -p tsconfig.active.json",
     "ci:typecheck": "tsc -p tsconfig.active.json",
     "check:ts-nocheck": "node scripts/check-ts-nocheck.js",
-    "check:ts-nocheck:report": "node scripts/check-ts-nocheck.js --report"
+    "check:ts-nocheck:report": "node scripts/check-ts-nocheck.js --report",
+    "audit:multitenancy": "ts-node scripts/audit-multitenancy-queries.ts",
+    "audit:multitenancy:report": "ts-node scripts/audit-multitenancy-queries.ts --report",
+    "audit:multitenancy:json": "ts-node scripts/audit-multitenancy-queries.ts --json"
   },
   "keywords": [],
   "author": "",

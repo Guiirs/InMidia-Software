@@ -9,7 +9,7 @@ import { CreateWebhookInput, UpdateWebhookInput, ListWebhooksQuery, WebhookEntit
 export class WebhookService {
   constructor(private readonly webhookRepository: WebhookRepository) {}
 
-  async createWebhook(data: CreateWebhookInput): Promise<Result<WebhookEntity, DomainError>> {
+  async createWebhook(data: CreateWebhookInput & { empresaId: string }): Promise<Result<WebhookEntity, DomainError>> {
     return this.webhookRepository.create(data);
   }
 
@@ -27,16 +27,16 @@ export class WebhookService {
     return Result.ok(result.value);
   }
 
-  async listWebhooks(query: ListWebhooksQuery): Promise<Result<PaginatedWebhooksResponse, DomainError>> {
-    return this.webhookRepository.list(query);
+  async listWebhooks(query: ListWebhooksQuery, empresaId: string): Promise<Result<PaginatedWebhooksResponse, DomainError>> {
+    return this.webhookRepository.list({ ...query, empresaId });
   }
 
-  async updateWebhook(id: string, data: UpdateWebhookInput): Promise<Result<WebhookEntity, DomainError>> {
-    return this.webhookRepository.update(id, data);
+  async updateWebhook(id: string, empresaId: string, data: UpdateWebhookInput): Promise<Result<WebhookEntity, DomainError>> {
+    return this.webhookRepository.update(id, empresaId, data);
   }
 
-  async deleteWebhook(id: string): Promise<Result<void, DomainError>> {
-    return this.webhookRepository.delete(id);
+  async deleteWebhook(id: string, empresaId: string): Promise<Result<void, DomainError>> {
+    return this.webhookRepository.delete(id, empresaId);
   }
 
   async executeWebhook(id: string, event: string, payload: any): Promise<Result<WebhookExecutionLog, DomainError>> {

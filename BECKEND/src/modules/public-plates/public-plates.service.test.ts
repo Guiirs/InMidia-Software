@@ -1,6 +1,10 @@
+import { Types } from 'mongoose';
 import Placa from '@modules/placas/Placa';
 import Regiao from '@modules/regioes/Regiao';
 import { comparePublicPlacasNaturally, listPlacas } from './public-plates.service';
+
+// Valid ObjectId for test empresa — required by commercialAvailabilityProjection
+const TEST_EMPRESA_ID = new Types.ObjectId().toHexString();
 
 jest.mock('@modules/placas/Placa', () => ({
   __esModule: true,
@@ -14,6 +18,18 @@ jest.mock('@modules/regioes/Regiao', () => ({
   __esModule: true,
   default: {
     find: jest.fn(),
+  },
+}));
+
+jest.mock('@modules/commercial-availability', () => ({
+  commercialAvailabilityProjection: {
+    resolveManyPlateCommercialStatuses: jest.fn().mockImplementation(async ({ placaIds }: { placaIds: string[] }) => {
+      const map = new Map<string, { status: string; isCommerciallyAvailable: boolean; source: string }>();
+      for (const id of placaIds) {
+        map.set(id, { status: 'AVAILABLE', isCommerciallyAvailable: true, source: 'fallback_legacy' });
+      }
+      return map;
+    }),
   },
 }));
 
@@ -62,8 +78,8 @@ describe('public-plates natural sort', () => {
       ]),
     } as any);
 
-    const page1 = await listPlacas('empresa-1', {}, { page: 1, limit: 2 });
-    const page2 = await listPlacas('empresa-1', {}, { page: 2, limit: 2 });
+    const page1 = await listPlacas(TEST_EMPRESA_ID, {}, { page: 1, limit: 2 });
+    const page2 = await listPlacas(TEST_EMPRESA_ID, {}, { page: 2, limit: 2 });
 
     expect(page1.data.map((item) => item.codigo)).toEqual(['Placa 1', 'Placa 2']);
     expect(page2.data.map((item) => item.codigo)).toEqual(['Placa 10']);

@@ -75,6 +75,21 @@ function hasReservationState(placa) {
   );
 }
 
+function mapCommercialStatus(placa) {
+  const status = asString(
+    placa?.temporalStatus ||
+    placa?.commercialStatus ||
+    placa?.statusComercial
+  ).toUpperCase();
+
+  if (!status) return null;
+  if (status === 'CONTRACTED_ACTIVE' || status === 'OCCUPIED') return 'ocupada';
+  if (status === 'RESERVED' || status === 'FUTURE_RESERVED' || status === 'RESERVED_FUTURE') return 'reservada';
+  if (status === 'MAINTENANCE' || status === 'UNAVAILABLE') return 'manutencao';
+  if (status === 'AVAILABLE') return 'disponivel';
+  return null;
+}
+
 function hasOccupiedState(placa) {
   return Boolean(
     placa?.aluguel_ativo ||
@@ -125,6 +140,11 @@ function mapExplicitStatus(rawStatus) {
 }
 
 export function getBoardOperationalStatus(placa = {}) {
+  const commercial = mapCommercialStatus(placa);
+  if (commercial) {
+    return commercial;
+  }
+
   const explicit = mapExplicitStatus(
     placa?.statusOperacional ||
     placa?.status ||

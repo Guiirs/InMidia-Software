@@ -1,6 +1,7 @@
 // src/shared/infra/monitoring/metrics.ts
 import { register, collectDefaultMetrics, Histogram, Counter, Gauge } from 'prom-client';
 import logger from '@shared/container/logger';
+import { recordDomainRequest, resolveDomainFromPath } from './domain-metrics';
 
 // Enable default metrics collection (CPU, memory, etc.)
 collectDefaultMetrics({ prefix: 'api_' });
@@ -152,6 +153,11 @@ export const metricsMiddleware = (req: any, res: any, next: any) => {
     metrics.activeConnections.dec();
 
     const layer = resolveLayer(req.path || '');
+    recordDomainRequest({
+      domain: resolveDomainFromPath(req.path || ''),
+      durationMs: Date.now() - start,
+      statusCode: res.statusCode,
+    });
     logger.debug(`[Metrics] ${layer} ${method} ${route} ${statusCode} ${duration.toFixed(3)}s`);
   });
 

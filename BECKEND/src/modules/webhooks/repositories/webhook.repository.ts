@@ -16,10 +16,10 @@ const Webhook = {
   async findById(_id: string) {
     return null;
   },
-  async findByIdAndUpdate(_id: string, _data: any, _options: any) {
+  async findOneAndUpdate(_query: any, _data: any, _options: any) {
     return null;
   },
-  async findByIdAndDelete(_id: string) {
+  async findOneAndDelete(_query: any) {
     return null;
   },
   create(data: any) {
@@ -36,10 +36,10 @@ export class WebhookRepository {
   /**
    * Criar webhook
    */
-  async create(data: CreateWebhookInput): Promise<Result<WebhookEntity, DomainError>> {
+  async create(data: CreateWebhookInput & { empresaId: string }): Promise<Result<WebhookEntity, DomainError>> {
     try {
-      // Verificar se já existe webhook com mesma URL
-      const existing = await Webhook.findOne({ url: data.url });
+      // Verificar se já existe webhook com mesma URL no mesmo tenant
+      const existing = await Webhook.findOne({ url: data.url, empresaId: data.empresaId });
       if (existing) {
         return Result.fail(
           new ValidationError([{
@@ -136,11 +136,11 @@ export class WebhookRepository {
   /**
    * Listar webhooks
    */
-  async list(query: ListWebhooksQuery): Promise<Result<PaginatedWebhooksResponse, DomainError>> {
+  async list(query: ListWebhooksQuery & { empresaId: string }): Promise<Result<PaginatedWebhooksResponse, DomainError>> {
     try {
-      const { page = 1, limit = 10, active } = query;
+      const { page = 1, limit = 10, active, empresaId } = query;
 
-      const filter: any = {};
+      const filter: any = { empresaId };
       if (active !== undefined) {
         filter.active = active;
       }
@@ -188,10 +188,10 @@ export class WebhookRepository {
   /**
    * Atualizar webhook
    */
-  async update(id: string, data: UpdateWebhookInput): Promise<Result<WebhookEntity, DomainError>> {
+  async update(id: string, empresaId: string, data: UpdateWebhookInput): Promise<Result<WebhookEntity, DomainError>> {
     try {
-      const webhook = await Webhook.findByIdAndUpdate(
-        id,
+      const webhook = await Webhook.findOneAndUpdate(
+        { _id: id, empresaId },
         {
           ...data,
           updatedAt: new Date()
@@ -233,9 +233,9 @@ export class WebhookRepository {
   /**
    * Deletar webhook
    */
-  async delete(id: string): Promise<Result<void, DomainError>> {
+  async delete(id: string, empresaId: string): Promise<Result<void, DomainError>> {
     try {
-      const webhook = await Webhook.findByIdAndDelete(id);
+      const webhook = await Webhook.findOneAndDelete({ _id: id, empresaId });
 
       if (!webhook) {
         return Result.fail(new NotFoundError('Webhook', id));

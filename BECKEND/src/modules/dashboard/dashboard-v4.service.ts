@@ -6,6 +6,7 @@
 import mongoose, { Model } from 'mongoose';
 import Placa from '@modules/placas/Placa';
 import Aluguel from '@modules/alugueis/Aluguel';
+import { commercialAvailabilityProjection } from '@modules/commercial-availability';
 import { resolveOperationPlateId, resolveOperationSla } from '@modules/operations/services/operations-v4.service';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -50,15 +51,13 @@ export class DashboardV4Service {
     const comModel    = getModel<{ empresaId: string; kind: string; value?: number; status?: string }>('CommercialV4Record');
 
     const [
-      totalBoards,
-      availableBoards,
+      boards,
       activeContracts,
       criticalAlerts,
       pendingTasks,
       pipelineAgg,
     ] = await Promise.all([
-      oid ? Placa.countDocuments({ empresaId: oid }) : 0,
-      oid ? Placa.countDocuments({ empresaId: oid, disponivel: true }) : 0,
+      oid ? Placa.find({ empresaId: oid }).select('_id').lean() : [],
       oid ? Aluguel.countDocuments({
         empresaId: oid,
         status: { $ne: 'cancelado' },
@@ -75,6 +74,14 @@ export class DashboardV4Service {
       ]) ?? [],
     ]);
 
+    const totalBoards = boards.length;
+    const commercialStatuses = await commercialAvailabilityProjection.resolveManyPlateCommercialStatuses({
+      empresaId,
+      placaIds: boards.map((board: any) => String(board._id)),
+      at: now,
+    });
+    const availableBoards = Array.from(commercialStatuses.values())
+      .filter((status) => status.isCommerciallyAvailable).length;
     const occupiedBoards = totalBoards - availableBoards;
     const occupancyRate  = rate(occupiedBoards, totalBoards);
     const commercialPipelineValue = (pipelineAgg as Array<{ total: number }>)[0]?.total ?? 0;

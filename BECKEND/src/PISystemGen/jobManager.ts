@@ -81,8 +81,9 @@ async function startJobGeneratePDF(
   return jobId;
 }
 
-async function getJob(jobId: string) {
-  return PiGenJob.findOne({ jobId }).lean();
+async function getJob(jobId: string, empresaId: string) {
+  if (!empresaId) throw new Error('[PISystemGen] empresaId é obrigatório para getJob');
+  return PiGenJob.findOne({ jobId, empresaId }).lean();
 }
 
 export default { startJobGeneratePDF, getJob, ee };

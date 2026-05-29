@@ -63,11 +63,13 @@ const commonValidationRules = (requiredNumeroPlaca: boolean): ValidationChain[] 
 export const createPlacaValidationRules: ValidationChain[] = [
     ...commonValidationRules(true),
 
-    body('regiao')
-        .notEmpty()
-        .withMessage('A regiao e obrigatoria.')
-        .isMongoId()
-        .withMessage('ID da regiao invalido.')
+    body()
+        .custom((_value, { req }) => {
+            if (!req.body?.regiao && !req.body?.regiaoId && !req.body?.regionId) {
+                throw new Error('A regiao e obrigatoria.');
+            }
+            return true;
+        })
 ];
 
 // Regras de validacao para atualizar uma placa (aceita payload parcial)

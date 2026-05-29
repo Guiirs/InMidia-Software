@@ -1,72 +1,69 @@
-// src/shared/infra/messaging/redis-event-bus.ts
-import { EventBus } from './event-bus.interface';
+import type { EventBus } from './event-bus.interface';
 import { Redis } from 'ioredis';
 import logger from '@shared/container/logger';
+
+const IOREDIS_OPTS = {
+  retryDelayOnFailover: 100,
+  maxRetriesPerRequest: 1,
+  lazyConnect: true,
+  enableOfflineQueue: false,
+  connectTimeout: 3_000,
+  commandTimeout: 2_000,
+} as const;
 
 export class RedisEventBus implements EventBus {
   private publisher: Redis;
   private subscriber: Redis;
   private subscriptions: Map<string, (message: any) => void | Promise<void>> = new Map();
-
   constructor(redisUrl?: string) {
     const url = redisUrl || process.env.REDIS_URL || 'redis://localhost:6379';
 
-    // Publisher client
-    this.publisher = new Redis(url, {
-      retryDelayOnFailover: 100,
-      maxRetriesPerRequest: 3,
-      lazyConnect: true
-    } as any);
-
-    // Subscriber client (separate connection for pub/sub)
-    this.subscriber = new Redis(url, {
-      retryDelayOnFailover: 100,
-      maxRetriesPerRequest: 3,
-      lazyConnect: true
-    } as any);
+    this.publisher = new Redis(url, IOREDIS_OPTS as any);
+    this.subscriber = new Redis(url, IOREDIS_OPTS as any);
 
     this.setupEventHandlers();
   }
 
   private setupEventHandlers(): void {
     this.publisher.on('connect', () => {
-      logger.info('[RedisEventBus] Publisher connected to Redis');
+      logger.info('[RedisEventBus] Publisher connected');
     });
 
-    this.publisher.on('error', (err) => {
-      logger.error('[RedisEventBus] Publisher error:', err.message);
+    this.publisher.on('error', (err: Error) => {
+      // Suppress ECONNREFUSED noise — expected when Redis is not available
+      if (!err.message.includes('ECONNREFUSED') && !err.message.includes('connect ETIMEDOUT')) {
+        logger.warn(`[RedisEventBus] Publisher error: ${err.message}`);
+      }
     });
 
     this.subscriber.on('connect', () => {
-      logger.info('[RedisEventBus] Subscriber connected to Redis');
+      logger.info('[RedisEventBus] Subscriber connected');
     });
 
-    this.subscriber.on('error', (err) => {
-      logger.error('[RedisEventBus] Subscriber error:', err.message);
+    this.subscriber.on('error', (err: Error) => {
+      if (!err.message.includes('ECONNREFUSED') && !err.message.includes('connect ETIMEDOUT')) {
+        logger.warn(`[RedisEventBus] Subscriber error: ${err.message}`);
+      }
     });
 
-    // Handle incoming messages
     this.subscriber.on('message', async (channel: string, message: string) => {
       try {
         const callback = this.subscriptions.get(channel);
         if (callback) {
-          const parsedMessage = JSON.parse(message);
-          await callback(parsedMessage);
+          await callback(JSON.parse(message));
         }
       } catch (error: any) {
-        logger.error(`[RedisEventBus] Error processing message on channel ${channel}:`, error.message);
+        logger.error(`[RedisEventBus] Error processing message on ${channel}: ${error.message}`);
       }
     });
   }
 
   async publish(topic: string, message: any): Promise<void> {
     try {
-      const serializedMessage = JSON.stringify(message);
-      await this.publisher.publish(topic, serializedMessage);
-      logger.debug(`[RedisEventBus] Published message to topic: ${topic}`);
+      await this.publisher.publish(topic, JSON.stringify(message));
     } catch (error: any) {
-      logger.error(`[RedisEventBus] Error publishing to topic ${topic}:`, error.message);
-      throw error;
+      // Non-fatal — degrade silently
+      logger.debug(`[RedisEventBus] publish failed on ${topic}: ${error.message}`);
     }
   }
 
@@ -74,10 +71,8 @@ export class RedisEventBus implements EventBus {
     try {
       this.subscriptions.set(topic, callback);
       await this.subscriber.subscribe(topic);
-      logger.info(`[RedisEventBus] Subscribed to topic: ${topic}`);
     } catch (error: any) {
-      logger.error(`[RedisEventBus] Error subscribing to topic ${topic}:`, error.message);
-      throw error;
+      logger.warn(`[RedisEventBus] subscribe failed on ${topic}: ${error.message}`);
     }
   }
 
@@ -85,23 +80,20 @@ export class RedisEventBus implements EventBus {
     try {
       this.subscriptions.delete(topic);
       await this.subscriber.unsubscribe(topic);
-      logger.info(`[RedisEventBus] Unsubscribed from topic: ${topic}`);
     } catch (error: any) {
-      logger.error(`[RedisEventBus] Error unsubscribing from topic ${topic}:`, error.message);
-      throw error;
+      logger.debug(`[RedisEventBus] unsubscribe failed on ${topic}: ${error.message}`);
     }
   }
 
   async close(): Promise<void> {
     try {
       this.subscriptions.clear();
-      await Promise.all([
+      await Promise.allSettled([
         this.publisher.quit(),
-        this.subscriber.quit()
+        this.subscriber.quit(),
       ]);
-      logger.info('[RedisEventBus] Closed all connections');
-    } catch (error: any) {
-      logger.error('[RedisEventBus] Error closing connections:', error.message);
+    } catch {
+      // non-fatal on close
     }
   }
 }

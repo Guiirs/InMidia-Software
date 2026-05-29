@@ -85,19 +85,17 @@ function isBlockingBackfill(status: TemporalReservationStatus): boolean {
 }
 
 export class TemporalBackfillService {
-  async runBackfill(input: { empresaId?: string; createdBy?: string; now?: Date } = {}): Promise<TemporalBackfillReport> {
+  async runBackfill(input: { empresaId: string; createdBy?: string; now?: Date }): Promise<TemporalBackfillReport> {
     const now = input.now ?? new Date();
     const report = emptyReport();
 
-    if (input.empresaId) {
-      await temporalEngine.recordEvent({
-        empresaId: input.empresaId,
-        eventType: 'TEMPORAL_BACKFILL_STARTED',
-        message: 'Backfill temporal iniciado.',
-        metadata: { now: now.toISOString() },
-        createdBy: input.createdBy,
-      });
-    }
+    await temporalEngine.recordEvent({
+      empresaId: input.empresaId,
+      eventType: 'TEMPORAL_BACKFILL_STARTED',
+      message: 'Backfill temporal iniciado.',
+      metadata: { now: now.toISOString() },
+      createdBy: input.createdBy,
+    });
 
     const candidates = await this.buildCandidates(input.empresaId, now);
     for (const candidate of candidates) {
@@ -105,26 +103,23 @@ export class TemporalBackfillService {
       await this.processCandidate(candidate, report, input.createdBy);
     }
 
-    if (input.empresaId) {
-      await temporalEngine.recordEvent({
-        empresaId: input.empresaId,
-        eventType: 'TEMPORAL_BACKFILL_COMPLETED',
-        message: 'Backfill temporal concluido.',
-        metadata: report,
-        createdBy: input.createdBy,
-      });
-    }
+    await temporalEngine.recordEvent({
+      empresaId: input.empresaId,
+      eventType: 'TEMPORAL_BACKFILL_COMPLETED',
+      message: 'Backfill temporal concluido.',
+      metadata: report,
+      createdBy: input.createdBy,
+    });
 
     return report;
   }
 
-  private async buildCandidates(empresaId: string | undefined, now: Date): Promise<Candidate[]> {
-    const empresaFilter = empresaId ? { empresaId } : {};
+  private async buildCandidates(empresaId: string, now: Date): Promise<Candidate[]> {
     const [contracts, pisWithContracts, pis, rentals] = await Promise.all([
-      Contrato.find(empresaFilter).populate('piId').lean<any[]>(),
-      Contrato.find(empresaFilter).select('piId').lean<any[]>(),
-      PropostaInterna.find(empresaFilter).lean<any[]>(),
-      Aluguel.find(empresaFilter).lean<any[]>(),
+      Contrato.find({ empresaId }).populate('piId').lean<any[]>(),
+      Contrato.find({ empresaId }).select('piId').lean<any[]>(),
+      PropostaInterna.find({ empresaId }).lean<any[]>(),
+      Aluguel.find({ empresaId }).lean<any[]>(),
     ]);
 
     const contractPiIds = new Set(pisWithContracts.map((contract) => asString(contract.piId)).filter(Boolean));

@@ -4,6 +4,7 @@ import { eventBus } from '../../modules/realtime/event-bus.service';
 import {
   app,
   clearDatabase,
+  ensureTestEmpresa,
   generateTestToken,
   setupIntegrationDb,
   TEST_EMPRESA_ID,
@@ -277,9 +278,11 @@ describe('Campaigns V4 integration', () => {
       .send({ name: 'Tenant A Campaign' })
       .expect(201);
 
+    const otherTenantId = new Types.ObjectId().toString();
+    await ensureTestEmpresa(otherTenantId);
     const otherTenantToken = generateTestToken({
       role: 'admin_empresa',
-      empresaId: new Types.ObjectId().toString(),
+      empresaId: otherTenantId,
     });
 
     const res = await request(app)
@@ -299,9 +302,11 @@ describe('Campaigns V4 integration', () => {
       .expect(201);
 
     const id = createdRes.body.data.campaign.id;
+    const otherTenantId = new Types.ObjectId().toString();
+    await ensureTestEmpresa(otherTenantId);
     const otherToken = generateTestToken({
       role: 'admin_empresa',
-      empresaId: new Types.ObjectId().toString(),
+      empresaId: otherTenantId,
     });
 
     const res = await request(app)

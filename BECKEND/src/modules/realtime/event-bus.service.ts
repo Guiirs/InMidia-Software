@@ -46,6 +46,22 @@ class EventBusService {
     realtimeMetrics.setActiveEventListeners(count);
   }
 
+  diagnostics(): {
+    channel: string;
+    listenerCount: number;
+    listenerWarnThreshold: number;
+    recentEvents: number;
+    maxRecentEvents: number;
+  } {
+    return {
+      channel: EVENT_CHANNEL,
+      listenerCount: this.emitter.listenerCount(EVENT_CHANNEL),
+      listenerWarnThreshold: LISTENER_WARN_THRESHOLD,
+      recentEvents: this.recentEvents.length,
+      maxRecentEvents: MAX_RECENT_EVENTS,
+    };
+  }
+
   getRecentEvents(companyId?: string, sinceIso?: string): OperationalEvent[] {
     const sinceMs = sinceIso ? new Date(sinceIso).getTime() : Number.NaN;
 

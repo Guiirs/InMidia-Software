@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { Types } from 'mongoose';
 
 import Empresa from '@modules/empresas/Empresa';
+import TemporalReservation from '@modules/temporal/TemporalReservation';
 import { publicApiKeyManager } from '@modules/public-api/managers/public-api-key.manager';
 import {
   app,
@@ -184,6 +185,16 @@ describe('Public plates integration', () => {
       empresaId: empresa._id,
       numero_placa: 'PUB-002',
       statusComercial: 'RESERVED',
+    });
+    await TemporalReservation.create({
+      empresaId: empresa._id,
+      plateId: placa._id,
+      sourceType: 'PI',
+      sourceId: new Types.ObjectId().toString(),
+      startDate: new Date(Date.now() - 86400000),
+      endDate: new Date(Date.now() + 86400000),
+      status: 'RESERVED',
+      reason: 'Reserva publica de teste',
     });
 
     const res = await request(app)

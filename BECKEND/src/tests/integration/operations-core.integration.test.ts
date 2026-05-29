@@ -33,6 +33,7 @@ import {
 import {
   app,
   clearDatabase,
+  ensureTestEmpresa,
   generateTestToken,
   setupIntegrationDb,
   TEST_EMPRESA_ID,
@@ -41,12 +42,10 @@ import {
 
 describe('Operation Area Core V4.1 integration', () => {
   let adminToken: string;
-  let gestorToken: string;
 
   beforeAll(async () => {
     await setupIntegrationDb();
     adminToken  = generateTestToken({ role: 'admin_empresa' });
-    gestorToken = generateTestToken({ role: 'gestor' });
   });
 
   afterAll(async () => { await teardownIntegrationDb(); });
@@ -303,7 +302,9 @@ describe('Operation Area Core V4.1 integration', () => {
       expect(task.payload.plateId).toBe(String(plate._id));
     });
 
-    const otherToken = generateTestToken({ role: 'admin_empresa', empresaId: new Types.ObjectId().toString() });
+    const otherTenantId = new Types.ObjectId().toString();
+    await ensureTestEmpresa(otherTenantId);
+    const otherToken = generateTestToken({ role: 'admin_empresa', empresaId: otherTenantId });
     const otherRes = await request(app)
       .get(`/api/v4/operations/by-plate/${plate._id}`)
       .set('Authorization', `Bearer ${otherToken}`)
@@ -325,7 +326,9 @@ describe('Operation Area Core V4.1 integration', () => {
     expect(res.body.data.total).toBe(1);
     expect(res.body.data.tasks[0].regionId).toBe(String(regionId));
 
-    const otherToken = generateTestToken({ role: 'admin_empresa', empresaId: new Types.ObjectId().toString() });
+    const otherTenantId = new Types.ObjectId().toString();
+    await ensureTestEmpresa(otherTenantId);
+    const otherToken = generateTestToken({ role: 'admin_empresa', empresaId: otherTenantId });
     const otherRes = await request(app)
       .get(`/api/v4/operations/by-region/${regionId}`)
       .set('Authorization', `Bearer ${otherToken}`)
@@ -394,6 +397,7 @@ describe('Operation Area Core V4.1 integration', () => {
     }).lean();
 
     expect(events).toHaveLength(1);
-    expect(String((events[0].payload as any).plateId)).toBe(String(plate._id));
+    const event = events[0]!;
+    expect(String((event.payload as any).plateId)).toBe(String(plate._id));
   });
 });

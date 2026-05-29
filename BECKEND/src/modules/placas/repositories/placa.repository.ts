@@ -53,6 +53,18 @@ export class PlacaRepository implements IPlacaRepository {
     createdBy?: string,
   ): Promise<Result<PlacaEntity, DomainError>> {
     try {
+      const existing = await Placa.exists({
+        empresaId,
+        numero_placa: data.numero_placa,
+      });
+      if (existing) {
+        Log.warn('[PlacaRepository] Tentativa de criar placa duplicada', {
+          field: 'numero_placa',
+          empresaId,
+        });
+        return Result.fail(new DuplicateKeyError('numero_placa'));
+      }
+
       const placa = new Placa({
         ...data,
         empresaId,

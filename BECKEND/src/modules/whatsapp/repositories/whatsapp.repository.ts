@@ -37,10 +37,10 @@ const WhatsAppTemplate = {
   async findById(_id: string) {
     return null;
   },
-  async findByIdAndUpdate(_id: string, _data: any, _options: any) {
+  async findOneAndUpdate(_query: any, _data: any, _options: any) {
     return null;
   },
-  async findByIdAndDelete(_id: string) {
+  async findOneAndDelete(_query: any) {
     return null;
   },
   create(data: any) {
@@ -173,10 +173,11 @@ export class WhatsAppRepository {
   /**
    * Criar template
    */
-  async createTemplate(data: CreateTemplateInput): Promise<Result<TemplateEntity, DomainError>> {
+  async createTemplate(data: CreateTemplateInput, empresaId: string): Promise<Result<TemplateEntity, DomainError>> {
+    if (!empresaId) throw new Error('[WhatsAppRepository] empresaId é obrigatório para createTemplate');
     try {
-      // Verificar se já existe template com mesmo nome
-      const existing = await WhatsAppTemplate.findOne({ name: data.name });
+      // Verificar se já existe template com mesmo nome no mesmo tenant
+      const existing = await WhatsAppTemplate.findOne({ name: data.name, empresaId });
       if (existing) {
         return Result.fail(
           new ValidationError([{
@@ -190,6 +191,7 @@ export class WhatsAppRepository {
         name: data.name,
         content: data.message,
         variables: data.variables || [],
+        empresaId,
         active: true,
         createdAt: new Date(),
         updatedAt: new Date()
@@ -249,11 +251,12 @@ export class WhatsAppRepository {
   /**
    * Listar templates
    */
-  async listTemplates(query: ListTemplatesQuery): Promise<Result<PaginatedTemplatesResponse, DomainError>> {
+  async listTemplates(query: ListTemplatesQuery, empresaId: string): Promise<Result<PaginatedTemplatesResponse, DomainError>> {
+    if (!empresaId) throw new Error('[WhatsAppRepository] empresaId é obrigatório para listTemplates');
     try {
       const { page = 1, limit = 10, active } = query;
 
-      const filter: any = {};
+      const filter: any = { empresaId };
       if (active !== undefined) {
         filter.active = active;
       }
@@ -293,10 +296,11 @@ export class WhatsAppRepository {
   /**
    * Atualizar template
    */
-  async updateTemplate(id: string, data: UpdateTemplateInput): Promise<Result<TemplateEntity, DomainError>> {
+  async updateTemplate(id: string, empresaId: string, data: UpdateTemplateInput): Promise<Result<TemplateEntity, DomainError>> {
+    if (!empresaId) throw new Error('[WhatsAppRepository] empresaId é obrigatório para updateTemplate');
     try {
-      const template = await WhatsAppTemplate.findByIdAndUpdate(
-        id,
+      const template = await WhatsAppTemplate.findOneAndUpdate(
+        { _id: id, empresaId },
         {
           ...data,
           updatedAt: new Date()
@@ -330,9 +334,10 @@ export class WhatsAppRepository {
   /**
    * Deletar template
    */
-  async deleteTemplate(id: string): Promise<Result<void, DomainError>> {
+  async deleteTemplate(id: string, empresaId: string): Promise<Result<void, DomainError>> {
+    if (!empresaId) throw new Error('[WhatsAppRepository] empresaId é obrigatório para deleteTemplate');
     try {
-      const template = await WhatsAppTemplate.findByIdAndDelete(id);
+      const template = await WhatsAppTemplate.findOneAndDelete({ _id: id, empresaId });
 
       if (!template) {
         return Result.fail(new NotFoundError('Template', id));

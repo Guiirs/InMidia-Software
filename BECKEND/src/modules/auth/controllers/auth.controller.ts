@@ -316,8 +316,8 @@ export class AuthController {
         clearAuthCookies(res);
 
         void defaultAuditService.recordAuditEvent({
-          empresaId: 'unknown',
-          actor: { userId: 'unknown', name: 'unknown', email: 'unknown', role: 'unknown' },
+          empresaId: null,
+          actor: { type: 'system', userId: null, label: 'system' },
           action: 'auth.refresh.failure',
           module: 'auth',
           entityType: 'session',
@@ -351,8 +351,8 @@ export class AuthController {
       res.cookie(REFRESH_COOKIE, newRefreshToken, getRefreshCookieOptions(req));
 
       void defaultAuditService.recordAuditEvent({
-        empresaId: 'system',
-        actor: { userId: 'system', name: 'system', email: 'system', role: 'system' },
+        empresaId: null,
+        actor: { type: 'system', userId: null, label: 'system' },
         action: 'auth.refresh',
         module: 'auth',
         entityType: 'session',
