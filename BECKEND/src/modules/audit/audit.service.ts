@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { Types } from 'mongoose';
 import logger from '@shared/container/logger';
 import { AuditRepository } from './audit.repository';
 import { redactAuditValue } from './audit.redactor';
@@ -50,28 +51,71 @@ function getAuditErrorDetails(error: unknown): { code: string; reason: string; d
   };
 }
 
+const SYSTEM_ACTOR_SENTINELS = new Set(['system', 'unknown']);
+
+function normalizeObjectIdOrNull(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = String(value).trim();
+  if (!trimmed || SYSTEM_ACTOR_SENTINELS.has(trimmed.toLowerCase())) return null;
+  return Types.ObjectId.isValid(trimmed) ? trimmed : trimmed;
+}
+
+function isSystemActor(input: RecordAuditEventInput): boolean {
+  const actor = input.actor;
+  return (
+    actor?.type === 'system' ||
+    actor?.type === 'service' ||
+    SYSTEM_ACTOR_SENTINELS.has(String(actor?.userId || '').toLowerCase()) ||
+    SYSTEM_ACTOR_SENTINELS.has(String(input.empresaId || '').toLowerCase())
+  );
+}
+
+function normalizeAuditInput(input: RecordAuditEventInput): RecordAuditEventInput {
+  const systemActor = isSystemActor(input);
+  const actorType = input.actor?.type || (systemActor ? 'system' : 'user');
+  const actorLabel =
+    input.actor?.label ||
+    (systemActor ? String(input.actor?.name || input.actor?.userId || 'system') : input.actor?.name || null);
+
+  return {
+    ...input,
+    empresaId: normalizeObjectIdOrNull(input.empresaId),
+    actor: {
+      ...input.actor,
+      type: actorType,
+      label: actorLabel,
+      userId: systemActor ? null : input.actor?.userId ?? null,
+      name: systemActor && SYSTEM_ACTOR_SENTINELS.has(String(input.actor?.name || '').toLowerCase()) ? null : input.actor?.name,
+      email: systemActor && SYSTEM_ACTOR_SENTINELS.has(String(input.actor?.email || '').toLowerCase()) ? null : input.actor?.email,
+      role: systemActor && SYSTEM_ACTOR_SENTINELS.has(String(input.actor?.role || '').toLowerCase()) ? null : input.actor?.role,
+    },
+  };
+}
+
 export class AuditService {
   constructor(private readonly repository: AuditRepositoryLike = new AuditRepository()) {}
 
   async recordAuditEvent(input: RecordAuditEventInput) {
+    const normalizedInput = normalizeAuditInput(input);
     try {
       return await this.repository.create({
-        ...input,
-        before: redactAuditValue(input.before),
-        after: redactAuditValue(input.after),
-        metadata: redactAuditValue(input.metadata) as Record<string, unknown>,
-        correlationId: input.correlationId || randomUUID(),
+        ...normalizedInput,
+        before: redactAuditValue(normalizedInput.before),
+        after: redactAuditValue(normalizedInput.after),
+        metadata: redactAuditValue(normalizedInput.metadata) as Record<string, unknown>,
+        correlationId: normalizedInput.correlationId || randomUUID(),
       });
     } catch (error) {
       const details = getAuditErrorDetails(error);
       const contextParts = [
         `code=${details.code}`,
         `reason=${details.reason}`,
-        `eventType=${sanitizeLogText(input.action)}`,
-        `module=${sanitizeLogText(input.module)}`,
-        `userId=${sanitizeLogText(input.actor?.userId || '-')}`,
-        `empresaId=${sanitizeLogText(input.empresaId || '-')}`,
-        `rid=${sanitizeLogText(input.correlationId || '-')}`,
+        `eventType=${sanitizeLogText(normalizedInput.action)}`,
+        `module=${sanitizeLogText(normalizedInput.module)}`,
+        `actorType=${sanitizeLogText(normalizedInput.actor?.type || '-')}`,
+        `userId=${sanitizeLogText(normalizedInput.actor?.userId || '-')}`,
+        `empresaId=${sanitizeLogText(normalizedInput.empresaId || '-')}`,
+        `rid=${sanitizeLogText(normalizedInput.correlationId || '-')}`,
       ];
       if (details.detail) contextParts.push(details.detail);
 

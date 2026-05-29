@@ -7,6 +7,8 @@ export class AuditRepository {
     return AuditLog.create({
       empresaId: input.empresaId || undefined,
       actorUserId: input.actor?.userId || undefined,
+      actorType: input.actor?.type || 'user',
+      actorLabel: input.actor?.label || undefined,
       actorName: input.actor?.name || undefined,
       actorEmail: input.actor?.email || undefined,
       actorRole: input.actor?.role || undefined,

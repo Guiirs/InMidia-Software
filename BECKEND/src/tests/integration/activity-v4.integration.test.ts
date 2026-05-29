@@ -2,6 +2,7 @@ import request from 'supertest';
 import {
   app,
   clearDatabase,
+  ensureTestEmpresa,
   generateTestToken,
   setupIntegrationDb,
   teardownIntegrationDb,
@@ -182,7 +183,9 @@ describe('Activity V4 integration', () => {
   // ── Tenant isolation ──────────────────────────────────────────
 
   it('nao retorna entradas de outro tenant', async () => {
-    const outroEmpresaToken = generateTestToken({ role: 'admin_empresa', empresaId: 'outro-empresa-id-99' });
+    const outroEmpresaId = '507f1f77bcf86cd799439099';
+    await ensureTestEmpresa(outroEmpresaId);
+    const outroEmpresaToken = generateTestToken({ role: 'admin_empresa', empresaId: outroEmpresaId });
 
     await request(app)
       .post('/api/v4/activity/audit')

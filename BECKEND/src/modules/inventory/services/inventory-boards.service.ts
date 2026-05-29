@@ -1,5 +1,6 @@
 import Placa from '@modules/placas/Placa';
 import Aluguel from '@modules/alugueis/Aluguel';
+import { InventoryProjectionService, boardStatusFromCommercialProjection } from './inventory-projection.service';
 import { regionService } from '@modules/regions/region.service';
 import mongoose from 'mongoose';
 import AppError from '@shared/container/AppError';
@@ -146,6 +147,10 @@ export interface BoardListItem {
   archivedAt: string | null;
   disponivel: boolean;
   status: BoardStatus;
+  commercialStatus?: string;
+  commercialAvailabilitySource?: string;
+  isCommerciallyAvailable?: boolean;
+  isPhysicallyBlocked?: boolean;
   regiao: { id: string; nome: string; codigo?: string } | null;
   valorMensal: number;
   aluguelAtivo: {
@@ -285,9 +290,18 @@ export class InventoryBoardsService {
       rentalsByBoard.get(pid)!.push(a);
     });
 
+    const inventoryProjection = await new InventoryProjectionService().resolveCommercialProjection({
+      empresaId,
+      placaIds: placas.map((placa: any) => String(placa._id)),
+      at: now,
+    });
+
     const boards: BoardListItem[] = placas.map((placa: any) => {
       const rentals = rentalsByBoard.get(String(placa._id)) ?? [];
-      const status = getBoardStatus(placa, rentals, now);
+      const commercialStatus = inventoryProjection.statusByPlateId.get(String(placa._id));
+      const status = commercialStatus
+        ? boardStatusFromCommercialProjection(commercialStatus)
+        : getBoardStatus(placa, rentals, now);
       const activeRental = rentals.find((r) => isActive(r, now)) ?? null;
       const regiaoRaw = placa.regiaoId;
       const coordinates = normalizeInventoryBoardCoordinates(placa);
@@ -325,6 +339,10 @@ export class InventoryBoardsService {
         archivedAt: placa.archivedAt ? (toDate(placa.archivedAt)?.toISOString() ?? null) : null,
         disponivel: placa.disponivel ?? true,
         status,
+        commercialStatus: commercialStatus?.status,
+        commercialAvailabilitySource: commercialStatus?.source,
+        isCommerciallyAvailable: commercialStatus?.isCommerciallyAvailable,
+        isPhysicallyBlocked: commercialStatus?.isPhysicallyBlocked,
         regiao: regiaoRaw && typeof regiaoRaw === 'object'
           ? {
               id: toId(regiaoRaw),

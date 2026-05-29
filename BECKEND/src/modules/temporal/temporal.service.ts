@@ -406,10 +406,6 @@ class TemporalEngineService {
     const plate = await Placa.findOne(plateQuery).lean<any>();
     if (!plate) throw new AppError('Placa nao encontrada.', 404);
 
-    if (plate.disponivel === false || plate.ativa === false) {
-      return 'MAINTENANCE';
-    }
-
     const reservationQuery: Record<string, unknown> = {
       plateId: toObjectId(plateId),
       status: { $in: TEMPORAL_BLOCKING_STATUSES },
@@ -433,6 +429,10 @@ class TemporalEngineService {
 
     const expiredBlocking = reservations.find((reservation) => isBlockingStatus(reservation.status) && reservation.endDate < now);
     if (expiredBlocking) return 'EXPIRED_PENDING_RELEASE';
+
+    if (plate.disponivel === false || plate.ativa === false) {
+      return 'MAINTENANCE';
+    }
 
     return 'AVAILABLE';
   }
@@ -545,7 +545,7 @@ class TemporalEngineService {
     const contractedPlateIds = new Set(contracted.map((r) => String(r.plateId)));
     const reservedPlateIds = new Set(reserved.map((r) => String(r.plateId)));
 
-    const sourceValues = await this.resolveReservationValues(reservations);
+    const sourceValues = await this.resolveReservationValues(empresaId, reservations);
     const activeRevenue = activeBlocking.reduce((sum, reservation) => sum + (sourceValues.get(String(reservation._id)) ?? 0), 0);
     const futureRevenue = futureBlocking.reduce((sum, reservation) => sum + (sourceValues.get(String(reservation._id)) ?? 0), 0);
 
@@ -644,16 +644,17 @@ class TemporalEngineService {
     };
   }
 
-  private async resolveReservationValues(reservations: ITemporalReservation[]): Promise<Map<string, number>> {
+  private async resolveReservationValues(empresaId: string, reservations: ITemporalReservation[]): Promise<Map<string, number>> {
     const values = new Map<string, number>();
     const contractIds = onlyObjectIds(reservations.filter((r) => r.sourceType === 'CONTRACT').map((r) => r.sourceId));
     const piIds = onlyObjectIds(reservations.filter((r) => r.sourceType === 'PI').map((r) => r.sourceId));
     const rentalIds = onlyObjectIds(reservations.filter((r) => r.sourceType === 'LEGACY_RENTAL').map((r) => r.sourceId));
 
+    const empresaObjectId = toObjectId(empresaId);
     const [contracts, pis, rentals] = await Promise.all([
-      contractIds.length > 0 ? Contrato.find({ _id: { $in: contractIds } }).populate('piId', 'valorTotal').lean<any[]>() : [],
-      piIds.length > 0 ? PropostaInterna.find({ _id: { $in: piIds } }).select('valorTotal').lean<any[]>() : [],
-      rentalIds.length > 0 ? Aluguel.find({ _id: { $in: rentalIds } }).lean<any[]>() : [],
+      contractIds.length > 0 ? Contrato.find({ _id: { $in: contractIds }, empresaId: empresaObjectId }).populate('piId', 'valorTotal').lean<any[]>() : [],
+      piIds.length > 0 ? PropostaInterna.find({ _id: { $in: piIds }, empresaId: empresaObjectId }).select('valorTotal').lean<any[]>() : [],
+      rentalIds.length > 0 ? Aluguel.find({ _id: { $in: rentalIds }, empresaId: empresaObjectId }).lean<any[]>() : [],
     ]);
 
     const contractValueById = new Map(contracts.map((contract) => [

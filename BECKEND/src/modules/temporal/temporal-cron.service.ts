@@ -106,7 +106,7 @@ export class TemporalCronService {
     await this.recordSchedulerEvent('TEMPORAL_SCHEDULER_STARTED', 'Manutencao temporal iniciada.', { trigger });
 
     try {
-      const result = await temporalSchedulerService.runDailyTemporalMaintenance(this.daysBeforeEnd);
+      const result = await temporalSchedulerService.runDailyTemporalMaintenance(undefined, this.daysBeforeEnd);
       const summary: TemporalCronSummary = { ...result, status: 'SUCCESS' };
       this.lastSuccessAt = new Date();
       this.lastSummary = summary;

@@ -8,6 +8,7 @@ import {
   createTestRegiao,
   createTestPlaca,
   generateTestToken,
+  ensureTestEmpresa,
   TEST_EMPRESA_ID,
 } from './setup';
 import Aluguel from '../../modules/alugueis/Aluguel';
@@ -326,6 +327,7 @@ describe('Dashboard V4 — nativo (sem dependência do DashboardService v1)', ()
     await seedDashboardData();
 
     const empresaBId = new Types.ObjectId();
+    await ensureTestEmpresa(empresaBId.toString());
     const tokenB = generateTestToken({ empresaId: empresaBId.toString(), role: 'admin_empresa' });
     const regiaoB = await createTestRegiao({ nome: 'Tenant B', codigo: 'TB', empresaId: empresaBId });
     await createTestPlaca(regiaoB._id.toString(), { numero_placa: 'B-DASH-01', empresaId: empresaBId });
@@ -450,6 +452,7 @@ describe('Dashboard V4 — nativo (sem dependência do DashboardService v1)', ()
     if (!AlertRecord) return; // modelo ainda não registrado neste contexto de teste
 
     const empresaBId = new Types.ObjectId();
+    await ensureTestEmpresa(empresaBId.toString());
     const tokenB = generateTestToken({ empresaId: empresaBId.toString(), role: 'admin_empresa' });
 
     // Cria alerta para tenant A

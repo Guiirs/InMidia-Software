@@ -14,6 +14,7 @@ import { prepareOperationSlaAlert } from '../../modules/alerts/services/alerts-v
 import {
   app,
   clearDatabase,
+  ensureTestEmpresa,
   generateTestToken,
   setupIntegrationDb,
   TEST_EMPRESA_ID,
@@ -280,7 +281,9 @@ describe('Operations V4 integration', () => {
       .get('/api/v4/operations/timeline')
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
-    expect(timeline.body.data.events).toHaveLength(1);
+    expect(timeline.body.data.events).toEqual(expect.arrayContaining([
+      expect.objectContaining({ domain: 'operations', type: 'manual' }),
+    ]));
 
     const events = eventBus.getRecentEvents(TEST_EMPRESA_ID, since).map((event) => event.type);
     expect(events).toEqual(expect.arrayContaining([
@@ -309,9 +312,11 @@ describe('Operations V4 integration', () => {
       .send({ title: 'Tenant A', domain: 'operations', priority: 'low' })
       .expect(201);
 
+    const otherTenantId = new Types.ObjectId().toString();
+    await ensureTestEmpresa(otherTenantId);
     const otherTenantToken = generateTestToken({
       role: 'admin_empresa',
-      empresaId: new Types.ObjectId().toString(),
+      empresaId: otherTenantId,
     });
 
     const res = await request(app)
@@ -496,13 +501,12 @@ describe('Operations V4 integration', () => {
     expect(updated.payload.plateId).toBe(String(plate._id));
   });
 
-  it('backfill marca ambiguous quando numeroPlaca encontra multiplas placas', async () => {
-    await createPlate({ numero_placa: 'DUP-001' });
-    await createPlate({ numero_placa: 'DUP-001' });
+  it('backfill resolve numeroPlaca unico garantido por tenant', async () => {
+    const plate = await createPlate({ numero_placa: 'DUP-001' });
     await OperationRecord.create({
       empresaId: TEST_EMPRESA_ID,
       kind: 'task',
-      title: 'Legacy duplicada',
+      title: 'Legacy por numero unico',
       domain: 'operations',
       priority: 'medium',
       status: 'pending',
@@ -515,10 +519,10 @@ describe('Operations V4 integration', () => {
       .send({})
       .expect(200);
 
-    expect(res.body.data.updated).toBe(0);
-    expect(res.body.data.ambiguous).toBe(1);
-    const unchanged = await OperationRecord.findOne({ empresaId: TEST_EMPRESA_ID }).lean<any>();
-    expect(unchanged.payload.plateId).toBeUndefined();
+    expect(res.body.data.updated).toBe(1);
+    expect(res.body.data.matchedByPlateNumber).toBe(1);
+    const updated = await OperationRecord.findOne({ empresaId: TEST_EMPRESA_ID }).lean<any>();
+    expect(updated.payload.plateId).toBe(String(plate._id));
   });
 
   it('backfill nao usa endereco para atualizar automaticamente', async () => {
@@ -568,7 +572,6 @@ describe('Operations V4 integration', () => {
 
   it('canonicalization report calcula taxas, breakdowns e samples seguros', async () => {
     await createPlate({ numero_placa: 'DUP-REP' });
-    await createPlate({ numero_placa: 'DUP-REP' });
     await OperationRecord.create([
       {
         empresaId: TEST_EMPRESA_ID,
@@ -600,7 +603,7 @@ describe('Operations V4 integration', () => {
       {
         empresaId: TEST_EMPRESA_ID,
         kind: 'task',
-        title: 'Ambigua',
+        title: 'Legada por numero',
         domain: 'operations',
         priority: 'low',
         status: 'pending',
@@ -618,7 +621,7 @@ describe('Operations V4 integration', () => {
       canonicalOperations: 1,
       legacyOnlyOperations: 2,
       unresolvedOperations: 2,
-      ambiguousOperations: 1,
+      ambiguousOperations: 0,
       canonicalizationRate: 25,
       legacyRate: 50,
       unresolvedRate: 50,
@@ -626,11 +629,10 @@ describe('Operations V4 integration', () => {
     expect(res.body.data.byOperationType).toHaveProperty('INSTALLATION');
     expect(res.body.data.byOperationStatus).toHaveProperty('PENDING');
     expect(res.body.data.samples.unresolved[0]).not.toHaveProperty('payload');
-    expect(res.body.data.samples.ambiguous[0]).toMatchObject({ hasPlateNumber: true });
+    expect(res.body.data.samples.legacyOnly[0]).toMatchObject({ hasPlateNumber: true });
   });
 
-  it('lista fila de resolucao com unresolved e ambiguous sem expor payload bruto', async () => {
-    await createPlate({ numero_placa: 'QUEUE-DUP' });
+  it('lista fila de resolucao com unresolved sem expor payload bruto', async () => {
     await createPlate({ numero_placa: 'QUEUE-DUP' });
     await OperationRecord.create([
       {
@@ -646,7 +648,7 @@ describe('Operations V4 integration', () => {
       {
         empresaId: TEST_EMPRESA_ID,
         kind: 'task',
-        title: 'Fila ambiguous',
+        title: 'Fila resolvida por numero',
         domain: 'operations',
         priority: 'low',
         status: 'pending',
@@ -669,23 +671,19 @@ describe('Operations V4 integration', () => {
       .expect(200);
 
     expect(res.body.data.summary).toMatchObject({
-      total: 2,
+      total: 1,
       unresolved: 1,
-      ambiguous: 1,
+      ambiguous: 0,
       olderThan7Days: 1,
       criticalPriority: 1,
     });
-    expect(res.body.data.summary.byOperationType).toMatchObject({ MAINTENANCE: 1, INSTALLATION: 1 });
-    expect(res.body.data.items).toHaveLength(2);
+    expect(res.body.data.summary.byOperationType).toMatchObject({ MAINTENANCE: 1 });
+    expect(res.body.data.items).toHaveLength(1);
     expect(res.body.data.items[0]).toMatchObject({
       reason: 'UNRESOLVED',
       priority: 'CRITICAL',
       legacyHints: { addressHint: 'Rua Fila' },
       possibleCandidatesCount: 0,
-    });
-    expect(res.body.data.items[1]).toMatchObject({
-      reason: 'AMBIGUOUS',
-      possibleCandidatesCount: 2,
     });
     expect(res.body.data.items[0]).not.toHaveProperty('payload');
     expect(res.body.data.items.map((item: any) => item.safeSummary.title)).not.toContain('Canonica fora da fila');
@@ -712,7 +710,6 @@ describe('Operations V4 integration', () => {
   });
 
   it('fila de resolucao filtra por status, tipo, prioridade, idade e busca', async () => {
-    await createPlate({ numero_placa: 'FILTER-DUP' });
     await createPlate({ numero_placa: 'FILTER-DUP' });
     await OperationRecord.create([
       {
@@ -823,8 +820,7 @@ describe('Operations V4 integration', () => {
     expect(updated.payload.metadata.canonicalizationDiagnostic.status).toBe('UNRESOLVED');
   });
 
-  it('refresh salva diagnostico ambiguous', async () => {
-    await createPlate({ numero_placa: 'DIAG-DUP' });
+  it('refresh salva diagnostico legacy-only para numeroPlaca unico', async () => {
     await createPlate({ numero_placa: 'DIAG-DUP' });
     const operation = await OperationRecord.create({
       empresaId: TEST_EMPRESA_ID,
@@ -840,8 +836,8 @@ describe('Operations V4 integration', () => {
     const result = await service.refreshOperationCanonicalizationDiagnostic(String(operation._id), TEST_EMPRESA_ID);
 
     expect(result.diagnostic).toMatchObject({
-      status: 'AMBIGUOUS',
-      candidateCount: 2,
+      status: 'LEGACY_ONLY',
+      candidateCount: 1,
       matchedBy: 'plateNumber',
       safeHints: { legacyPlateNumber: 'DIAG-DUP' },
     });
@@ -949,7 +945,6 @@ describe('Operations V4 integration', () => {
 
   it('endpoint admin atualiza diagnosticos em lote', async () => {
     await createPlate({ numero_placa: 'BATCH-DUP' });
-    await createPlate({ numero_placa: 'BATCH-DUP' });
     await OperationRecord.create([
       {
         empresaId: TEST_EMPRESA_ID,
@@ -963,7 +958,7 @@ describe('Operations V4 integration', () => {
       {
         empresaId: TEST_EMPRESA_ID,
         kind: 'task',
-        title: 'Batch ambiguous',
+        title: 'Batch legacy-only',
         domain: 'operations',
         priority: 'medium',
         status: 'pending',
@@ -981,7 +976,8 @@ describe('Operations V4 integration', () => {
       totalScanned: 2,
       updated: 2,
       unresolved: 1,
-      ambiguous: 1,
+      legacyOnly: 1,
+      ambiguous: 0,
     });
   });
 

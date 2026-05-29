@@ -229,7 +229,7 @@ describe('Temporal backfill and scheduler', () => {
       status: 'ACTIVE',
     });
 
-    const result = await temporalSchedulerService.expirePastReservations(now);
+    const result = await temporalSchedulerService.expirePastReservations(empresaId, now);
     const reservation = await TemporalReservation.findOne().lean();
 
     expect(result.expiredCount).toBe(1);
@@ -248,7 +248,7 @@ describe('Temporal backfill and scheduler', () => {
       status: 'BLOCKED',
     });
 
-    const result = await temporalSchedulerService.expirePastReservations(now);
+    const result = await temporalSchedulerService.expirePastReservations(empresaId, now);
     const reservation = await TemporalReservation.findOne().lean();
 
     expect(result.expiredCount).toBe(0);
@@ -267,7 +267,7 @@ describe('Temporal backfill and scheduler', () => {
       status: 'ACTIVE',
     });
 
-    const result = await temporalSchedulerService.detectContractsEndingSoon(10, now);
+    const result = await temporalSchedulerService.detectContractsEndingSoon(empresaId, 10, now);
     expect(result.contractsEndingSoon).toBe(1);
   });
 
@@ -283,7 +283,7 @@ describe('Temporal backfill and scheduler', () => {
       status: 'ACTIVE',
     });
 
-    const result = await temporalSchedulerService.detectOrphanTemporalReservations();
+    const result = await temporalSchedulerService.detectOrphanTemporalReservations(empresaId);
     expect(result.orphanReservations).toBe(1);
   });
 
@@ -299,14 +299,14 @@ describe('Temporal backfill and scheduler', () => {
       status: 'ACTIVE',
     });
 
-    const report = await temporalSchedulerService.getTemporalIntegrityReport(now);
+    const report = await temporalSchedulerService.getTemporalIntegrityReport(empresaId, now);
     expect(report.ledgerWithoutOriginal).toHaveLength(1);
   });
 
   it('integrity report detecta contrato sem ledger', async () => {
     await createContractWithPI();
 
-    const report = await temporalSchedulerService.getTemporalIntegrityReport(now);
+    const report = await temporalSchedulerService.getTemporalIntegrityReport(empresaId, now);
 
     expect(report.contractWithoutLedger).toHaveLength(1);
   });

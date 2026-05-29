@@ -4,6 +4,7 @@ import { eventBus } from '../../modules/realtime/event-bus.service';
 import {
   app,
   clearDatabase,
+  ensureTestEmpresa,
   generateTestToken,
   setupIntegrationDb,
   TEST_EMPRESA_ID,
@@ -238,9 +239,11 @@ describe('Commercial V4 integration', () => {
       .send({ clientId: 'client-1', value: 1000, stage: 'lead' })
       .expect(201);
 
+    const otherTenantId = new Types.ObjectId().toString();
+    await ensureTestEmpresa(otherTenantId);
     const otherTenantToken = generateTestToken({
       role: 'admin_empresa',
-      empresaId: new Types.ObjectId().toString(),
+      empresaId: otherTenantId,
     });
 
     const res = await request(app)

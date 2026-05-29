@@ -97,8 +97,11 @@ export function mimeTypeFromStoredPath(value: string | null | undefined): string
 const statusComercialMap: Record<string, PublicPlacaPayload['disponibilidade']> = {
   AVAILABLE: 'disponivel',
   RESERVED: 'reservado',
+  FUTURE_RESERVED: 'reservado',
   OCCUPIED: 'ocupado',
+  CONTRACTED_ACTIVE: 'ocupado',
   UNAVAILABLE: 'indisponivel',
+  MAINTENANCE: 'indisponivel',
 };
 
 let warnedMissingPublicApiBaseUrl = false;
@@ -209,7 +212,7 @@ export function toPublicPlaca(raw: any): PublicPlacaPayload {
     : null;
 
   const endereco = raw.endereco || raw.nomeDaRua || raw.localizacao || null;
-  const statusComercial: string = raw.statusComercial ?? 'AVAILABLE';
+  const statusComercial: string = raw.commercialStatus ?? raw.statusComercial ?? 'AVAILABLE';
   const disponibilidade = statusComercialMap[statusComercial] ?? 'desconhecido';
   const id = raw._id?.toString?.() ?? String(raw._id ?? '');
   const codigo = raw.numero_placa ?? '';

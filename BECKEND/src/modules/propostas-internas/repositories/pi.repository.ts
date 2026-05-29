@@ -35,7 +35,7 @@ export class PIRepository {
     try {
       // Validar cliente existe
       const cliente = await this.clienteModel
-        .findById(data.clienteId)
+        .findOne({ _id: data.clienteId, empresaId: data.empresaId })
         .lean<{ _id: Types.ObjectId; nome: string } | null>()
         .exec();
 
@@ -59,7 +59,7 @@ export class PIRepository {
 
       // Validar placas existem
       const placas = await this.placaModel
-        .find({ _id: { $in: data.placaIds } })
+        .find({ _id: { $in: data.placaIds }, empresaId: data.empresaId })
         .lean<Array<{ _id: Types.ObjectId }>>()
         .exec();
 
@@ -111,10 +111,11 @@ export class PIRepository {
   /**
    * Buscar PI por ID com populate
    */
-  async findById(id: string): Promise<Result<PIEntity | null, DomainError>> {
+  async findById(id: string, empresaId?: string): Promise<Result<PIEntity | null, DomainError>> {
     try {
+      const filter = empresaId ? { _id: id, empresaId } : { _id: id };
       const pi = await this.model
-        .findById(id)
+        .findOne(filter)
         .populate('clienteId', 'nome email')
         .populate('placaIds', 'numero_placa regiaoId')
         .lean<PIEntity | null>()
@@ -197,12 +198,22 @@ export class PIRepository {
   /**
    * Atualizar PI
    */
-  async update(id: string, data: UpdatePIInput): Promise<Result<PIEntity, DomainError>> {
+  async update(id: string, data: UpdatePIInput & { empresaId?: string }): Promise<Result<PIEntity, DomainError>> {
     try {
+      const existing = data.empresaId
+        ? await this.model.findOne({ _id: id, empresaId: data.empresaId }).select('_id empresaId').lean().exec()
+        : null;
+      if (data.empresaId && !existing) {
+        return Result.fail(new NotFoundError('PI', id));
+      }
+
       // Se mudar placas, validar que existem
       if (data.placaIds) {
         const placas = await this.placaModel
-          .find({ _id: { $in: data.placaIds } })
+          .find({
+            _id: { $in: data.placaIds },
+            ...(data.empresaId ? { empresaId: data.empresaId } : {}),
+          })
           .lean<Array<{ _id: Types.ObjectId }>>()
           .exec();
 
@@ -217,6 +228,7 @@ export class PIRepository {
       }
 
       const updateData: any = { ...data };
+      delete updateData.empresaId;
 
       // Se atualizar período, atualizar também campos legados
       if (data.period) {
@@ -231,7 +243,11 @@ export class PIRepository {
       }
 
       const pi = await this.model
-        .findByIdAndUpdate(id, updateData, { new: true })
+        .findOneAndUpdate(
+          data.empresaId ? { _id: id, empresaId: data.empresaId } : { _id: id },
+          updateData,
+          { new: true },
+        )
         .populate('clienteId', 'nome email')
         .populate('placaIds', 'numero_placa regiaoId')
         .lean<PIEntity | null>()
@@ -257,11 +273,11 @@ export class PIRepository {
   /**
    * Deletar PI
    */
-  async delete(id: string): Promise<Result<void, DomainError>> {
+  async delete(id: string, empresaId?: string): Promise<Result<void, DomainError>> {
     try {
-      const result = await this.model.findByIdAndDelete(id).exec();
+      const result = await this.model.deleteOne(empresaId ? { _id: id, empresaId } : { _id: id }).exec();
 
-      if (!result) {
+      if (!result.deletedCount) {
         return Result.fail(
           new NotFoundError('PI', id)
         );
@@ -281,10 +297,10 @@ export class PIRepository {
   /**
    * Buscar PIs por cliente
    */
-  async findByCliente(clienteId: string): Promise<Result<PIEntity[], DomainError>> {
+  async findByCliente(clienteId: string, empresaId?: string): Promise<Result<PIEntity[], DomainError>> {
     try {
       const pis = await this.model
-        .find({ clienteId })
+        .find(empresaId ? { clienteId, empresaId } : { clienteId })
         .populate('placaIds', 'numero_placa regiaoId')
         .sort({ createdAt: -1 })
         .lean<PIEntity[]>()

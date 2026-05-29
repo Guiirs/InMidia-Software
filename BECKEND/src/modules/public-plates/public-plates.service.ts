@@ -1,6 +1,9 @@
 import { Types } from 'mongoose';
 import Placa from '@modules/placas/Placa';
 import Regiao from '@modules/regioes/Regiao';
+import { commercialAvailabilityProjection, type CommercialAvailabilityResult } from '@modules/commercial-availability';
+import { recordProjectionMetric } from '@shared/infra/monitoring/projection-metrics';
+import { projectionCacheService, makeCacheKey, timeBucket, CACHE_TTL_MS } from '@shared/infra/cache';
 import {
   toPublicPlaca,
   toPublicRegiao,
@@ -12,6 +15,7 @@ import {
 
 const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 24;
+const AVAILABILITY_FILTER_CANDIDATE_LIMIT = 500;
 
 const PLACA_PUBLIC_SELECT =
   '_id empresaId numero_placa endereco nomeDaRua localizacao imagemPrincipal imagem imagens tipo tamanho statusComercial statusOperacional regiaoId latitude longitude updatedAt';
@@ -44,21 +48,30 @@ export interface PlacasListResult {
     total: number;
     pages: number;
   };
+  meta?: { cacheHit: boolean; source: string };
 }
 
 type NaturalSortablePlaca = Pick<PublicPlacaPayload, 'codigo' | 'slug'> & {
   nome?: string | null;
 };
 
-/** Maps URL disponibilidade param to statusComercial value. */
-function mapDisponibilidade(value: string): string | null {
-  const map: Record<string, string> = {
-    disponivel: 'AVAILABLE',
-    reservado: 'RESERVED',
-    ocupado: 'OCCUPIED',
-    indisponivel: 'UNAVAILABLE',
+function normalizeDisponibilidade(value: string): PublicPlacaPayload['disponibilidade'] | null {
+  const map: Record<string, PublicPlacaPayload['disponibilidade']> = {
+    disponivel: 'disponivel',
+    reservado: 'reservado',
+    ocupada: 'ocupado',
+    ocupado: 'ocupado',
+    indisponivel: 'indisponivel',
   };
   return map[value.toLowerCase()] ?? null;
+}
+
+function publicCommercialStatus(status: CommercialAvailabilityResult): string {
+  if (status.status === 'CONTRACTED_ACTIVE') return 'CONTRACTED_ACTIVE';
+  if (status.status === 'RESERVED' || status.status === 'FUTURE_RESERVED') return status.status;
+  if (status.status === 'MAINTENANCE') return 'MAINTENANCE';
+  if (status.isCommerciallyAvailable) return 'AVAILABLE';
+  return 'UNAVAILABLE';
 }
 
 function naturalCompare(left: string | null | undefined, right: string | null | undefined): number {
@@ -124,30 +137,43 @@ export async function listPlacas(
     query.tipo = { $regex: new RegExp(filters.categoria, 'i') };
   }
 
-  if (filters.disponibilidade) {
-    const sc = mapDisponibilidade(filters.disponibilidade);
-    if (sc) query.statusComercial = sc;
-  }
-
-  const [total, docs] = await Promise.all([
-    Placa.countDocuments(query),
-    Placa.find(query)
+  const docs = await Placa.find(query)
       .select(PLACA_PUBLIC_SELECT)
       .populate(REGIAO_POPULATE)
-      .lean(),
-  ]);
+      .lean();
 
-  const sortedData = docs
-    .map(toPublicPlaca)
-    .sort((left, right) =>
-      comparePublicPlacasNaturally(
-        { codigo: left.codigo, slug: left.slug, nome: left.codigo },
-        { codigo: right.codigo, slug: right.slug, nome: right.codigo },
-      ),
-    );
+  const sortedDocs = [...docs].sort((left: any, right: any) =>
+    comparePublicPlacasNaturally(
+      { codigo: left.numero_placa, slug: toSlug(left.numero_placa ?? ''), nome: left.numero_placa },
+      { codigo: right.numero_placa, slug: toSlug(right.numero_placa ?? ''), nome: right.numero_placa },
+    ),
+  );
 
   const skip = (page - 1) * limit;
-  const paginatedData = sortedData.slice(skip, skip + limit);
+  const docsToProject = filters.disponibilidade
+    ? sortedDocs.slice(0, AVAILABILITY_FILTER_CANDIDATE_LIMIT)
+    : sortedDocs.slice(skip, skip + limit);
+
+  const commercialStatuses = await commercialAvailabilityProjection.resolveManyPlateCommercialStatuses({
+    empresaId,
+    placaIds: docsToProject.map((doc: any) => String(doc._id)),
+  });
+
+  const projectedData = docsToProject
+    .map((doc: any) => toPublicPlaca({
+      ...doc,
+      commercialStatus: publicCommercialStatus(commercialStatuses.get(String(doc._id))!),
+    }))
+    .filter((placa) => {
+      if (!filters.disponibilidade) return true;
+      const expected = normalizeDisponibilidade(filters.disponibilidade);
+      return !expected || placa.disponibilidade === expected;
+    });
+
+  const paginatedData = filters.disponibilidade
+    ? projectedData.slice(skip, skip + limit)
+    : projectedData;
+  const total = filters.disponibilidade ? projectedData.length : sortedDocs.length;
 
   return {
     data: paginatedData,
@@ -157,6 +183,7 @@ export async function listPlacas(
       total,
       pages: Math.ceil(total / limit),
     },
+    meta: { cacheHit: false, source: 'projection' },
   };
 }
 
@@ -178,14 +205,20 @@ export async function getPlacaBySlug(
       .lean();
     const match = candidates.find((c: any) => toSlug(c.numero_placa ?? '') === slug);
     if (match) {
-      doc = await Placa.findById((match as any)._id)
+      doc = await Placa.findOne({ _id: (match as any)._id, empresaId, statusOperacional: { $ne: 'ARCHIVED' } })
         .select(PLACA_PUBLIC_SELECT)
         .populate(REGIAO_POPULATE)
         .lean();
     }
   }
 
-  return doc ? toPublicPlaca(doc) : null;
+  if (!doc) return null;
+
+  const commercialStatus = await commercialAvailabilityProjection.resolvePlateCommercialStatus({
+    empresaId,
+    placaId: String((doc as any)._id),
+  });
+  return toPublicPlaca({ ...doc, commercialStatus: publicCommercialStatus(commercialStatus) });
 }
 
 export async function getPlacaByIdOrSlug(
@@ -196,17 +229,17 @@ export async function getPlacaByIdOrSlug(
   if (!trimmed) return null;
 
   if (Types.ObjectId.isValid(trimmed)) {
-    const doc = await Placa.findById(trimmed)
+    const doc = await Placa.findOne({ _id: trimmed, empresaId, statusOperacional: { $ne: 'ARCHIVED' } })
       .select(PLACA_PUBLIC_SELECT)
       .populate(REGIAO_POPULATE)
       .lean();
 
-    if (
-      doc &&
-      String(doc.empresaId ?? '') === String(empresaId) &&
-      doc.statusOperacional !== 'ARCHIVED'
-    ) {
-      return toPublicPlaca(doc);
+    if (doc) {
+      const commercialStatus = await commercialAvailabilityProjection.resolvePlateCommercialStatus({
+        empresaId,
+        placaId: String((doc as any)._id),
+      });
+      return toPublicPlaca({ ...doc, commercialStatus: publicCommercialStatus(commercialStatus) });
     }
   }
 
@@ -300,26 +333,69 @@ export async function getPlacaDocForImage(
   return doc ? (doc as PlacaImageDoc) : null;
 }
 
-export async function getDisponibilidade(empresaId: string): Promise<PublicDisponibilidadePayload> {
-  const pipeline = [
-    { $match: { empresaId, statusOperacional: { $ne: 'ARCHIVED' } } },
-    { $group: { _id: '$statusComercial', count: { $sum: 1 } } },
-  ];
+export async function getDisponibilidade(empresaId: string): Promise<PublicDisponibilidadePayload & { cacheHit?: boolean }> {
+  const startedAt = Date.now();
 
-  const results: Array<{ _id: string; count: number }> = await (Placa as any).aggregate(pipeline);
-
-  const counts: Record<string, number> = {};
-  let total = 0;
-  for (const r of results) {
-    counts[r._id] = r.count;
-    total += r.count;
+  // Check cache first (TTL: 60s)
+  const cacheKey = makeCacheKey(empresaId, 'public_disponibilidade', String(timeBucket(CACHE_TTL_MS.PUBLIC_PLATES)));
+  try {
+    const cached = projectionCacheService.get<PublicDisponibilidadePayload & { cacheHit?: boolean }>(cacheKey);
+    if (cached) {
+      recordProjectionMetric({
+        projection: 'public_plates',
+        durationMs: Date.now() - startedAt,
+        cacheHit: true,
+      });
+      return { ...cached, cacheHit: true };
+    }
+  } catch {
+    // cache miss on error — continue to compute
   }
 
-  return {
-    total,
-    disponivel: counts['AVAILABLE'] ?? 0,
-    reservado: counts['RESERVED'] ?? 0,
-    ocupado: counts['OCCUPIED'] ?? 0,
-    indisponivel: counts['UNAVAILABLE'] ?? 0,
+  const docs = await Placa.find({ empresaId, statusOperacional: { $ne: 'ARCHIVED' } })
+    .select('_id')
+    .lean();
+  const commercialStatuses = await commercialAvailabilityProjection.resolveManyPlateCommercialStatuses({
+    empresaId,
+    placaIds: docs.map((doc: any) => String(doc._id)),
+  });
+
+  const counts = {
+    disponivel: 0,
+    reservado: 0,
+    ocupado: 0,
+    indisponivel: 0,
   };
+
+  commercialStatuses.forEach((status) => {
+    const publicStatus = toPublicPlaca({
+      _id: 'status-only',
+      numero_placa: 'status-only',
+      commercialStatus: publicCommercialStatus(status),
+    }).disponibilidade;
+    if (publicStatus === 'desconhecido') return;
+    counts[publicStatus] += 1;
+  });
+
+  const result: PublicDisponibilidadePayload = {
+    total: docs.length,
+    ...counts,
+  };
+
+  // Store in cache
+  try {
+    projectionCacheService.set(cacheKey, result, CACHE_TTL_MS.PUBLIC_PLATES);
+  } catch {
+    // non-fatal
+  }
+
+  recordProjectionMetric({
+    projection: 'public_plates',
+    durationMs: Date.now() - startedAt,
+    plateCount: docs.length,
+    cacheHit: false,
+    rebuild: true,
+  });
+
+  return { ...result, cacheHit: false };
 }

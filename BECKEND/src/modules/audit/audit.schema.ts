@@ -5,6 +5,8 @@ export const auditLogSchema = new Schema<AuditLogDocument>(
   {
     empresaId: { type: Schema.Types.ObjectId, ref: 'Empresa', index: true, required: false },
     actorUserId: { type: String, index: true },
+    actorType: { type: String, enum: ['user', 'system', 'service'], default: 'user', index: true },
+    actorLabel: { type: String, trim: true },
     actorName: { type: String, trim: true },
     actorEmail: { type: String, trim: true },
     actorRole: { type: String, trim: true },

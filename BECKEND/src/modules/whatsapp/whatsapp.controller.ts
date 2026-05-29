@@ -77,7 +77,12 @@ export async function enviarRelatorio(req: AuthReq, res: Response, next: NextFun
             return;
         }
 
-        const sucesso = await whatsappService.enviarRelatorioDisponibilidade();
+        const empresaId = String((req.user as any)?.empresaId || '');
+        if (!empresaId) {
+            res.status(400).json({ sucesso: false, mensagem: 'empresaId é obrigatório para enviar relatório' });
+            return;
+        }
+        const sucesso = await whatsappService.enviarRelatorioDisponibilidade(null, empresaId);
 
         if (sucesso) {
             res.status(200).json({

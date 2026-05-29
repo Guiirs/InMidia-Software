@@ -1,4 +1,7 @@
-// @ts-nocheck — arquivo legado, não usado pelas rotas ativas. Erros TS pré-existentes.
+// @ts-nocheck — DEPRECATED_UNSAFE: Arquivo legado com vulnerabilidades multi-tenant críticas.
+// Data de deprecação: 29/05/2026
+// PROIBIDO executar: todas as queries carecem de empresaId — vazamento cross-tenant confirmado.
+// Ver: PLANO_ACAO_MULTITENANCY.md — Tarefas 1.1 / 2.1
 /**
  * PI Sync Service
  * Sincronização de propostas internas
@@ -15,6 +18,7 @@ class PISyncService {
      * Roda automaticamente a cada 30 minutos
      */
     static async syncPIsWithAlugueis() {
+        throw new Error('[PISyncService] BLOQUEADO: serviço legado desabilitado por vulnerabilidade multi-tenant. Reescreva com empresaId obrigatório antes de usar.');
         logger.info(`[PISyncService] 🔄 Iniciando validação PI ↔ Aluguéis...`);
         
         try {
@@ -194,6 +198,7 @@ class PISyncService {
      * Remove aluguéis órfãos (sem PI correspondente)
      */
     static async cleanOrphanAlugueis() {
+        throw new Error('[PISyncService] BLOQUEADO: serviço legado desabilitado por vulnerabilidade multi-tenant. Reescreva com empresaId obrigatório antes de usar.');
         logger.info(`[PISyncService] 🧹 Limpando aluguéis órfãos...`);
 
         try {

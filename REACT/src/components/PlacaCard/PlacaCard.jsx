@@ -21,11 +21,26 @@ function getStatusInfo(placa) {
 
   const disponivel = placa.disponivel ?? placa.ativa ?? true;
   const { cliente_nome, aluguel_data_inicio, aluguel_data_fim, aluguel_ativo, aluguel_futuro } = placa;
+  const commercialStatus = placa.temporalStatus ?? placa.commercialStatus ?? placa.statusComercial;
 
   let statusText, statusClass, statusGroup;
   let toggleButtonDisabled = false;
 
-  if (aluguel_ativo && cliente_nome && aluguel_data_inicio && aluguel_data_fim) {
+  if (commercialStatus === 'CONTRACTED_ACTIVE' || commercialStatus === 'OCCUPIED') {
+    statusText = 'Ocupada';
+    statusClass = 'placa-card__badge--ocupada';
+    statusGroup = 'ocupada';
+    toggleButtonDisabled = true;
+  } else if (commercialStatus === 'RESERVED' || commercialStatus === 'FUTURE_RESERVED') {
+    statusText = 'Reservada';
+    statusClass = 'placa-card__badge--reservada';
+    statusGroup = 'reservada';
+    toggleButtonDisabled = true;
+  } else if (commercialStatus === 'MAINTENANCE') {
+    statusText = 'ManutenÃ§Ã£o';
+    statusClass = 'placa-card__badge--manutencao';
+    statusGroup = 'manutencao';
+  } else if (aluguel_ativo && cliente_nome && aluguel_data_inicio && aluguel_data_fim) {
     if (aluguel_futuro) {
       statusText = 'Reservada';
       statusClass = 'placa-card__badge--reservada';

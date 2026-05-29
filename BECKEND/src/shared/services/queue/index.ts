@@ -117,6 +117,7 @@ class QueueService {
   }
 
   private _startRetry(): void {
+    if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID) return;
     if (this.retryTimer) return;
     this.retryTimer = setInterval(() => {
       if (redisManager.isConnected() && !this.pdfQueue) {
@@ -125,6 +126,7 @@ class QueueService {
         this._initBullMQ();
       }
     }, 30_000);
+    this.retryTimer.unref?.();
   }
 
   private _stopRetry(): void {

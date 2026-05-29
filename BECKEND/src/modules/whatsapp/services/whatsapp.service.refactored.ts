@@ -31,8 +31,8 @@ export class WhatsAppService {
     return this.whatsappRepository.getMessageStatus(id);
   }
 
-  async createTemplate(data: CreateTemplateInput): Promise<Result<TemplateEntity, DomainError>> {
-    return this.whatsappRepository.createTemplate(data);
+  async createTemplate(data: CreateTemplateInput & { empresaId: string }): Promise<Result<TemplateEntity, DomainError>> {
+    return this.whatsappRepository.createTemplate(data, data.empresaId);
   }
 
   async getTemplateById(id: string): Promise<Result<TemplateEntity, DomainError>> {
@@ -49,15 +49,15 @@ export class WhatsAppService {
     return Result.ok(result.value);
   }
 
-  async listTemplates(query: ListTemplatesQuery): Promise<Result<PaginatedTemplatesResponse, DomainError>> {
-    return this.whatsappRepository.listTemplates(query);
+  async listTemplates(query: ListTemplatesQuery, empresaId: string): Promise<Result<PaginatedTemplatesResponse, DomainError>> {
+    return this.whatsappRepository.listTemplates(query, empresaId);
   }
 
-  async updateTemplate(id: string, data: UpdateTemplateInput): Promise<Result<TemplateEntity, DomainError>> {
-    return this.whatsappRepository.updateTemplate(id, data);
+  async updateTemplate(id: string, empresaId: string, data: UpdateTemplateInput): Promise<Result<TemplateEntity, DomainError>> {
+    return this.whatsappRepository.updateTemplate(id, empresaId, data);
   }
 
-  async deleteTemplate(id: string): Promise<Result<void, DomainError>> {
-    return this.whatsappRepository.deleteTemplate(id);
+  async deleteTemplate(id: string, empresaId: string): Promise<Result<void, DomainError>> {
+    return this.whatsappRepository.deleteTemplate(id, empresaId);
   }
 }

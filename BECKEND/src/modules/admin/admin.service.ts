@@ -23,8 +23,8 @@ const ALLOWED_RBAC_ROLES = [
 class AdminService {
     constructor() {}
 
-    async createUser(userData: any, empresa_id: string): Promise<any> {
-        logger.info(`[AdminService] Tentando criar utilizador para empresa ${empresa_id}.`);
+    async createUser(userData: any, empresaId: string): Promise<any> {
+        logger.info(`[AdminService] Tentando criar utilizador para empresa ${empresaId}.`);
         logger.debug(`[AdminService] Dados recebidos: ${JSON.stringify(userData)}`);
 
         const { username, email, password, nome, sobrenome, role = 'vendedor' } = userData;
@@ -34,9 +34,9 @@ class AdminService {
         }
 
         try {
-            logger.debug(`[AdminService] Verificando existência prévia de username: ${username} ou email: ${email} na empresa ${empresa_id}`);
+            logger.debug(`[AdminService] Verificando existência prévia de username: ${username} ou email: ${email} na empresa ${empresaId}`);
             const userExists = await User.findOne({
-                empresa: empresa_id,
+                empresa: empresaId,
                 $or: [{ username }, { email }]
             }).lean().exec();
 
@@ -51,12 +51,12 @@ class AdminService {
             const newUser = new User({
                 username, email, password: hashedPassword,
                 nome, sobrenome, role,
-                empresa: empresa_id
+                empresa: empresaId
             });
 
             logger.debug(`[AdminService] Tentando salvar novo utilizador ${username} no DB.`);
             const createdUser = await newUser.save();
-            logger.info(`[AdminService] Utilizador ${username} (ID: ${createdUser._id}) criado com sucesso para empresa ${empresa_id}.`);
+            logger.info(`[AdminService] Utilizador ${username} (ID: ${createdUser._id}) criado com sucesso para empresa ${empresaId}.`);
 
             return createdUser.toJSON();
 
@@ -74,14 +74,14 @@ class AdminService {
         }
     }
 
-    async getAllUsers(empresa_id: string): Promise<any[]> {
-        logger.info(`[AdminService] Buscando todos os utilizadores para empresa ${empresa_id}.`);
+    async getAllUsers(empresaId: string): Promise<any[]> {
+        logger.info(`[AdminService] Buscando todos os utilizadores para empresa ${empresaId}.`);
         try {
-            const users = await User.find({ empresa: empresa_id })
+            const users = await User.find({ empresa: empresaId })
                                     .select('username email nome sobrenome role createdAt')
                                     .lean()
                                     .exec();
-            logger.info(`[AdminService] Encontrados ${users.length} utilizadores para empresa ${empresa_id}.`);
+            logger.info(`[AdminService] Encontrados ${users.length} utilizadores para empresa ${empresaId}.`);
             return users;
         } catch (error: any) {
             logger.error(`[AdminService] Erro Mongoose/DB ao buscar todos os utilizadores: ${error.message}`, { stack: error.stack });
@@ -89,8 +89,8 @@ class AdminService {
         }
     }
 
-    async updateUserRole(userId: string, newRole: string, empresa_id: string): Promise<{ message: string }> {
-        logger.info(`[AdminService] Tentando atualizar role do utilizador ${userId} para ${newRole} na empresa ${empresa_id}.`);
+    async updateUserRole(userId: string, newRole: string, empresaId: string): Promise<{ message: string }> {
+        logger.info(`[AdminService] Tentando atualizar role do utilizador ${userId} para ${newRole} na empresa ${empresaId}.`);
 
         if (!newRole || !ALLOWED_RBAC_ROLES.includes(newRole)) {
             throw new AppError("A 'role' fornecida é inválida para RBAC.", 400);
@@ -98,7 +98,7 @@ class AdminService {
 
         try {
             const updateResult = await User.updateOne(
-                { _id: userId, empresa: empresa_id },
+                { _id: userId, empresa: empresaId },
                 { $set: { role: newRole } }
             );
 
@@ -122,15 +122,15 @@ class AdminService {
         }
     }
 
-    async deleteUser(userId: string, adminUserId: string, empresa_id: string): Promise<{ success: boolean }> {
-        logger.info(`[AdminService] Admin ${adminUserId} tentando apagar utilizador ${userId} na empresa ${empresa_id}.`);
+    async deleteUser(userId: string, adminUserId: string, empresaId: string): Promise<{ success: boolean }> {
+        logger.info(`[AdminService] Admin ${adminUserId} tentando apagar utilizador ${userId} na empresa ${empresaId}.`);
 
         if (String(userId) === String(adminUserId)) {
             throw new AppError('Não é possível apagar a sua própria conta de administrador.', 400);
         }
 
         try {
-            const result = await User.deleteOne({ _id: userId, empresa: empresa_id });
+            const result = await User.deleteOne({ _id: userId, empresa: empresaId });
 
             if (result.deletedCount === 0) {
                 throw new AppError('Utilizador não encontrado na sua empresa.', 404);

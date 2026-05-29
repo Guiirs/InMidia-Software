@@ -273,14 +273,9 @@ class WhatsAppService {
                 await message.reply('🔄 Gerando relatório de disponibilidade...');
                 
                 logger.info(`[WhatsApp] Gerando e enviando relatório...`);
-                const sucesso = await this.enviarRelatorioDisponibilidade(message.from);
-                
-                if (sucesso) {
-                    logger.info(`[WhatsApp] ✅ Relatório enviado com sucesso!`);
-                } else {
-                    logger.error(`[WhatsApp] ❌ Falha ao enviar relatório`);
-                    await message.reply('❌ Erro ao gerar relatório. Tente novamente.');
-                }
+                // empresaId não está disponível no contexto do bot — operação rejeitada por segurança multi-tenant
+                logger.warn('[WhatsApp] Comando !placas bloqueado: empresaId obrigatório para relatório multi-tenant');
+                await message.reply('⚠️ Relatório por WhatsApp requer contexto de empresa. Use o painel web.');
             }
             
             // Comando: !help
@@ -337,26 +332,25 @@ class WhatsAppService {
     /**
      * Gera relatório de disponibilidade de placas
      */
-    async gerarRelatorio(empresaId: string | null = null) {
+    async gerarRelatorio(empresaId: string) {
+        if (!empresaId) {
+            throw new Error('[WhatsApp] empresaId é obrigatório para gerarRelatorio()');
+        }
         try {
             const hoje = new Date();
             hoje.setHours(0, 0, 0, 0);
 
-            logger.info(`[WhatsApp] Gerando relatório de disponibilidade para data: ${hoje.toISOString()}`);
+            logger.info(`[WhatsApp] Gerando relatório de disponibilidade para empresa ${empresaId}`);
 
-            // Busca todas as placas
-            const query = empresaId ? { empresaId } : {};
-            const placas = await Placa.find(query)
+            const placas = await Placa.find({ empresaId })
                 .populate('regiaoId', 'nome')
                 .sort({ numero_placa: 1 })
                 .lean();
 
             logger.info(`[WhatsApp] Encontradas ${placas.length} placas no total`);
 
-            // O spread condicional usa objeto explícito para evitar TS2698 com null
-            const empresaFilter: Record<string, unknown> = empresaId ? { empresaId } : {};
             const alugueisAtivos = await Aluguel.find({
-                ...empresaFilter,
+                empresaId,
                 startDate: { $lte: hoje },
                 endDate: { $gte: hoje }
             })
@@ -556,7 +550,10 @@ class WhatsAppService {
     /**
      * Envia relatório de disponibilidade
      */
-    async enviarRelatorioDisponibilidade(chatId: string | null = null) {
+    async enviarRelatorioDisponibilidade(chatId: string | null = null, empresaId: string) {
+        if (!empresaId) {
+            throw new Error('[WhatsApp] empresaId é obrigatório para enviarRelatorioDisponibilidade()');
+        }
         try {
             if (!this.isReady) {
                 logger.warn('[WhatsApp] Cliente não está pronto. Ignorando envio.');
@@ -564,12 +561,12 @@ class WhatsAppService {
             }
 
             const targetChatId = chatId || this.groupId;
-            
+
             // Se não tiver groupId configurado, tenta buscar novamente
             if (!targetChatId) {
                 logger.warn('[WhatsApp] Grupo não configurado. Tentando buscar...');
                 await this.findGroup();
-                
+
                 if (!this.groupId) {
                     logger.error('[WhatsApp] Nenhum chat/grupo configurado para envio.');
                     return false;
@@ -577,10 +574,10 @@ class WhatsAppService {
             }
 
             const finalChatId = chatId || this.groupId;
-            logger.info(`[WhatsApp] Gerando relatório de disponibilidade...`);
-            
+            logger.info(`[WhatsApp] Gerando relatório de disponibilidade para empresa ${empresaId}...`);
+
             // Gera relatório
-            const relatorio = await this.gerarRelatorio();
+            const relatorio = await this.gerarRelatorio(empresaId);
             const mensagem = this.formatarMensagem(relatorio);
 
             // Envia mensagem

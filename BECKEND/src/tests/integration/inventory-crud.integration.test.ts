@@ -11,6 +11,7 @@ import {
   setupIntegrationDb,
   teardownIntegrationDb,
   generateTestToken,
+  ensureTestEmpresa,
   createTestRegiao,
   createTestPlaca,
   TEST_EMPRESA_ID,
@@ -94,9 +95,11 @@ describe('POST /api/v4/inventory/boards', () => {
   });
 
   it('impede criação cross-tenant', async () => {
+    const outroTenantId = new Types.ObjectId().toString();
+    await ensureTestEmpresa(outroTenantId);
     const outroTenantToken = generateTestToken({
       role: 'admin_empresa',
-      empresaId: new Types.ObjectId().toString(),
+      empresaId: outroTenantId,
     });
 
     // O campo regiaoId pertence ao tenant original — mas empresaId no token é diferente.
@@ -182,9 +185,11 @@ describe('DELETE /api/v4/inventory/boards/:id', () => {
 
   it('impede delete cross-tenant', async () => {
     const placa = await createTestPlaca(regiaoId);
+    const outroTenantId = new Types.ObjectId().toString();
+    await ensureTestEmpresa(outroTenantId);
     const outroTenantToken = generateTestToken({
       role: 'admin_empresa',
-      empresaId: new Types.ObjectId().toString(),
+      empresaId: outroTenantId,
     });
 
     const res = await request(app)

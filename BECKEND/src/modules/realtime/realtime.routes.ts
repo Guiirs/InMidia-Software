@@ -12,8 +12,8 @@ router.get('/stream', streamOperationalEvents);
 router.get('/health', authMiddleware, getRealtimeHealth);
 
 /* Log de diagnóstico SSE a cada 5 min — detecta listener leak antecipadamente */
-if (process.env.NODE_ENV !== 'test') {
-  setInterval(() => {
+if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
+  const diagnosticsInterval = setInterval(() => {
     const snap = realtimeMetrics.snapshot();
     logger.info(
       `[RealtimeModule] health clients=${snap.connectedClients} listeners=${snap.activeListeners} ` +
@@ -21,6 +21,7 @@ if (process.env.NODE_ENV !== 'test') {
       `heapMB=${Math.round(snap.memory.heapUsed / 1024 / 1024)} uptime=${snap.uptime}s`,
     );
   }, 5 * 60_000);
+  diagnosticsInterval.unref?.();
 }
 
 export default router;

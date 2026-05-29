@@ -20,6 +20,7 @@ import { projectionService } from '@modules/projections';
 import { mediaPipelineService } from '@modules/media';
 import { mediaService } from '@modules/media/media.service';
 import { temporalEngine } from '@modules/temporal';
+import { commercialAvailabilityProjection } from '@modules/commercial-availability';
 import type { IPlacaRepository } from '../repositories/placa.repository';
 import { resolvePlateHealth } from '../utils/plate-health.utils';
 import {
@@ -667,6 +668,56 @@ export class PlacaService {
     } catch (error) {
       return Result.fail(toDomainError(error));
     }
+  }
+
+  async getPlacasDisponiveis(
+    empresaId: string,
+    startDate: string,
+    endDate: string,
+    query: Record<string, unknown> = {},
+  ): Promise<PlacaEntity[]> {
+    const from = new Date(startDate);
+    const to = new Date(endDate);
+
+    if (!empresaId || Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to <= from) {
+      return [];
+    }
+
+    const listResult = await this.repository.findAll(empresaId, {
+      page: 1,
+      limit: 1000,
+      sortBy: 'numero_placa',
+      order: 'asc',
+      search: typeof query.search === 'string' ? query.search : undefined,
+      regiaoId: typeof query.regiao === 'string'
+        ? query.regiao
+        : typeof query.regiaoId === 'string'
+          ? query.regiaoId
+          : undefined,
+      tipo: typeof query.tipo === 'string' ? query.tipo as any : undefined,
+      includeArchived: false,
+    });
+
+    if (listResult.isFailure) return [];
+
+    const available: PlacaEntity[] = [];
+    for (const placa of listResult.value.data) {
+      const placaId = String((placa as any)._id || (placa as any).id);
+      const [commercialStatus, periodAvailability] = await Promise.all([
+        commercialAvailabilityProjection.resolvePlateCommercialStatus({
+          empresaId,
+          placaId,
+          at: from,
+        }),
+        temporalEngine.checkPlateAvailability(placaId, startDate, endDate, { empresaId }),
+      ]);
+
+      if (commercialStatus.isCommerciallyAvailable && periodAvailability.available) {
+        available.push(placa);
+      }
+    }
+
+    return available;
   }
 
   async getPlacaHealth(

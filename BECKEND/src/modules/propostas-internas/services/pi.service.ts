@@ -44,7 +44,7 @@ export class PIService {
     
     if (alugueisResult.isFailure) {
       // Rollback: deletar PI se aluguéis falharem
-      await this.piRepository.delete(pi._id.toString());
+      await this.piRepository.delete(pi._id.toString(), data.empresaId);
       return Result.fail(alugueisResult.error);
     }
 
@@ -55,8 +55,8 @@ export class PIService {
   /**
    * Buscar PI por ID
    */
-  async getPIById(id: string): Promise<Result<PIEntity, DomainError>> {
-    const result = await this.piRepository.findById(id);
+  async getPIById(id: string, empresaId?: string): Promise<Result<PIEntity, DomainError>> {
+    const result = await this.piRepository.findById(id, empresaId);
     
     if (result.isFailure) {
       return Result.fail(result.error);
@@ -84,7 +84,7 @@ export class PIService {
   /**
    * Atualizar PI
    */
-  async updatePI(id: string, data: UpdatePIInput): Promise<Result<PIEntity, DomainError>> {
+  async updatePI(id: string, data: UpdatePIInput & { empresaId?: string }): Promise<Result<PIEntity, DomainError>> {
     // Se atualizar placas ou período, recriar aluguéis
     if (data.placaIds || data.period) {
       const updateResult = await this.piRepository.update(id, data);
@@ -95,8 +95,8 @@ export class PIService {
 
       const pi = updateResult.value;
 
-      // Deletar aluguéis antigos
-      await this.aluguelModel.deleteMany({ piId: id });
+      // Deletar aluguéis antigos — empresaId é obrigatório em updatePI
+      await this.aluguelModel.deleteMany({ piId: id, empresaId: data.empresaId });
 
       // Criar novos aluguéis
       const alugueisResult = await this._createAlugueisForPI(pi, {
@@ -125,19 +125,20 @@ export class PIService {
   /**
    * Deletar PI
    */
-  async deletePI(id: string): Promise<Result<void, DomainError>> {
-    // Deletar aluguéis associados
-    await this.aluguelModel.deleteMany({ piId: id });
+  async deletePI(id: string, empresaId?: string): Promise<Result<void, DomainError>> {
+    // Deletar aluguéis associados — empresaId é obrigatório em deletePI
+    if (!empresaId) throw new Error('[PIService] empresaId é obrigatório para deletePI');
+    await this.aluguelModel.deleteMany({ piId: id, empresaId });
 
     // Deletar PI
-    return this.piRepository.delete(id);
+    return this.piRepository.delete(id, empresaId);
   }
 
   /**
    * Buscar PIs por cliente
    */
-  async getPIsByCliente(clienteId: string): Promise<Result<PIEntity[], DomainError>> {
-    return this.piRepository.findByCliente(clienteId);
+  async getPIsByCliente(clienteId: string, empresaId?: string): Promise<Result<PIEntity[], DomainError>> {
+    return this.piRepository.findByCliente(clienteId, empresaId);
   }
 
   /**

@@ -4,7 +4,10 @@ import { PublicErrorPresenter } from '@modules/public-api/presenters/public-erro
 import type { PublicApiAuthContext } from '@modules/public-api/contracts/public-api.contracts';
 import * as service from './public-plates.service';
 
-const CACHE_CONTROL = 'public, max-age=60, stale-while-revalidate=300';
+// private: tenant-specific data must never be served by a shared CDN cache.
+// Vary: x-api-key is set by publicApiCacheSafetyMiddleware before this runs;
+// calling res.vary() here is a defence-in-depth fallback.
+const CACHE_CONTROL = 'private, max-age=60';
 
 export interface PublicPlatesRequest extends Request {
   publicApi?: PublicApiAuthContext;
@@ -12,6 +15,7 @@ export interface PublicPlatesRequest extends Request {
 
 function setCacheHeaders(res: Response): void {
   res.set('Cache-Control', CACHE_CONTROL);
+  res.vary('x-api-key');
 }
 
 function empresaId(req: PublicPlatesRequest): string {

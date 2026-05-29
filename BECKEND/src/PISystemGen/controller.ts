@@ -39,7 +39,7 @@ async function postGenerate(req: AuthenticatedRequest, res: Response, next: Next
     });
 
     await checkFinished();
-    const job = await jobManager.getJob(String(jobId));
+    const job = await jobManager.getJob(String(jobId), empresaId);
     if (job && job.status === 'done') {
       if (job.resultPath) { res.sendFile(job.resultPath); return; }
       if (job.resultUrl) { res.redirect(job.resultUrl); return; }
@@ -55,7 +55,8 @@ async function postGenerate(req: AuthenticatedRequest, res: Response, next: Next
 
 async function getStatus(req: Request, res: Response): Promise<void> {
   const { jobId } = req.params;
-  const job = await jobManager.getJob(String(jobId));
+  const empresaId = (req as AuthenticatedRequest).user?.empresaId || '';
+  const job = await jobManager.getJob(String(jobId), empresaId);
   if (!job) { res.status(404).json({ error: 'job not found' }); return; }
   res.json({ ok: true, job });
 }

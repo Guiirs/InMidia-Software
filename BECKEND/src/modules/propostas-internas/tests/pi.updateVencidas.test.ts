@@ -10,6 +10,7 @@ import mongoose, { Types } from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import PropostaInterna from '@modules/propostas-internas/PropostaInterna';
 import Placa from '@modules/placas/Placa';
+import Empresa from '@modules/empresas/Empresa';
 import { temporalEngine, TemporalReservation } from '@modules/temporal';
 import PIService from '@modules/propostas-internas/pi.service';
 
@@ -57,6 +58,8 @@ describe('PIService.updateVencidas', () => {
     empresaId = new Types.ObjectId().toString();
     clienteId = new Types.ObjectId().toString();
     await mongoose.connection.dropDatabase();
+    // updateVencidas itera por Empresa (modelo global) — criar documento de teste
+    await Empresa.create({ _id: new Types.ObjectId(empresaId), nome: 'Test Empresa', cnpj: '00.000.000/0001-00', slug: `test-${empresaId.slice(-6)}` });
   });
 
   afterAll(async () => {
