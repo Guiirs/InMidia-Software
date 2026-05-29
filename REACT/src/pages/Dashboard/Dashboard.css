@@ -40,16 +40,14 @@
 }
 
 .dashboard-summary-card {
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.016) 0%, rgba(255, 255, 255, 0) 100%),
-      rgba(20, 27, 41, 0.94);
+    background: var(--ds-surface);
     border-radius: var(--fdn-radius-md, var(--border-radius));
     padding: 0.8rem;
     display: flex;
     align-items: center;
     gap: 0.8rem;
-    border: 1px solid var(--fdn-color-border-soft, var(--input-border));
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--ds-border);
+    box-shadow: var(--ds-shadow-card);
     min-height: 74px;
 }
 
@@ -61,10 +59,10 @@
     align-items: center;
     justify-content: center;
     font-size: 1.1rem;
-    color: var(--fdn-color-accent, #7485ff);
+    color: var(--ds-primary);
     flex-shrink: 0;
-    background: rgba(116, 133, 255, 0.12);
-    border: 1px solid rgba(116, 133, 255, 0.24);
+    background: var(--ds-primary-icon-bg);
+    border: 1px solid var(--ds-primary-icon-bd);
 }
 
 .dashboard-summary-card__info {
@@ -103,7 +101,7 @@
     width: 100%;
     border-collapse: collapse;
     min-width: 780px;
-    background: rgba(17, 24, 38, 0.42);
+    background: var(--ds-surface);
 }
 
 .dashboard-table th,
@@ -125,7 +123,7 @@
 }
 
 .dashboard-table tbody tr:hover td {
-    background: rgba(116, 133, 255, 0.07);
+    background: var(--ds-primary-hover-bg);
 }
 
 .quick-actions {
@@ -135,20 +133,20 @@
 }
 
 .quick-actions__item {
-    border: 1px solid var(--fdn-color-border-soft, var(--input-border));
+    border: 1px solid var(--ds-border);
     border-radius: var(--fdn-radius-sm, 0.6rem);
     padding: 0.66rem 0.72rem;
-    color: var(--fdn-color-text-strong, var(--text-color));
+    color: var(--ds-text-primary);
     text-decoration: none;
-    background: rgba(17, 25, 40, 0.56);
+    background: var(--ds-surface);
     font-weight: 500;
     font-size: 1.15rem;
     transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
 }
 
 .quick-actions__item:hover {
-    border-color: rgba(116, 133, 255, 0.32);
-    background: rgba(17, 25, 40, 0.8);
+    border-color: var(--ds-primary-active-bd);
+    background: var(--ds-surface-elevated);
     transform: translateY(-1px);
 }
 
@@ -159,15 +157,15 @@
 }
 
 .funnel-card {
-    border: 1px solid var(--fdn-color-border-soft, var(--input-border));
+    border: 1px solid var(--ds-border);
     border-radius: var(--fdn-radius-sm, 0.6rem);
     padding: 0.75rem;
-    background: rgba(17, 25, 40, 0.52);
+    background: var(--ds-surface);
 }
 
 .funnel-card--highlight {
-    border-color: rgba(116, 133, 255, 0.32);
-    background: rgba(116, 133, 255, 0.12);
+    border-color: var(--ds-primary-active-bd);
+    background: var(--ds-primary-hover-bg);
 }
 
 .funnel-card__label {
@@ -193,13 +191,13 @@
 }
 
 .dashboard-list__item {
-    border: 1px solid var(--fdn-color-border-soft, var(--input-border));
+    border: 1px solid var(--ds-border);
     border-radius: var(--fdn-radius-sm, 0.6rem);
     padding: 0.75rem;
     display: flex;
     flex-direction: column;
     gap: 0.45rem;
-    background: rgba(17, 25, 40, 0.52);
+    background: var(--ds-surface);
 }
 
 .dashboard-list__item p {
@@ -275,31 +273,8 @@
     color: var(--fdn-color-text, var(--text-color-light));
 }
 
-body.light-theme:not(.foundation-theme) .dashboard-summary-card,
-body.light-theme:not(.foundation-theme) .dashboard-list__item,
-body.light-theme:not(.foundation-theme) .quick-actions__item,
-body.light-theme:not(.foundation-theme) .funnel-card,
-body.light-theme:not(.foundation-theme) .dashboard-table {
-    background: rgba(255, 255, 255, 0.88);
-}
-
-body.foundation-theme .dashboard-card,
-body.foundation-theme .dashboard-summary-card,
-body.foundation-theme .dashboard-list__item,
-body.foundation-theme .quick-actions__item,
-body.foundation-theme .funnel-card,
-body.foundation-theme .dashboard-table {
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.016) 0%, rgba(255, 255, 255, 0) 100%),
-      var(--fdn-color-surface, rgba(20, 27, 41, 0.94));
-}
-
 body.foundation-theme .dashboard-table th {
     background: rgba(148, 163, 184, 0.04);
-}
-
-body.light-theme:not(.foundation-theme) .dashboard-table th {
-    background: rgba(148, 163, 184, 0.08);
 }
 
 @media (max-width: 992px) {

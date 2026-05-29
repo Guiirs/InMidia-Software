@@ -65,9 +65,9 @@ describe('Dashboard empty states', () => {
     expect(html).toContain('INM-001');
   });
 
-  it('mantém seção oportunidades com vazio amigável', () => {
+  it('mantém seção de exceções operacionais com vazio amigável', () => {
     const html = renderToString(<SmartAlerts data={[]} loading={false} />);
-    expect(html).toContain('Oportunidades');
+    expect(html).toContain('Exceções operacionais');
     expect(html).toContain('Sem alertas ativos.');
   });
 });

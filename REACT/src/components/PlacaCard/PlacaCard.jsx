@@ -2,16 +2,22 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getImageUrl, formatDate } from '../../utils/helpers';
+import { PLACA_STATUS, resolvePlacaStatus } from '../../utils/statusMap';
 import './PlacaCard.css';
+
+// ── Constantes ────────────────────────────────────────────────────────────────
+
+const LOCKED_STATUSES = new Set(['ocupada', 'reservada']);
+const OCCUPANCY_STATUSES = new Set(['ocupada', 'reservada']);
 
 // ── Status resolver ───────────────────────────────────────────────────────────
 
 function getStatusInfo(placa) {
   if (!placa) {
     return {
-      statusText: 'Erro',
-      statusClass: 'placa-card__badge--error',
-      statusGroup: 'error',
+      statusText: PLACA_STATUS.erro.label,
+      statusClass: 'placa-card__badge--erro',
+      statusGroup: 'erro',
       toggleButtonIcon: 'fa-exclamation-triangle',
       toggleButtonTitle: 'Erro',
       toggleButtonDisabled: true,
@@ -19,47 +25,10 @@ function getStatusInfo(placa) {
     };
   }
 
+  const key = resolvePlacaStatus(placa);
+  const { label } = PLACA_STATUS[key] ?? PLACA_STATUS.erro;
   const disponivel = placa.disponivel ?? placa.ativa ?? true;
-  const { cliente_nome, aluguel_data_inicio, aluguel_data_fim, aluguel_ativo, aluguel_futuro } = placa;
-  const commercialStatus = placa.temporalStatus ?? placa.commercialStatus ?? placa.statusComercial;
-
-  let statusText, statusClass, statusGroup;
-  let toggleButtonDisabled = false;
-
-  if (commercialStatus === 'CONTRACTED_ACTIVE' || commercialStatus === 'OCCUPIED') {
-    statusText = 'Ocupada';
-    statusClass = 'placa-card__badge--ocupada';
-    statusGroup = 'ocupada';
-    toggleButtonDisabled = true;
-  } else if (commercialStatus === 'RESERVED' || commercialStatus === 'FUTURE_RESERVED') {
-    statusText = 'Reservada';
-    statusClass = 'placa-card__badge--reservada';
-    statusGroup = 'reservada';
-    toggleButtonDisabled = true;
-  } else if (commercialStatus === 'MAINTENANCE') {
-    statusText = 'ManutenÃ§Ã£o';
-    statusClass = 'placa-card__badge--manutencao';
-    statusGroup = 'manutencao';
-  } else if (aluguel_ativo && cliente_nome && aluguel_data_inicio && aluguel_data_fim) {
-    if (aluguel_futuro) {
-      statusText = 'Reservada';
-      statusClass = 'placa-card__badge--reservada';
-      statusGroup = 'reservada';
-    } else {
-      statusText = 'Ocupada';
-      statusClass = 'placa-card__badge--ocupada';
-      statusGroup = 'ocupada';
-    }
-    toggleButtonDisabled = true;
-  } else if (!disponivel) {
-    statusText = 'Manutenção';
-    statusClass = 'placa-card__badge--manutencao';
-    statusGroup = 'manutencao';
-  } else {
-    statusText = 'Disponível';
-    statusClass = 'placa-card__badge--disponivel';
-    statusGroup = 'disponivel';
-  }
+  const toggleButtonDisabled = LOCKED_STATUSES.has(key);
 
   const toggleButtonIcon = disponivel ? 'fa-eye-slash' : 'fa-eye';
   const toggleButtonTitle = disponivel ? 'Colocar em Manutenção' : 'Tirar de Manutenção';
@@ -68,9 +37,9 @@ function getStatusInfo(placa) {
     : toggleButtonTitle;
 
   return {
-    statusText,
-    statusClass,
-    statusGroup,
+    statusText: label,
+    statusClass: `placa-card__badge--${key}`,
+    statusGroup: key,
     toggleButtonIcon,
     toggleButtonTitle,
     toggleButtonDisabled,
@@ -85,10 +54,10 @@ export function PlacaCardSkeleton() {
     <div className="placa-card placa-card--skeleton" aria-hidden="true">
       <div className="placa-card__banner placa-card__banner--skeleton" />
       <div className="placa-card__body">
-        <div className="placa-card__header">
-          <div className="placa-card__header-info">
-            <div className="placa-skeleton placa-skeleton--title" />
-            <div className="placa-skeleton placa-skeleton--subtitle" />
+        <div className="placa-card__identity">
+          <div className="placa-card__identity-main">
+            <div className="placa-skeleton placa-skeleton--code" />
+            <div className="placa-skeleton placa-skeleton--seq" />
           </div>
           <div className="placa-skeleton placa-skeleton--badge" />
         </div>
@@ -129,7 +98,7 @@ function PlacaCard({
   } = useMemo(() => getStatusInfo(placa), [placa]);
 
   const { _id, id, numero_placa, nomeDaRua, imagem, regiao } = placa || {};
-  const { cliente_nome, aluguel_data_inicio, aluguel_data_fim, aluguel_ativo } = placa || {};
+  const { cliente_nome, aluguel_data_inicio, aluguel_data_fim } = placa || {};
   const disponivel = placa?.disponivel ?? placa?.ativa ?? true;
   const placaId = id || _id;
 
@@ -140,10 +109,19 @@ function PlacaCard({
   const displayStreet = nomeDaRua || 'Endereço não informado';
   const displayCode = numero_placa || 'N/A';
 
-  const isRented = aluguel_ativo && cliente_nome && aluguel_data_inicio && aluguel_data_fim;
+  // Bloco de ocupação: apenas quando status indica ocupação E há nome de cliente
+  const showOccupancy = OCCUPANCY_STATUSES.has(statusGroup) && !!cliente_nome;
+  const hasDates = aluguel_data_inicio || aluguel_data_fim;
 
   const handleCardClick = (e) => {
     if (!e.target.closest('button') && placaId) navigate(`/placas/${placaId}`);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleCardClick(e);
+    }
   };
 
   const handleToggleClick = (e) => {
@@ -169,102 +147,113 @@ function PlacaCard({
       onClick={handleCardClick}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && handleCardClick(e)}
-      aria-label={`Placa ${formattedNumber} — ${statusText}`}
+      onKeyDown={handleKeyDown}
+      aria-label={`${displayCode} — ${statusText}`}
     >
-      <header className="placa-card__banner">
+
+      {/* Banner: imagem de fundo sem texto. aria-hidden — identificação está no corpo. */}
+      <div className="placa-card__banner" aria-hidden="true">
         <img
           src={imageUrl}
           alt=""
-          aria-hidden="true"
           className="placa-card__banner-img"
           onError={(e) => { e.target.onerror = null; e.target.src = placeholderUrl; }}
         />
         <div className="placa-card__banner-overlay" />
-        <div className="placa-card__media-top">
-          <span className="placa-card__counter">#{formattedNumber}</span>
-          <span className={`placa-card__badge ${statusClass}`}>{statusText}</span>
-        </div>
-        <div className="placa-card__media-bottom">
-          <p className="placa-card__media-eyebrow">Ativo operacional</p>
-          <h3 className="placa-card__media-title">{displayCode}</h3>
-        </div>
-      </header>
+      </div>
 
       <div className="placa-card__body">
 
-        <div className="placa-card__header">
-          <div className="placa-card__header-info">
-            <h3 className="placa-card__numero">Placa {formattedNumber}</h3>
-            <span className="placa-card__codigo">Código {displayCode}</span>
+        {/* Identidade: código único + número sequencial + badge de status */}
+        <div className="placa-card__identity">
+          <div className="placa-card__identity-main">
+            <h3 className="placa-card__code">{displayCode}</h3>
+            <span className="placa-card__seq" aria-hidden="true">#{formattedNumber}</span>
           </div>
-
-          <div className="placa-card__actions">
-            {canToggle && <button
-              className={`placa-card__action placa-card__action--toggle placa-card__action--${disponivel ? 'disponivel' : 'indisponivel'}`}
-              title={toggleButtonDisabledTitle}
-              aria-label={toggleButtonDisabledTitle}
-              disabled={toggleButtonDisabled || isToggling}
-              onClick={handleToggleClick}
-            >
-              {isToggling
-                ? <i className="fas fa-spinner fa-spin" />
-                : <i className={`fas ${toggleButtonIcon}`} />}
-            </button>}
-            {canEdit && <button
-              className="placa-card__action placa-card__action--edit"
-              title="Editar placa"
-              aria-label="Editar Placa"
-              onClick={handleEditClick}
-              disabled={isToggling || isDeleting}
-            >
-              <i className="fas fa-pencil-alt" />
-            </button>}
-            {canDelete && <button
-              className="placa-card__action placa-card__action--delete"
-              title="Apagar placa"
-              aria-label="Apagar Placa"
-              onClick={handleDeleteClick}
-              disabled={isToggling || isDeleting}
-            >
-              {isDeleting
-                ? <i className="fas fa-spinner fa-spin" />
-                : <i className="fas fa-trash" />}
-            </button>}
-          </div>
+          <span
+            className={`placa-card__badge ${statusClass}`}
+            role="status"
+            aria-label={`Status: ${statusText}`}
+          >
+            {statusText}
+          </span>
         </div>
 
+        {/* Localização: informação principal do card */}
         <div className="placa-card__location">
           <i className="fas fa-map-marker-alt placa-card__location-icon" aria-hidden="true" />
           <span className="placa-card__location-text">{displayStreet}</span>
         </div>
 
-        {isRented && (
+        {/* Ocupação/Reserva: só aparece quando há cliente no status ativo */}
+        {showOccupancy && (
           <div className="placa-card__rental">
             <div className="placa-card__rental-client">
               <i className="fas fa-building" aria-hidden="true" />
               <span>{cliente_nome}</span>
             </div>
-            <div className="placa-card__rental-dates">
-              <span className="placa-card__rental-date">
-                <i className="fas fa-calendar-check" aria-hidden="true" />
-                {formatDate(aluguel_data_inicio)}
-              </span>
-              <span className="placa-card__rental-sep" aria-hidden="true">→</span>
-              <span className="placa-card__rental-date">
-                <i className="fas fa-calendar-times" aria-hidden="true" />
-                {formatDate(aluguel_data_fim)}
-              </span>
-            </div>
+            {hasDates && (
+              <div className="placa-card__rental-dates">
+                <span className="placa-card__rental-date">
+                  <i className="fas fa-calendar-check" aria-hidden="true" />
+                  {formatDate(aluguel_data_inicio)}
+                </span>
+                <span className="placa-card__rental-sep" aria-hidden="true">→</span>
+                <span className="placa-card__rental-date">
+                  <i className="fas fa-calendar-times" aria-hidden="true" />
+                  {formatDate(aluguel_data_fim)}
+                </span>
+              </div>
+            )}
           </div>
         )}
 
+        {/* Footer: região + ações */}
         <div className="placa-card__footer">
           <div className="placa-card__footer-meta">
             <i className="fas fa-layer-group" aria-hidden="true" />
             <span className="placa-card__regiao">{nomeRegiao}</span>
           </div>
-          <span className="placa-card__sync-dot" title="Dados em tempo real" aria-hidden="true" />
+
+          <div className="placa-card__actions" role="group" aria-label="Ações da placa">
+            {canToggle && (
+              <button
+                className={`placa-card__action placa-card__action--toggle placa-card__action--${disponivel ? 'disponivel' : 'indisponivel'}`}
+                title={toggleButtonDisabledTitle}
+                aria-label={toggleButtonDisabledTitle}
+                disabled={toggleButtonDisabled || isToggling}
+                onClick={handleToggleClick}
+              >
+                {isToggling
+                  ? <i className="fas fa-spinner fa-spin" aria-hidden="true" />
+                  : <i className={`fas ${toggleButtonIcon}`} aria-hidden="true" />}
+              </button>
+            )}
+            {canEdit && (
+              <button
+                className="placa-card__action placa-card__action--edit"
+                title="Editar placa"
+                aria-label="Editar placa"
+                disabled={isToggling || isDeleting}
+                onClick={handleEditClick}
+              >
+                <i className="fas fa-pencil-alt" aria-hidden="true" />
+              </button>
+            )}
+            {canDelete && (
+              <button
+                className="placa-card__action placa-card__action--delete"
+                title="Apagar placa"
+                aria-label="Apagar placa"
+                disabled={isToggling || isDeleting}
+                onClick={handleDeleteClick}
+              >
+                {isDeleting
+                  ? <i className="fas fa-spinner fa-spin" aria-hidden="true" />
+                  : <i className="fas fa-trash" aria-hidden="true" />}
+              </button>
+            )}
+          </div>
         </div>
 
       </div>

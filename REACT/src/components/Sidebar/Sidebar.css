@@ -154,9 +154,9 @@ body.foundation-theme .sidebar__nav-container::-webkit-scrollbar-thumb { backgro
 
 .sidebar__nav-link:hover,
 .sidebar__nav-link--active {
-    background: rgba(116, 133, 255, 0.14);
-    border-color: rgba(116, 133, 255, 0.28);
-    color: var(--fdn-color-text-strong, #f4f7fb);
+    background: var(--ds-primary-hover-bg);
+    border-color: var(--ds-primary-active-bd);
+    color: var(--ds-text-primary);
 }
 
 .sidebar__nav-link:hover {
@@ -258,9 +258,9 @@ body.sidebar-collapsed .sidebar__theme-switcher .switch {
 }
 
 .sidebar__theme-switcher:hover {
-    background: rgba(116, 133, 255, 0.14);
-    border-color: rgba(116, 133, 255, 0.28);
-    color: var(--fdn-color-text-strong, #f4f7fb);
+    background: var(--ds-primary-hover-bg);
+    border-color: var(--ds-primary-active-bd);
+    color: var(--ds-text-primary);
 }
 
 .sidebar__theme-switcher i {
@@ -314,7 +314,7 @@ body.sidebar-collapsed .sidebar__theme-switcher .switch {
 }
 
 input:checked + .slider {
-    background-color: var(--fdn-color-accent, #2F80ED);
+    background-color: var(--ds-primary);
 }
 
 input:checked + .slider:before {

@@ -44,11 +44,11 @@ export function AuthProvider({ children }) {
       const storedUserString = localStorage.getItem('user');
 
       if (storedToken && storedUserString) {
-        /* Valida expiraÃ§Ã£o antes de restaurar â€” evita iniciar autenticado com token morto */
+        /* Valida expiração antes de restaurar — evita iniciar autenticado com token morto */
         const decoded = decodeJWT(storedToken);
         const nowSec = Math.floor(Date.now() / 1000);
         if (!decoded?.exp || decoded.exp <= nowSec) {
-          console.warn('[AuthContext] Token expirado no localStorage â€” sessÃ£o nÃ£o restaurada.');
+          console.warn('[AuthContext] Token expirado no localStorage — sessão não restaurada.');
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           setIsLoading(false);
@@ -110,7 +110,7 @@ export function AuthProvider({ children }) {
     }
   }, [logout]);
 
-  const expireSession = useCallback((message = 'Sua sessÃ£o expirou. FaÃ§a login novamente.') => {
+  const expireSession = useCallback((message = 'Sua sessão expirou. Faça login novamente.') => {
     if (!localStorage.getItem('token') && !isAuthenticated) return;
     console.warn('[AuthContext] Sessao expirada:', message);
     setSessionExpired(true);
@@ -118,7 +118,7 @@ export function AuthProvider({ children }) {
   }, [isAuthenticated, logout]);
 
   /* Escuta evento global disparado pelo apiClient quando recebe 403/401 por token expirado.
-     SÃ³ age se ainda houver token no localStorage (evita loop se jÃ¡ deslogado). */
+     Só age se ainda houver token no localStorage (evita loop se já deslogado). */
   useEffect(() => {
     const handleSessionExpired = (event) => {
       expireSession(event?.detail?.message);

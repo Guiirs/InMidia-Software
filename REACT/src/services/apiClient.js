@@ -1,7 +1,7 @@
 ﻿// src/services/apiClient.js
 /**
- * ConfiguraÃ§Ã£o centralizada do Axios
- * ContÃ©m apenas a instÃ¢ncia do apiClient e interceptors
+ * Configuração centralizada do Axios
+ * Contém apenas a instância do apiClient e interceptors
  */
 
 import axios from 'axios';
@@ -51,13 +51,13 @@ const isAuthExpiredResponse = (status, data) => {
   const bodyMsg = (data?.message || data?.mensagem || data?.error || '').toLowerCase();
   return status === 401 && (
     bodyMsg.includes('sessao expirada') ||
-    bodyMsg.includes('sessÃ£o expirada') ||
+    bodyMsg.includes('sessão expirada') ||
     bodyMsg.includes('token expirado') ||
     bodyMsg.includes('expired')
   );
 };
 
-const notifyAuthExpired = (message = 'Sua sessÃ£o expirou. FaÃ§a login novamente.') => {
+const notifyAuthExpired = (message = 'Sua sessão expirou. Faça login novamente.') => {
   if (_sessionExpiredPending) return;
   _sessionExpiredPending = true;
   showToastGlobal(message, 'error');
@@ -101,7 +101,7 @@ const getRequestContext = (config = {}) => {
 };
 
 // -----------------------------------------------------------------------------
-// ConfiguraÃ§Ã£o do Cliente Axios
+// Configuração do Cliente Axios
 // -----------------------------------------------------------------------------
 
 const apiClient = axios.create({
@@ -114,7 +114,7 @@ const apiClient = axios.create({
 });
 
 // -----------------------------------------------------------------------------
-// Interceptors Axios (para gestÃ£o de tokens e erros)
+// Interceptors Axios (para gestão de tokens e erros)
 // -----------------------------------------------------------------------------
 
 apiClient.interceptors.request.use(
@@ -210,7 +210,7 @@ apiClient.interceptors.response.use(
         return Promise.reject(new Error('Sessão expirada. Faça login novamente.'));
       }
 
-      // 403 com mensagem de token expirado â€” backend retorna 403 para TokenExpiredError
+      // 403 com mensagem de token expirado — backend retorna 403 para TokenExpiredError
       if (status === 403 && !isPublicRequest && !isAuthEndpoint) {
         const bodyMsg = (data?.message || data?.mensagem || data?.error || '').toLowerCase();
         const isTokenExpiry =
@@ -236,11 +236,11 @@ apiClient.interceptors.response.use(
             errorMessage = errorData?.message || 'Erro ao processar o arquivo.';
           } catch (e) {
             console.error('[apiClient] Erro ao parsear blob JSON:', e);
-            errorMessage = 'Erro ao ler a resposta de erro (formato JSON invÃ¡lido).';
+            errorMessage = 'Erro ao ler a resposta de erro (formato JSON inválido).';
           }
         } else {
-          errorMessage = `Erro: Recebido arquivo do tipo "${data.type}" ao invÃ©s de JSON.`;
-          console.error('[apiClient] Blob recebido com tipo nÃ£o-JSON:', data.type);
+          errorMessage = `Erro: Recebido arquivo do tipo "${data.type}" ao invés de JSON.`;
+          console.error('[apiClient] Blob recebido com tipo não-JSON:', data.type);
         }
       } else if (data) {
         const validationMessage = Array.isArray(data?.errors)
@@ -255,19 +255,19 @@ apiClient.interceptors.response.use(
           `Erro ${status}`;
       }
 
-      // Mensagens especÃ­ficas por cÃ³digo HTTP â€” nunca silencia nem converte em "manutenÃ§Ã£o"
-      // "ManutenÃ§Ã£o" sÃ³ aparece se a API retornar flag explÃ­cita (ex: data.maintenanceMode === true)
+      // Mensagens específicas por código HTTP — nunca silencia nem converte em “manutenção”
+      // “Manutenção” só aparece se a API retornar flag explícita (ex: data.maintenanceMode === true)
       if (!errorMessage || errorMessage === 'Ocorreu um erro desconhecido.') {
         switch (status) {
-          case 400: errorMessage = 'RequisiÃ§Ã£o invÃ¡lida. Verifique os dados enviados.'; break;
-          case 403: errorMessage = 'Acesso negado. Sem permissÃ£o para esta aÃ§Ã£o.'; break;
-          case 404: errorMessage = 'Recurso nÃ£o encontrado.'; break;
-          case 409: errorMessage = 'Conflito: o recurso jÃ¡ existe ou estÃ¡ em uso.'; break;
-          case 422: errorMessage = 'Dados invÃ¡lidos. Verifique o formulÃ¡rio.'; break;
-          case 429: errorMessage = 'Muitas requisiÃ§Ãµes. Aguarde um momento e tente novamente.'; break;
+          case 400: errorMessage = 'Requisição inválida. Verifique os dados enviados.'; break;
+          case 403: errorMessage = 'Acesso negado. Sem permissão para esta ação.'; break;
+          case 404: errorMessage = 'Recurso não encontrado.'; break;
+          case 409: errorMessage = 'Conflito: o recurso já existe ou está em uso.'; break;
+          case 422: errorMessage = 'Dados inválidos. Verifique o formulário.'; break;
+          case 429: errorMessage = 'Muitas requisições. Aguarde um momento e tente novamente.'; break;
           case 500: errorMessage = 'Erro interno do servidor. Tente novamente mais tarde.'; break;
           case 502: case 503: case 504:
-            errorMessage = 'Servidor temporariamente indisponÃ­vel. Tente novamente em breve.'; break;
+            errorMessage = 'Servidor temporariamente indisponível. Tente novamente em breve.'; break;
           default: errorMessage = `Erro ${status}.`;
         }
       }
@@ -289,16 +289,16 @@ apiClient.interceptors.response.use(
           message: error.message,
         });
       }
-      // Erros de rede/CORS nunca viram "manutenÃ§Ã£o" â€” sÃ£o erros de conectividade
+      // Erros de rede/CORS nunca viram “manutenção” — são erros de conectividade
       if (axios.isCancel(error) || error.code === 'ERR_CANCELED') {
-        return Promise.reject(new Error('RequisiÃ§Ã£o cancelada.'));
+        return Promise.reject(new Error('Requisição cancelada.'));
       }
-      return Promise.reject(new Error('NÃ£o foi possÃ­vel conectar ao servidor. Verifique a sua conexÃ£o.'));
+      return Promise.reject(new Error('Não foi possível conectar ao servidor. Verifique a sua conexão.'));
     } else {
       if (isDev) {
         console.error('[apiClient] CONFIG_ERROR', error.message);
       }
-      return Promise.reject(new Error('Erro ao preparar a requisiÃ§Ã£o: ' + error.message));
+      return Promise.reject(new Error('Erro ao preparar a requisição: ' + error.message));
     }
   }
 );

@@ -208,6 +208,28 @@ code {
   --z-modal:         1050;
   --z-popover:       1060;
   --z-tooltip:       1070;
+
+  /* ─── Tokens de interação da cor primária (semitransparentes, funciona em ambos os temas) ─── */
+  --ds-primary-hover-bg:  rgba(37, 99, 235, 0.14);
+  --ds-primary-active-bd: rgba(37, 99, 235, 0.28);
+  --ds-primary-icon-bg:   rgba(37, 99, 235, 0.12);
+  --ds-primary-icon-bd:   rgba(37, 99, 235, 0.24);
+
+  /* ─── Aliases --fdn-* → --ds-* (uma única fonte de verdade) ─────────────
+     Componentes que ainda usam --fdn-* herdam os valores corretos do DS.
+  ────────────────────────────────────────────────────────────────────────── */
+  --fdn-color-page:        var(--ds-bg);
+  --fdn-color-surface:     var(--ds-surface);
+  --fdn-color-border:      var(--ds-border);
+  --fdn-color-border-soft: var(--ds-border-subtle);
+  --fdn-color-text-strong: var(--ds-text-primary);
+  --fdn-color-text:        var(--ds-text-secondary);
+  --fdn-color-text-muted:  var(--ds-text-muted);
+  --fdn-color-accent:      var(--ds-primary);
+  --fdn-color-danger:      var(--ds-danger);
+  --fdn-radius-sm:         var(--radius-sm);
+  --fdn-radius-md:         var(--radius);
+  --fdn-shadow-card:       var(--ds-shadow-card);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -252,10 +274,25 @@ body.dark-theme {
   --ds-shadow-card:      0 1px 3px 0 rgba(0, 0, 0, 0.30);
   --ds-shadow-card-hover:0 4px 12px 0 rgba(0, 0, 0, 0.40);
   --ds-shadow-modal:     0 20px 60px -10px rgba(0, 0, 0, 0.60);
+
+  /* Semânticos soft/subtle — dark (alpha sobre superfície escura) */
+  --ds-primary-soft:       rgba(37, 99, 235, 0.18);
+  --ds-primary-subtle:     rgba(37, 99, 235, 0.10);
+  --ds-success-soft:       rgba(22, 163, 74, 0.18);
+  --ds-success-subtle:     rgba(22, 163, 74, 0.10);
+  --ds-warning-soft:       rgba(217, 119, 6, 0.18);
+  --ds-warning-subtle:     rgba(217, 119, 6, 0.10);
+  --ds-danger-soft:        rgba(220, 38, 38, 0.18);
+  --ds-danger-subtle:      rgba(220, 38, 38, 0.10);
+  --ds-info-soft:          rgba(8, 145, 178, 0.18);
+  --ds-info-subtle:        rgba(8, 145, 178, 0.10);
+  --ds-intelligence-soft:  rgba(124, 58, 237, 0.18);
+  --ds-intelligence-subtle:rgba(124, 58, 237, 0.10);
 }
 
-/* Alias de retrocompatibilidade — body.light-theme agora é no-op (light é o padrão) */
+/* Alias de retrocompatibilidade — body.light-theme restaura tokens DS para light */
 body.light-theme {
+  /* Legado */
   --bg-color:           #F8FAFC;
   --bg-secondary-color: #FFFFFF;
   --card-background:    #FFFFFF;
@@ -268,6 +305,18 @@ body.light-theme {
   --box-shadow-sm:      0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
   --box-shadow:         0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
   --box-shadow-lg:      0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.06);
+  /* DS tokens light */
+  --ds-bg:               #F8FAFC;
+  --ds-surface:          #FFFFFF;
+  --ds-surface-elevated: #F1F5F9;
+  --ds-border:           #E2E8F0;
+  --ds-border-subtle:    #F1F5F9;
+  --ds-text-primary:     #0F172A;
+  --ds-text-secondary:   #475569;
+  --ds-text-muted:       #64748B;
+  --ds-text-inverse:     #FFFFFF;
+  --ds-shadow-card:      0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --ds-shadow-card-hover:0 4px 12px 0 rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
 }
 
 /* --- UTILITÁRIOS GLOBAIS --- */

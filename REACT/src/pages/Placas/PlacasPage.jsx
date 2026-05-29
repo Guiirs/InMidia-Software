@@ -449,7 +449,7 @@ function PlacasPage() {
           >
             <option value="todos">Todos Status</option>
             <option value="true">Disponível</option>
-            <option value="false">Indisponível (Alugada)</option>
+            <option value="false">Ocupada</option>
             <option value="manutencao">Em Manutenção</option>
           </select>
         </div>

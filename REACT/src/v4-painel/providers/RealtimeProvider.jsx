@@ -224,7 +224,7 @@ function RealtimeProvider({ children }) {
       return;
     }
 
-    /* Impede chamadas concorrentes: se jÃ¡ estÃ¡ no meio de um connect async, ignora. */
+    /* Impede chamadas concorrentes: se já está no meio de um connect async, ignora. */
     if (connectingRef.current) return;
 
     clearReconnectTimer();

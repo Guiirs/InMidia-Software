@@ -15,8 +15,8 @@
   --fdn-color-text: #b0bdd0;
   --fdn-color-text-muted: #8390a6;
 
-  --fdn-color-accent: #7485ff;
-  --fdn-color-accent-soft: rgba(116, 133, 255, 0.13);
+  --fdn-color-accent: var(--ds-primary);
+  --fdn-color-accent-soft: var(--ds-primary-hover-bg);
   --fdn-color-success: #38c78f;
   --fdn-color-warning: #e3b456;
   --fdn-color-danger: #f47474;
