@@ -25,6 +25,9 @@ import '@config/redis';
 // Gateway
 import { bootstrapGateway, getGatewayInfo } from '@gateway/index';
 
+// Security — Block Auth V1
+import { blockAuthMiddleware } from '@security/block-auth/BlockAuthMiddleware';
+
 // Middlewares
 import { errorHandler, sanitize, globalRateLimiter, sseRateLimiter, uploadRateLimiter, publicApiRateLimiter } from './middlewares';
 import { metricsMiddleware, getMetrics } from '@shared/infra/monitoring/metrics';
@@ -289,6 +292,11 @@ app.use(express.urlencoded({ extended: true }));
 
 // Sanitization middleware (NoSQL injection protection — body, params, safeQuery)
 app.use(sanitize);
+
+// Block Auth V1 — Security Gateway (runs after body/cookie parsing, before controllers)
+// Exempt paths (/health, /api/health, etc.) are short-circuited inside the middleware.
+// Fail-open: pipeline errors are logged and the request continues to avoid false blocks.
+app.use(blockAuthMiddleware);
 
 // Static files
 app.use(express.static('public'));

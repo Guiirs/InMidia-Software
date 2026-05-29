@@ -1,6 +1,7 @@
 import { JwtPayload } from 'jsonwebtoken';
 import { ObjectId } from 'mongoose';
 import type { PermissionContext, Role } from '@shared/infra/http/permissions/permissions.types';
+import type { SecurityContext } from '@security/block-auth/types/blockAuth.types';
 
 /**
  * User payload from JWT token
@@ -46,6 +47,7 @@ declare global {
         nome: string;
         cnpj?: string;
       };
+      securityContext?: SecurityContext;
     }
   }
 }

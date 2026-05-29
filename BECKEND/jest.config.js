@@ -25,6 +25,7 @@ module.exports = {
     '^@validators/(.*)$': '<rootDir>/src/validators/$1',
     '^@types/(.*)$': '<rootDir>/src/types/$1',
     '^@gateway/(.*)$': '<rootDir>/src/gateway/$1',
+    '^@security/(.*)$': '<rootDir>/src/security/$1',
   },
   passWithNoTests: true,
 };
