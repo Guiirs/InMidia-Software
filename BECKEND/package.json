@@ -87,7 +87,8 @@
     "@routes": "dist/shared/infra/http/routes",
     "@validators": "dist/validators",
     "@types": "dist/types",
-    "@gateway": "dist/gateway"
+    "@gateway": "dist/gateway",
+    "@security": "dist/security"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
