@@ -1,7 +1,28 @@
 /**
- * Placa Service (OLD)
- * DEPRECADO: Use services/placa.service.ts
+ * @deprecated LEGADO_MORTO — ARQUIVO ARQUIVADO (FASE 7, 2026-06-01)
+ * LEGACY_DO_NOT_USE
+ *
+ * Localização original: src/modules/placas/placa.service.ts
+ * Arquivado em:        src/legacy/archived-placa.service.ts
+ * Remoção planejada:   V4.2
+ *
+ * Classificação: LEGADO_MORTO (FASE 6A, 2026-06-01)
+ *
+ * Razão: Toda a cadeia de produção usa exclusivamente:
+ *   src/modules/placas/services/placa.service.ts
+ *
+ * Cadeia ativa:
+ *   gateway/module-registry.ts
+ *   → placas.routes.ts
+ *   → controllers/placa.controller.ts
+ *   → services/placa.service.ts  ← ÚNICO SERVICE ATIVO
+ *
+ * NÃO importar este arquivo em código novo.
+ * NÃO alterar lógica aqui — altere apenas services/placa.service.ts.
+ * Guardrail: src/tests/guardrails/no-old-placa-service.guardrail.test.ts
  */
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck  LEGACY_DO_NOT_USE — ver @deprecated acima
 // src/services/placa.service.ts
 import Placa from './Placa';
 import Regiao from '@modules/regioes/Regiao';

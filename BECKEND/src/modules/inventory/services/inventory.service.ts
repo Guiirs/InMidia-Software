@@ -88,9 +88,14 @@ export class InventoryService {
       }
     });
 
+    // Prefer Commercial Projection status; fallback to alugueis data and legacy booleans.
+    const cp = source.placa.commercialStatus?.toUpperCase();
+    const cpOccupied = cp === 'CONTRACTED_ACTIVE' || cp === 'RESERVED';
+    const cpReserved = cp === 'FUTURE_RESERVED';
+
     return {
-      occupied: activeSourceIds.length > 0 || source.placa.aluguel_ativo === true,
-      reserved: futureSourceIds.length > 0 || source.placa.aluguel_futuro === true,
+      occupied: cpOccupied || activeSourceIds.length > 0 || source.placa.aluguel_ativo === true,
+      reserved: cpReserved || futureSourceIds.length > 0 || source.placa.aluguel_futuro === true,
       activeSourceIds,
       futureSourceIds,
     };

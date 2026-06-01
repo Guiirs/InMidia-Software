@@ -1,7 +1,7 @@
 // @ts-nocheck — arquivo legado, não usado pelas rotas ativas. Erros TS pré-existentes.
 // src/controllers/placa.controller.ts
 import { Request, Response, NextFunction } from 'express';
-import { PlacaService } from './placa.service';
+import { PlacaService } from './archived-placa.service';
 import AppError from '@shared/container/AppError';
 import logger from '@shared/container/logger';
 import cacheService from '@shared/container/cache.service';

@@ -5,7 +5,7 @@
 
 import logger from '../../container/logger';
 import PiGenJob from '../../../models/PiGenJob';
-import whatsappService from '../../../modules/whatsapp/whatsapp.service';
+import { assertFeatureEnabled } from '../../../config/features';
 
 /**
  * Envia PDF via WhatsApp para o cliente
@@ -16,6 +16,8 @@ export async function sendPDFViaWhatsApp(
   entityType: string,
   pdfPath: string
 ): Promise<void> {
+  assertFeatureEnabled('whatsapp', 'QueueService WhatsApp');
+
   try {
     let cliente: any;
     let entity: any;
@@ -64,6 +66,7 @@ export async function sendPDFViaWhatsApp(
     const formattedPhone = phoneNumber.replace(/\s+/g, '').replace(/^(\+?\d{1,3})?/, defaultCountryCode);
 
     // Send PDF via WhatsApp
+    const { default: whatsappService } = await import('../../../modules/whatsapp/whatsapp.service');
     const success = await whatsappService.sendPDFToClient(formattedPhone, pdfPath, entity);
 
     if (!success) {

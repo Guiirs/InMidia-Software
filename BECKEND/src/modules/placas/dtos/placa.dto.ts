@@ -316,6 +316,12 @@ export interface PlacaEntity {
   tipo?: string;
   largura?: number;
   altura?: number;
+  /**
+   * @deprecated Campo legado em Placa. Fonte canônica: commercialProjection.pricing.contractValue
+   * (preenchido por enrichWithAluguelData / InventoryBoardsService via CP).
+   * Mantido no schema e DTO para compatibilidade de fallback. Não gravar via API de Placa.
+   * Dependências admin (agregações, relatórios): migrar em ciclo futuro.
+   */
   valor_mensal?: number;
 
   // Status
@@ -324,6 +330,12 @@ export interface PlacaEntity {
   /** @deprecated Alias legado — leia `disponivel`. */
   ativa?: boolean;
   statusOperacional?: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE' | 'ARCHIVED';
+  /**
+   * @deprecated Campo legado. Fonte canônica: `commercialProjection.commercialStatus`.
+   * Em payloads V4, este campo é derivado por `mapCommercialStatusToLegacyStatusComercial()`.
+   * Enum legado: AVAILABLE | RESERVED | OCCUPIED | UNAVAILABLE.
+   * Não usar para lógica nova — use `commercialStatus` / `commercialProjection.commercialStatus`.
+   */
   statusComercial?: 'AVAILABLE' | 'RESERVED' | 'OCCUPIED' | 'UNAVAILABLE';
 
   // Observações
@@ -365,10 +377,12 @@ export interface PlacaListItem {
   loteRegional?: string;
   regiao_nome: string;
   tipo?: string;
+  /** @deprecated Fonte primária: commercialProjection.pricing.contractValue. Preenchido por enrichWithAluguelData. Fallback: schema da Placa. */
   valor_mensal?: number;
   ativa: boolean;
   disponivel?: boolean;
   statusOperacional?: string;
+  /** @deprecated Legado. Derivado de CP via mapCommercialStatusToLegacyStatusComercial. Prefer commercialStatus/commercialProjection. */
   statusComercial?: string;
   notes?: string;
   aluguel_ativo?: boolean;

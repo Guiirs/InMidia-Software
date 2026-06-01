@@ -31,6 +31,7 @@ async function startJobGeneratePDF(
   user: UserData | null,
   options: JobOptions = {}
 ): Promise<string> {
+  if (!empresaId) throw new Error('[PISystemGen] empresaId é obrigatório para startJobGeneratePDF');
   const jobId = createJobId();
 
   // create job document
@@ -38,7 +39,7 @@ async function startJobGeneratePDF(
     jobId,
     type: 'generate_pdf',
     contratoId,
-    empresaId: empresaId || null,
+    empresaId,
     status: 'queued'
   });
   await jobDoc.save();

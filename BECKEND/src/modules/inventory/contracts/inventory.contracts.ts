@@ -76,6 +76,7 @@ export interface InventorySource {
     coordenadas?: GeoPointInput | null;
     disponivel?: boolean | null;
     ativa?: boolean | null;
+    commercialStatus?: string | null;
     statusAluguel?: string | null;
     aluguel_ativo?: boolean | null;
     aluguel_futuro?: boolean | null;

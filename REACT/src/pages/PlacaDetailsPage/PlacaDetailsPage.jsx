@@ -10,6 +10,7 @@ import PlacaDetailsInfo from '../../components/PlacaDetailsInfo/PlacaDetailsInfo
 import PlacaMap from '../../components/PlacaMap/PlacaMap';
 import PlacaAluguelHistory from '../../components/PlacaAluguelHistory/PlacaAluguelHistory';
 import EntityActivityTimeline from '../../components/EntityActivityTimeline/EntityActivityTimeline';
+import { resolvePlacaStatus } from '../../utils/statusMap';
 import './PlacaDetailsPage.css';
 
 const placaQueryKey = (id) => ['placa', id];
@@ -67,21 +68,16 @@ function PlacaDetailsPage() {
     return <div className="placa-details-page"><p>Placa nao encontrada.</p></div>;
   }
 
-  let statusText = 'Disponivel';
-  let statusClass = 'placa-details-page__status--disponivel';
-
-  if (placa.aluguel_ativo) {
-    if (placa.aluguel_futuro) {
-      statusText = 'Reservada';
-      statusClass = 'placa-details-page__status--reservada';
-    } else {
-      statusText = 'Contratada';
-      statusClass = 'placa-details-page__status--indisponivel';
-    }
-  } else if (!placa.disponivel) {
-    statusText = 'Indisponivel';
-    statusClass = 'placa-details-page__status--manutencao';
-  }
+  // resolvePlacaStatus prefers commercialStatus (Commercial Projection) → statusComercial → legacy booleans
+  const resolvedStatus = resolvePlacaStatus(placa);
+  const STATUS_DISPLAY = {
+    ocupada:    { text: 'Contratada',   cls: 'placa-details-page__status--indisponivel' },
+    reservada:  { text: 'Reservada',    cls: 'placa-details-page__status--reservada'   },
+    manutencao: { text: 'Indisponivel', cls: 'placa-details-page__status--manutencao'  },
+    disponivel: { text: 'Disponivel',   cls: 'placa-details-page__status--disponivel'  },
+  };
+  const { text: statusText, cls: statusClass } =
+    STATUS_DISPLAY[resolvedStatus] ?? STATUS_DISPLAY.disponivel;
 
   const placeholderUrl = '/assets/img/placeholder.png';
   const imageUrl = getImageUrl(placa.imagem, placeholderUrl);

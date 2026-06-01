@@ -1,14 +1,19 @@
 // scripts/whatsappDailyReport.ts
 import cron from 'node-cron';
 import logger from '../shared/container/logger';
-import whatsappService from '../modules/whatsapp/whatsapp.service';
 import Empresa from '../modules/empresas/Empresa';
+import { FEATURES, assertFeatureEnabled } from '../config/features';
 
 /**
  * Configura envio diário de relatórios WhatsApp
  * Horário configurável via variável de ambiente WHATSAPP_REPORT_HOUR
  */
 export function scheduleWhatsAppReports(): void {
+    if (!FEATURES.whatsapp) {
+        logger.info('[WhatsApp Cron] Modulo temporariamente desabilitado; scheduler nao iniciado.');
+        return;
+    }
+
     // Pega hora configurada ou usa 09:00 como padrão
     const reportHour = process.env.WHATSAPP_REPORT_HOUR || '09:00';
     const [hour, minute] = reportHour.split(':');
@@ -29,6 +34,7 @@ export function scheduleWhatsAppReports(): void {
     cron.schedule(cronExpression, async () => {
         try {
             logger.info('[WhatsApp Cron] 🚀 Executando envio de relatório diário...');
+            const { default: whatsappService } = await import('../modules/whatsapp/whatsapp.service');
             const empresas = await Empresa.find({}).select('_id').lean();
             let enviados = 0;
             for (const emp of empresas) {
@@ -57,9 +63,11 @@ export function scheduleWhatsAppReports(): void {
  * Envia relatório sob demanda (para testes)
  */
 export async function enviarRelatorioAgora(empresaId: string): Promise<boolean> {
+    assertFeatureEnabled('whatsapp', 'WhatsApp');
     if (!empresaId) throw new Error('[WhatsApp] empresaId é obrigatório para enviarRelatorioAgora()');
     try {
         logger.info(`[WhatsApp] Enviando relatório sob demanda para empresa ${empresaId}...`);
+        const { default: whatsappService } = await import('../modules/whatsapp/whatsapp.service');
         const sucesso = await whatsappService.enviarRelatorioDisponibilidade(null, empresaId);
 
         if (sucesso) {

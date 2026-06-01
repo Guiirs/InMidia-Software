@@ -157,6 +157,9 @@ export class PlacaRepository implements IPlacaRepository {
       }
 
       if (statusComercial) {
+        // DEBT: Este filtro opera sobre o campo persistido `statusComercial` (enum legado).
+        // Não reflete o commercialStatus calculado pela Commercial Projection em tempo real.
+        // Migrar para filtro pós-projeção em endpoint V4 dedicado quando for seguro.
         filter.statusComercial = statusComercial;
       }
 

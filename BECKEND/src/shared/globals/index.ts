@@ -34,12 +34,13 @@ export const Models = {
 // ============================================
 
 import { ClienteService } from '@modules/clientes/cliente.service';
-import { PlacaService } from '@modules/placas/placa.service';
+// NOTA: PlacaService removido deste globals. O service ativo é instanciado em
+// placas.routes.ts e ServiceFactory. Não importar '@modules/placas/placa.service'
+// (arquivo legado, LEGADO_MORTO). Use '@modules/placas/services/placa.service'.
 import ContratoService from '@modules/contratos/contrato.service';
 
 export const Services = {
   ClienteService: new ClienteService(),
-  PlacaService: new PlacaService(),
   ContratoService: new ContratoService()
 };
 

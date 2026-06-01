@@ -57,7 +57,7 @@ const sources: InventorySource[] = [
       coordenadas: '-23.5510,-46.6340',
       disponivel: true,
     },
-    alugueis: [{ id: 'aluguel-1', status: 'ativo', startDate: '2026-05-01', endDate: '2026-05-30' }],
+    alugueis: [{ id: 'aluguel-1', status: 'ativo', startDate: '2026-05-01', endDate: '2026-12-31' }],
     usedOnMap: true,
   },
 ];

@@ -1,6 +1,7 @@
 import { Result } from '@shared/core/Result';
 import { DomainError, NotFoundError } from '@shared/core/DomainError';
 import { WhatsAppRepository } from '../repositories/whatsapp.repository';
+import { assertFeatureEnabled } from '@config/features';
 import {
   SendMessageInput,
   SendBulkMessagesInput,
@@ -17,7 +18,9 @@ import {
  * Service para WhatsApp
  */
 export class WhatsAppService {
-  constructor(private readonly whatsappRepository: WhatsAppRepository) {}
+  constructor(private readonly whatsappRepository: WhatsAppRepository) {
+    assertFeatureEnabled('whatsapp', 'WhatsAppService');
+  }
 
   async sendMessage(data: SendMessageInput): Promise<Result<MessageEntity, DomainError>> {
     return this.whatsappRepository.sendMessage(data);
@@ -35,8 +38,8 @@ export class WhatsAppService {
     return this.whatsappRepository.createTemplate(data, data.empresaId);
   }
 
-  async getTemplateById(id: string): Promise<Result<TemplateEntity, DomainError>> {
-    const result = await this.whatsappRepository.findTemplateById(id);
+  async getTemplateById(id: string, empresaId: string): Promise<Result<TemplateEntity, DomainError>> {
+    const result = await this.whatsappRepository.findTemplateById(id, empresaId);
 
     if (result.isFailure) {
       return Result.fail(result.error);

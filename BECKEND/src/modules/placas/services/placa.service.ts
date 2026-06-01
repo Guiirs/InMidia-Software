@@ -15,6 +15,7 @@ import { Log } from '@shared/core';
 import { safeDeleteFromR2 } from '@shared/infra/http/middlewares/upload.middleware';
 import Aluguel from '@modules/alugueis/Aluguel';
 import Regiao from '@modules/regioes/Regiao';
+import { commercialProjectionService } from '@modules/commercial-projection/commercial-projection.service';
 import { inventoryService } from '@modules/inventory';
 import { projectionService } from '@modules/projections';
 import { mediaPipelineService } from '@modules/media';
@@ -23,6 +24,7 @@ import { temporalEngine } from '@modules/temporal';
 import { commercialAvailabilityProjection } from '@modules/commercial-availability';
 import type { IPlacaRepository } from '../repositories/placa.repository';
 import { resolvePlateHealth } from '../utils/plate-health.utils';
+import { mapCommercialStatusToLegacyStatusComercial } from '../utils/commercial-status.utils';
 import {
   validateCreatePlaca,
   validateUpdatePlaca,
@@ -75,6 +77,13 @@ async function safeDeleteStoredImage(value: unknown): Promise<void> {
   if (!key) return;
   try { await safeDeleteFromR2(key); } catch { /* non-critical */ }
 }
+
+const BLOCKING_COMMERCIAL_STATUSES: readonly string[] = [
+  'CONTRACTED_ACTIVE',
+  'RESERVED',
+  'FUTURE_RESERVED',
+  'UNKNOWN',
+];
 
 export class PlacaService {
   constructor(private readonly repository: IPlacaRepository) {}
@@ -324,19 +333,17 @@ export class PlacaService {
         return Result.fail(toDomainError(temporalError));
       }
 
-      // Verificar aluguel ativo
-      const hoje = new Date();
-      const aluguelAtivo = await Aluguel.findOne({
-        $and: [
-          { $or: [{ placa: id }, { placaId: id }] },
-          { $or: [{ empresa: empresaId }, { empresaId }] },
-          { $or: [{ data_inicio: { $lte: hoje } }, { startDate: { $lte: hoje } }] },
-          { $or: [{ data_fim: { $gte: hoje } }, { endDate: { $gte: hoje } }] },
-        ],
-      }).lean();
+      // Verificar status comercial via Commercial Projection
+      let commercialStatus: string;
+      try {
+        const projection = await commercialProjectionService.resolve(id, empresaId);
+        commercialStatus = projection.commercialStatus;
+      } catch {
+        commercialStatus = 'UNKNOWN';
+      }
 
-      if (aluguelAtivo) {
-        return Result.fail(new BusinessRuleViolationError('Não é possível apagar uma placa que está atualmente alugada'));
+      if (BLOCKING_COMMERCIAL_STATUSES.includes(commercialStatus)) {
+        return Result.fail(new BusinessRuleViolationError('Não é possível apagar uma placa que está atualmente alugada ou reservada'));
       }
 
       await safeDeleteStoredImage((placa as any).imagemPrincipal || placa.imagem);
@@ -558,18 +565,16 @@ export class PlacaService {
         return Result.fail(new BusinessRuleViolationError('Placa com contrato ativo não pode ser arquivada.'));
       }
 
-      // Verificar aluguel ativo
-      const hoje = new Date();
-      const aluguelAtivo = await Aluguel.findOne({
-        $and: [
-          { $or: [{ placa: id }, { placaId: id }] },
-          { $or: [{ empresa: empresaId }, { empresaId }] },
-          { $or: [{ data_inicio: { $lte: hoje } }, { startDate: { $lte: hoje } }] },
-          { $or: [{ data_fim: { $gte: hoje } }, { endDate: { $gte: hoje } }] },
-        ],
-      }).lean();
+      // Verificar status comercial via Commercial Projection
+      let commercialStatus: string;
+      try {
+        const projection = await commercialProjectionService.resolve(id, empresaId);
+        commercialStatus = projection.commercialStatus;
+      } catch {
+        commercialStatus = 'UNKNOWN';
+      }
 
-      if (aluguelAtivo) {
+      if (BLOCKING_COMMERCIAL_STATUSES.includes(commercialStatus)) {
         return Result.fail(new BusinessRuleViolationError('Placa com contrato ativo não pode ser arquivada.'));
       }
 
@@ -755,7 +760,99 @@ export class PlacaService {
     if (placas.length === 0) return [];
 
     const hoje = new Date();
-    const placaIds = placas.map((p) => p._id);
+    const placaIds = placas.map((p) => String((p as any)._id || (p as any).id));
+
+    // Primary path: Commercial Projection (O(1) DB round trips via resolveBatch)
+    try {
+      const projectionMap = await commercialProjectionService.resolveBatch(placaIds, empresaId, hoje);
+
+      const enriched = placas.map((placa: any) => {
+        const placaId = String(placa._id || placa.id);
+        const projection = projectionMap.get(placaId);
+
+        if (projection) {
+          const { commercialStatus, reservation, activeContract } = projection;
+
+          placa.aluguel_ativo = reservation.active || commercialStatus === 'CONTRACTED_ACTIVE';
+          placa.aluguel_futuro = reservation.future || commercialStatus === 'FUTURE_RESERVED';
+          placa.cliente_nome = activeContract?.clientName;
+          // Fonte primária: CP pricing. Fallback: campo legado da placa (schema default 0).
+          placa.valor_mensal = projection.pricing?.contractValue ?? placa.valor_mensal;
+          // Derivar statusComercial (legado) a partir do status canônico da CP.
+          placa.statusComercial = mapCommercialStatusToLegacyStatusComercial(commercialStatus);
+
+          if (commercialStatus === 'CONTRACTED_ACTIVE') {
+            placa.statusAluguel = 'alugada';
+          } else if (commercialStatus === 'RESERVED' || commercialStatus === 'FUTURE_RESERVED') {
+            placa.statusAluguel = 'reservada';
+          } else if (commercialStatus === 'AVAILABLE') {
+            placa.statusAluguel = 'disponivel';
+          } else {
+            // MAINTENANCE or UNKNOWN — safe fallback, preserve existing or default to disponivel
+            placa.statusAluguel = placa.statusAluguel ?? 'disponivel';
+          }
+        } else {
+          placa.aluguel_ativo = false;
+          placa.aluguel_futuro = false;
+          placa.statusAluguel = 'disponivel';
+        }
+
+        return placa;
+      });
+
+      const summary = inventoryService.buildInventorySummary(
+        enriched.map((placa: any) => ({
+          placa,
+          alugueis: [],
+          usedOnMap: true,
+        })),
+        { now: hoje },
+      );
+
+      if (summary.diagnostics.length > 0) {
+        Log.warn('[PlacaService] Diagnósticos de inventário detectados', {
+          empresaId,
+          totalDiagnostics: summary.diagnostics.length,
+          conflictCodes: summary.diagnostics.map((d) => d.code),
+        });
+      }
+
+      const projectionResult = projectionService.rebuildProjection(
+        {
+          inventorySources: enriched.map((placa: any) => ({
+            placa,
+            alugueis: [],
+            usedOnMap: true,
+          })),
+        },
+        { tenantId: empresaId, source: 'placa-service', now: hoje },
+      );
+
+      if (!projectionResult.ok) {
+        Log.warn('[PlacaService] Falha ao reconstruir projection snapshot', { empresaId, error: projectionResult.error });
+      }
+
+      return enriched;
+    } catch (error) {
+      // Contador: legacy_commercial_fallback_used_total (integrar com sistema de métricas quando disponível)
+      Log.warn('[PlacaService] LEGACY_COMMERCIAL_FALLBACK_USED', {
+        tag: 'LEGACY_COMMERCIAL_FALLBACK_USED',
+        empresaId,
+        placasCount: placas.length,
+        reason: toDomainError(error).message,
+        timestamp: new Date().toISOString(),
+      });
+      return this.enrichWithAluguelDataLegacy(placas, empresaId, hoje);
+    }
+  }
+
+  /** Fallback: enriches plates from Aluguel queries when Commercial Projection is unavailable. */
+  private async enrichWithAluguelDataLegacy(
+    placas: PlacaEntity[],
+    empresaId: string,
+    hoje: Date,
+  ): Promise<Array<PlacaEntity & any>> {
+    const placaIds = placas.map((p) => (p as any)._id);
 
     try {
       const alugueisAtivos = await Aluguel.find({
@@ -782,7 +879,7 @@ export class PlacaService {
         return map;
       }, {});
 
-      const enriched = placas.map((placa: any) => {
+      return placas.map((placa: any) => {
         const aluguel = aluguelMap[placa._id.toString()];
         if (aluguel?.cliente) {
           const dataInicio = new Date(aluguel.startDate);
@@ -800,42 +897,8 @@ export class PlacaService {
         }
         return placa;
       });
-
-      const summary = inventoryService.buildInventorySummary(
-        enriched.map((placa: any) => ({
-          placa,
-          alugueis: aluguelMap[placa._id.toString()] ? [aluguelMap[placa._id.toString()]] : [],
-          usedOnMap: true,
-        })),
-        { now: hoje },
-      );
-
-      if (summary.diagnostics.length > 0) {
-        Log.warn('[PlacaService] Diagnósticos de inventário detectados', {
-          empresaId,
-          totalDiagnostics: summary.diagnostics.length,
-          conflictCodes: summary.diagnostics.map((d) => d.code),
-        });
-      }
-
-      const projectionResult = projectionService.rebuildProjection(
-        {
-          inventorySources: enriched.map((placa: any) => ({
-            placa,
-            alugueis: aluguelMap[placa._id.toString()] ? [aluguelMap[placa._id.toString()]] : [],
-            usedOnMap: true,
-          })),
-        },
-        { tenantId: empresaId, source: 'placa-service', now: hoje },
-      );
-
-      if (!projectionResult.ok) {
-        Log.warn('[PlacaService] Falha ao reconstruir projection snapshot', { empresaId, error: projectionResult.error });
-      }
-
-      return enriched;
     } catch (error) {
-      Log.warn('[PlacaService] Erro ao enriquecer com dados de aluguel', { error: toDomainError(error).message });
+      Log.warn('[PlacaService] Erro ao enriquecer com dados de aluguel (legado)', { error: toDomainError(error).message });
       return placas as any;
     }
   }

@@ -115,11 +115,24 @@ RUN groupadd --gid 1001 nodejs \
 #
 # ca-certificates: âncoras TLS para HTTPS (AWS S3, MongoDB Atlas, APIs externas).
 #   Já presentes no slim, mas incluído explicitamente para clareza.
+#
+# gnupg + mongodb-database-tools: fornece mongodump para backup automático.
+#   Instalado via repositório oficial MongoDB 7.0 (Debian Bookworm).
+#   Garante compatibilidade de versão com MongoDB Atlas 7.x.
+#   Tudo em único RUN para não criar layer extra; gnupg necessário só
+#   para importar a chave GPG do repositório MongoDB.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        ca-certificates \
        curl \
        dumb-init \
+       gnupg \
+    && curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc \
+       | gpg --dearmor -o /usr/share/keyrings/mongodb-server-7.0.gpg \
+    && echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/debian bookworm/mongodb-org/7.0 main" \
+       > /etc/apt/sources.list.d/mongodb-org-7.0.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends mongodb-database-tools \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 

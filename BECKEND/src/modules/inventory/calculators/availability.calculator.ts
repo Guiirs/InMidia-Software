@@ -24,7 +24,6 @@ export function calculateAvailability(
   now: Date,
 ): InventoryAvailability {
   const physicalAvailable = source.placa.disponivel ?? source.placa.ativa;
-  const legacyStatus = source.placa.statusAluguel;
 
   if (physicalAvailable === false) {
     return {
@@ -34,10 +33,31 @@ export function calculateAvailability(
     };
   }
 
+  // Prefer Commercial Projection status when available.
+  // Fallback chain: commercialStatus → statusAluguel → alugueis data → aluguel_ativo/futuro
+  const cp = source.placa.commercialStatus;
+  if (cp) {
+    const upper = cp.toUpperCase();
+    if (upper === 'CONTRACTED_ACTIVE' || upper === 'RESERVED') {
+      return { status: 'occupied', available: false, reason: 'COMMERCIAL_PROJECTION_OCCUPIED' };
+    }
+    if (upper === 'FUTURE_RESERVED') {
+      return { status: 'reserved', available: false, reason: 'COMMERCIAL_PROJECTION_RESERVED' };
+    }
+    if (upper === 'MAINTENANCE') {
+      return { status: 'unavailable', available: false, reason: 'COMMERCIAL_PROJECTION_MAINTENANCE' };
+    }
+    if (upper === 'AVAILABLE') {
+      return { status: 'available', available: true, reason: 'COMMERCIAL_PROJECTION_AVAILABLE' };
+    }
+    // UNKNOWN → fall through to legacy
+  }
+
+  // Legacy status field fallback
+  const legacyStatus = source.placa.statusAluguel;
   if (legacyStatus === 'alugada') {
     return { status: 'occupied', available: false, reason: 'LEGACY_STATUS_OCCUPIED' };
   }
-
   if (legacyStatus === 'reservada') {
     return { status: 'reserved', available: false, reason: 'LEGACY_STATUS_RESERVED' };
   }

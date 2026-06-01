@@ -9,6 +9,7 @@ import qrcode from 'qrcode-terminal';
 import logger from '../../shared/container/logger';
 import Placa from '../../modules/placas/Placa';
 import Aluguel from '../../modules/alugueis/Aluguel';
+import { assertFeatureEnabled } from '../../config/features';
 // sendNotificationToUser não existe em sse.controller — usa import dinâmico de notificarAdmins abaixo.
 
 /**
@@ -26,6 +27,8 @@ class WhatsAppService {
     reconnectInterval: NodeJS.Timeout | null;
 
     constructor() {
+        assertFeatureEnabled('whatsapp', 'WhatsAppService');
+
         this.client = null;
         this.isReady = false;
         this.groupId = '120363425517091266@g.us'; // ID fixo como valor inicial de segurança

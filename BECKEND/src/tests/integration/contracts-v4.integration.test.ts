@@ -57,7 +57,7 @@ describe('Contracts V4 integration', () => {
         boardId,
         clientId,
         startDate: '2026-05-01',
-        endDate: '2026-07-01',
+        endDate: '2026-12-31',
         observacoes: 'Campanha V4',
       })
       .expect(201);
@@ -87,7 +87,7 @@ describe('Contracts V4 integration', () => {
         boardId,
         clientId,
         startDate: '2026-05-01',
-        endDate: '2026-05-30',
+        endDate: '2026-12-31',
       })
       .expect(201);
 
@@ -112,7 +112,7 @@ describe('Contracts V4 integration', () => {
         boardId,
         clientId,
         startDate: '2026-05-01',
-        endDate: '2026-06-01',
+        endDate: '2026-12-01',
       })
       .expect(201);
 
@@ -137,7 +137,7 @@ describe('Contracts V4 integration', () => {
         boardId,
         clientId,
         startDate: '2026-05-01',
-        endDate: '2026-07-01',
+        endDate: '2026-12-31',
       })
       .expect(201);
 
@@ -187,7 +187,7 @@ describe('Contracts V4 integration', () => {
         boardId: String(otherBoard._id),
         clientId: String(otherClient._id),
         startDate: '2026-05-01',
-        endDate: '2026-07-01',
+        endDate: '2026-12-31',
       })
       .expect(201);
 
@@ -212,7 +212,7 @@ describe('Contracts V4 integration', () => {
         boardId,
         clientId,
         startDate: '2026-05-01',
-        endDate: '2026-07-01',
+        endDate: '2026-12-31',
       })
       .expect(403);
 
@@ -229,7 +229,7 @@ describe('Contracts V4 integration', () => {
         boardId,
         clientId,
         startDate: '2026-05-01',
-        endDate: '2026-07-01',
+        endDate: '2026-12-31',
       })
       .expect(201);
 

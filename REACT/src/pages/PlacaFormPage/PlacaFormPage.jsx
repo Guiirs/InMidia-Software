@@ -56,18 +56,26 @@ function formatCommercialDate(value) {
 function getCommercialState(placa) {
   if (!placa) return null;
 
-  const status = placa.statusAluguel || placa.statusComercial;
-  const isReserved = placa.aluguel_futuro || status === 'reservada' || status === 'RESERVED';
-  const isOccupied = placa.aluguel_ativo || status === 'alugada' || status === 'OCCUPIED';
-  const periodStart = formatCommercialDate(placa.aluguel_data_inicio || placa.temporalStatus?.startDate);
-  const periodEnd = formatCommercialDate(placa.aluguel_data_fim || placa.temporalStatus?.endDate);
+  // Prefer Commercial Projection fields; fallback to legacy fields.
+  const cp = typeof placa.commercialStatus === 'string' ? placa.commercialStatus.toUpperCase() : null;
+  const legacyStatus = placa.statusAluguel || placa.statusComercial;
+
+  const isOccupied = cp === 'CONTRACTED_ACTIVE' || cp === 'RESERVED'
+    || placa.aluguel_ativo || legacyStatus === 'alugada' || legacyStatus === 'OCCUPIED';
+  const isReserved = cp === 'FUTURE_RESERVED'
+    || placa.aluguel_futuro || legacyStatus === 'reservada' || legacyStatus === 'RESERVED';
+
+  // Dates: prefer Commercial Projection activeContract, then legacy fields
+  const ac = placa.activeContract;
+  const periodStart = formatCommercialDate(ac?.startDate || placa.aluguel_data_inicio || placa.temporalStatus?.startDate);
+  const periodEnd   = formatCommercialDate(ac?.endDate   || placa.aluguel_data_fim   || placa.temporalStatus?.endDate);
 
   return {
     label: isReserved ? 'Reservada' : isOccupied ? 'Contratada' : 'Disponível',
-    cliente: placa.cliente_nome || placa.temporalStatus?.cliente || null,
-    contrato: placa.contrato_atual || placa.contratoAtual || placa.temporalStatus?.contrato || null,
+    cliente: ac?.clientName || placa.cliente_nome || placa.temporalStatus?.cliente || null,
+    contrato: ac?.contractCode || placa.contrato_atual || placa.contratoAtual || placa.temporalStatus?.contrato || null,
     periodo: periodStart && periodEnd ? `${periodStart} - ${periodEnd}` : null,
-    hasDerivedData: isReserved || isOccupied || placa.cliente_nome || placa.contrato_atual || placa.temporalStatus,
+    hasDerivedData: isReserved || isOccupied || placa.cliente_nome || placa.contrato_atual || placa.temporalStatus || ac,
   };
 }
 
@@ -207,7 +215,9 @@ function PlacaFormPage() {
       setInitialImageUrl(currentImageUrl);
 
       // Verifica se é placa bloqueada (contrato ativo)
+      // Prefer Commercial Projection; fallback to legacy fields.
       setIsLocked(
+        placaData.commercialStatus === 'CONTRACTED_ACTIVE' ||
         placaData.statusComercial === 'OCCUPIED' ||
         placaData.statusAluguel === 'alugada' ||
         placaData.aluguel_ativo === true,

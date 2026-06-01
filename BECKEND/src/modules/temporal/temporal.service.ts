@@ -5,6 +5,7 @@ import Placa from '@modules/placas/Placa';
 import PropostaInterna from '@modules/propostas-internas/PropostaInterna';
 import Contrato from '@modules/contratos/Contrato';
 import Aluguel from '@modules/alugueis/Aluguel';
+import Empresa from '@modules/empresas/Empresa';
 import Region from '@modules/regions/Region';
 import TemporalReservation, { type ITemporalReservation } from './TemporalReservation';
 import TemporalEvent from './TemporalEvent';
@@ -159,16 +160,16 @@ class TemporalEngineService {
       allowSameSource?: boolean;
     } = {},
   ): Promise<TemporalAvailabilityResult> {
+    if (!options.empresaId) throw new Error('[TemporalEngine] empresaId é obrigatório para checkPlateAvailability');
     const { start, end } = assertValidInterval(startDate, endDate);
     const plateObjectId = toObjectId(plateId);
     const query: Record<string, unknown> = {
       plateId: plateObjectId,
+      empresaId: toObjectId(options.empresaId),
       status: { $in: TEMPORAL_BLOCKING_STATUSES },
       startDate: { $lt: end },
       endDate: { $gt: start },
     };
-
-    if (options.empresaId) query.empresaId = toObjectId(options.empresaId);
 
     const reservations = await TemporalReservation.find(query).lean<ITemporalReservation[]>();
     const conflicts = reservations
@@ -287,15 +288,16 @@ class TemporalEngineService {
   async cancelTemporalReservation(
     sourceType: TemporalSourceType,
     sourceId: string,
-    empresaId?: string,
+    empresaId: string,
     createdBy?: string,
   ): Promise<{ cancelledCount: number }> {
+    if (!empresaId) throw new Error('[TemporalEngine] empresaId é obrigatório para cancelTemporalReservation');
     const filter: Record<string, unknown> = {
       sourceType,
       sourceId,
+      empresaId: toObjectId(empresaId),
       status: { $in: TEMPORAL_BLOCKING_STATUSES },
     };
-    if (empresaId) filter.empresaId = toObjectId(empresaId);
 
     const reservations = await TemporalReservation.find(filter).lean<ITemporalReservation[]>();
     const result = await TemporalReservation.updateMany(filter, { $set: { status: 'CANCELLED' } });
@@ -342,11 +344,10 @@ class TemporalEngineService {
     })));
   }
 
-  async promotePiReservationToContract(piId: string, contractId: string, empresaId?: string): Promise<{ promotedCount: number }> {
-    const piQuery: Record<string, unknown> = { _id: piId };
-    if (empresaId) piQuery.empresaId = empresaId;
+  async promotePiReservationToContract(piId: string, contractId: string, empresaId: string): Promise<{ promotedCount: number }> {
+    if (!empresaId) throw new Error('[TemporalEngine] empresaId é obrigatório para promotePiReservationToContract');
 
-    const pi = await PropostaInterna.findOne(piQuery).lean<any>();
+    const pi = await PropostaInterna.findOne({ _id: piId, empresaId }).lean<any>();
     if (!pi) throw new AppError('PI nao encontrada para promocao temporal.', 404);
 
     const { startDate, endDate } = extractPeriod(pi);
@@ -400,17 +401,16 @@ class TemporalEngineService {
     }
   }
 
-  async resolvePlateTemporalStatus(plateId: string, now: Date = new Date(), empresaId?: string): Promise<PlateTemporalStatus> {
-    const plateQuery: Record<string, unknown> = { _id: plateId };
-    if (empresaId) plateQuery.empresaId = empresaId;
-    const plate = await Placa.findOne(plateQuery).lean<any>();
+  async resolvePlateTemporalStatus(plateId: string, now: Date = new Date(), empresaId: string): Promise<PlateTemporalStatus> {
+    if (!empresaId) throw new Error('[TemporalEngine] empresaId é obrigatório para resolvePlateTemporalStatus');
+    const plate = await Placa.findOne({ _id: plateId, empresaId }).lean<any>();
     if (!plate) throw new AppError('Placa nao encontrada.', 404);
 
     const reservationQuery: Record<string, unknown> = {
       plateId: toObjectId(plateId),
+      empresaId: toObjectId(empresaId),
       status: { $in: TEMPORAL_BLOCKING_STATUSES },
     };
-    if (empresaId) reservationQuery.empresaId = toObjectId(empresaId);
 
     const reservations = await TemporalReservation.find(reservationQuery)
       .sort({ startDate: 1 })
@@ -442,6 +442,7 @@ class TemporalEngineService {
     changedFields: string[] | Record<string, unknown>,
     options: { empresaId?: string; override?: boolean; createdBy?: string } = {},
   ): Promise<void> {
+    if (!options.empresaId) throw new Error('[TemporalEngine] empresaId é obrigatório para assertPlateCanBeEdited');
     const fields = normalizeChangedFields(changedFields);
     const criticalFields = fields.filter((field) => TEMPORAL_CRITICAL_PLATE_FIELDS.includes(field));
     if (criticalFields.length === 0 || options.override) return;
@@ -449,12 +450,12 @@ class TemporalEngineService {
     const now = new Date();
     const query: Record<string, unknown> = {
       plateId: toObjectId(plateId),
+      empresaId: toObjectId(options.empresaId),
       sourceType: 'CONTRACT',
       status: { $in: TEMPORAL_BLOCKING_STATUSES },
       startDate: { $lte: now },
       endDate: { $gte: now },
     };
-    if (options.empresaId) query.empresaId = toObjectId(options.empresaId);
 
     const activeContract = await TemporalReservation.findOne(query).lean<ITemporalReservation>();
     if (!activeContract) return;
@@ -476,9 +477,9 @@ class TemporalEngineService {
     );
   }
 
-  async getPlateTimeline(plateId: string, empresaId?: string) {
-    const query: Record<string, unknown> = { plateId: toObjectId(plateId) };
-    if (empresaId) query.empresaId = toObjectId(empresaId);
+  async getPlateTimeline(plateId: string, empresaId: string) {
+    if (!empresaId) throw new Error('[TemporalEngine] empresaId é obrigatório para getPlateTimeline');
+    const query: Record<string, unknown> = { plateId: toObjectId(plateId), empresaId: toObjectId(empresaId) };
     const [reservations, events] = await Promise.all([
       TemporalReservation.find(query).sort({ startDate: -1 }).lean(),
       TemporalEvent.find(query).sort({ createdAt: -1 }).lean(),
@@ -736,29 +737,38 @@ class TemporalEngineService {
   }
 
   async expirePastReservations(now: Date = new Date()): Promise<{ expiredCount: number }> {
-    const reservations = await TemporalReservation.find({
-      status: { $in: ['RESERVED', 'ACTIVE'] },
-      endDate: { $lt: now },
-    }).lean<ITemporalReservation[]>();
+    const empresas = await Empresa.find({}).select('_id').lean();
+    let totalExpired = 0;
+    for (const empresa of empresas) {
+      const empresaId = toObjectId(String(empresa._id));
+      const reservations = await TemporalReservation.find({
+        empresaId,
+        status: { $in: ['RESERVED', 'ACTIVE'] },
+        endDate: { $lt: now },
+      }).lean<ITemporalReservation[]>();
 
-    const result = await TemporalReservation.updateMany(
-      { _id: { $in: reservations.map((r) => r._id) } },
-      { $set: { status: 'EXPIRED' } },
-    );
+      if (reservations.length === 0) continue;
 
-    await Promise.all(reservations.map((reservation) => this.recordEvent({
-      empresaId: String(reservation.empresaId),
-      plateId: String(reservation.plateId),
-      sourceType: reservation.sourceType,
-      sourceId: reservation.sourceId,
-      eventType: reservation.sourceType === 'CONTRACT'
-        ? 'TEMPORAL_CONTRACT_EXPIRED'
-        : 'TEMPORAL_PLATE_RELEASED',
-      message: 'Reserva temporal expirada.',
-      metadata: { reservationId: String(reservation._id) },
-    })));
+      const result = await TemporalReservation.updateMany(
+        { _id: { $in: reservations.map((r) => r._id) }, empresaId },
+        { $set: { status: 'EXPIRED' } },
+      );
 
-    return { expiredCount: result.modifiedCount ?? 0 };
+      await Promise.all(reservations.map((reservation) => this.recordEvent({
+        empresaId: String(reservation.empresaId),
+        plateId: String(reservation.plateId),
+        sourceType: reservation.sourceType,
+        sourceId: reservation.sourceId,
+        eventType: reservation.sourceType === 'CONTRACT'
+          ? 'TEMPORAL_CONTRACT_EXPIRED'
+          : 'TEMPORAL_PLATE_RELEASED',
+        message: 'Reserva temporal expirada.',
+        metadata: { reservationId: String(reservation._id) },
+      })));
+
+      totalExpired += result.modifiedCount ?? 0;
+    }
+    return { expiredCount: totalExpired };
   }
 }
 

@@ -50,6 +50,13 @@ const STATUS_TO_ESTADO = {
 /* ── Derivadores ────────────────────────────────────────────── */
 
 function deriveStatus(placa) {
+  // Prefer Commercial Projection status; fallback to legacy booleans.
+  const cp = String(placa?.commercialStatus || placa?.temporalStatus || placa?.statusComercial || '').toUpperCase();
+  if (cp === 'CONTRACTED_ACTIVE' || cp === 'OCCUPIED' || cp === 'RESERVED') return BOARD_STATUS.OCCUPIED;
+  if (cp === 'FUTURE_RESERVED' || cp === 'RESERVED_FUTURE') return BOARD_STATUS.RESERVED;
+  if (cp === 'MAINTENANCE') return BOARD_STATUS.MAINTENANCE;
+  if (cp === 'AVAILABLE') return BOARD_STATUS.AVAILABLE;
+
   if (placa.aluguel_ativo)  return BOARD_STATUS.OCCUPIED;
   if (placa.aluguel_futuro) return BOARD_STATUS.RESERVED;
   if (!placa.disponivel)    return BOARD_STATUS.MAINTENANCE;

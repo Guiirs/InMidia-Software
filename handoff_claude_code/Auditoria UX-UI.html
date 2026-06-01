@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InMidia V4.1 — Auditoria UX/UI Enterprise</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="audit.css">
+</head>
+<body>
+<div class="layout">
+
+  <!-- ===================== SIDE NAV ===================== -->
+  <nav class="sidenav">
+    <div class="sidenav__brand">
+      <div class="sidenav__mark">iM</div>
+      <div>
+        <h1>Auditoria UX/UI</h1>
+        <span>InMidia V4.1</span>
+      </div>
+    </div>
+
+    <div class="sidenav__group-label">Diagnóstico</div>
+    <a href="#cover" class="active"><span class="n">00</span> Veredito</a>
+
+    <div class="sidenav__group-label">Fase 1 · Auditoria</div>
+    <a href="#dashboard"><span class="n">01</span> Dashboard</a>
+    <a href="#inventario"><span class="n">02</span> Inventário</a>
+    <a href="#cards"><span class="n">03</span> Cards de Placas</a>
+    <a href="#navegacao"><span class="n">04</span> Navegação</a>
+    <a href="#linguagem"><span class="n">05</span> Linguagem</a>
+    <a href="#designsystem"><span class="n">06</span> Design System</a>
+    <a href="#responsividade"><span class="n">07</span> Responsividade</a>
+    <a href="#consistencia"><span class="n">08</span> Consistência</a>
+
+    <div class="sidenav__group-label">Fase 2–4</div>
+    <a href="#top20"><span class="n">P2</span> 20 Problemas</a>
+    <a href="#plano"><span class="n">P3</span> Plano P0–P3</a>
+    <a href="#blueprint"><span class="n">P4</span> Blueprint UX</a>
+  </nav>
+
+  <!-- ===================== CONTENT ===================== -->
+  <main class="content">
+
+    <!-- ============ COVER ============ -->
+    <header class="cover" id="cover">
+      <div class="wrap">
+        <span class="eyebrow"><span class="dot"></span> Auditoria Enterprise · Repositório real analisado</span>
+        <h1>O InMidia é competente.<br>Ainda <em>não é enterprise premium.</em></h1>
+        <p class="lede">Auditoria brutalmente honesta da implementação real — não da intenção. O código revela um produto com <strong>fundações sólidas de tokens</strong> sufocadas por <strong>três sistemas de design paralelos</strong>, vazamento de estado de backend na interface e um dashboard que empilha relatórios em vez de comandar a operação.</p>
+
+        <dl class="cover__meta">
+          <div><dt>Fonte</dt><dd>Guiirs/InMidia-Software@main</dd></div>
+          <div><dt>Escopo</dt><dd>REACT/src · UX/UI</dd></div>
+          <div><dt>Domínios</dt><dd>14 auditados</dd></div>
+          <div><dt>Benchmark</dt><dd>Stripe · Linear · Datadog</dd></div>
+          <div><dt>Veredito</dt><dd>5.0 / 10</dd></div>
+        </dl>
+
+        <!-- VERDICT -->
+        <div class="verdict">
+          <div class="verdict__score">
+            <div class="num">5.0<small>/10</small></div>
+            <div class="lbl">SaaS Readiness</div>
+          </div>
+          <div class="verdict__text">
+            <h3>Painel administrativo competente — não centro operacional.</h3>
+            <p>A arquitetura de informação existe e os tokens base são de nível enterprise. Mas a execução visual está fragmentada: a marca tem três cores primárias diferentes ao mesmo tempo, o modo claro está quebrado, e termos técnicos do backend (<code style="font-family:var(--mono);font-size:12px;color:var(--text)">CONTRACTED_ACTIVE</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--text)">critical</code>) aparecem cru para o operador.</p>
+          </div>
+        </div>
+
+        <!-- SCORES -->
+        <div class="scores">
+          <div class="score-card">
+            <div class="top"><span class="dim">UX</span><span class="val">5.5<small>/10</small></span></div>
+            <div class="meter"><i style="width:55%;background:var(--warn)"></i></div>
+          </div>
+          <div class="score-card">
+            <div class="top"><span class="dim">UI</span><span class="val">6.0<small>/10</small></span></div>
+            <div class="meter"><i style="width:60%;background:#7CD6FF"></i></div>
+          </div>
+          <div class="score-card">
+            <div class="top"><span class="dim">Consistência</span><span class="val">4.0<small>/10</small></span></div>
+            <div class="meter"><i style="width:40%;background:var(--bad)"></i></div>
+          </div>
+          <div class="score-card">
+            <div class="top"><span class="dim">SaaS Readiness</span><span class="val">5.0<small>/10</small></span></div>
+            <div class="meter"><i style="width:50%;background:var(--warn)"></i></div>
+          </div>
+          <div class="score-card">
+            <div class="top"><span class="dim">Escalabilidade Visual</span><span class="val">4.5<small>/10</small></span></div>
+            <div class="meter"><i style="width:45%;background:var(--bad)"></i></div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="wrap">
+
+      <!-- ====================================================== -->
+      <!-- FASE 1 ============================================== -->
+      <!-- ====================================================== -->
+      <div class="section-head" style="margin-top:60px">
+        <div class="kicker">Fase 1 — Relatório de Auditoria</div>
+        <h2>Auditoria por domínio</h2>
+        <p>Cada domínio recebe uma classificação (Excelente · Bom · Médio · Ruim · Crítico) sustentada por evidência direta do código de produção. Nada aqui é opinião sem prova.</p>
+      </div>
+
+      <!-- 01 DASHBOARD -->
+      <section id="dashboard" class="domain">
+        <div class="domain__bar">
+          <h3><span class="idx">01</span> Dashboard</h3>
+          <span class="rating r-medio">Médio</span>
+        </div>
+        <p class="body"><strong>Parece uma página administrativa, não um centro operacional.</strong> O <code style="font-family:var(--mono);font-size:13px">DashboardPage</code> empilha verticalmente 7 blocos de peso visual idêntico: 8 KPIs, ações rápidas, funil, ranking, ociosas, alertas e tabela de regiões. Não há hierarquia de comando — o operador não sabe o que olhar primeiro.</p>
+        <ul class="findings">
+          <li><span class="mk neg">!</span><span><strong>8 KPIs em grade auto-fit, todos iguais.</strong> <code style="font-family:var(--mono);font-size:12px">OverviewCards</code> renderiza Total, Disponíveis, Alugadas, Ocupação, Propostas, Contratos, Receita e Regiões com o mesmo tamanho. Receita e Ocupação (decisivos) competem com "Regiões ativas" (irrelevante no dia a dia).</span></li>
+          <li><span class="mk neg">!</span><span><strong>Sem camada de "o que precisa de ação".</strong> Alertas ficam no 6º bloco, abaixo da dobra. O redesign anterior já entendia isso (seção "Exceções" no topo) — a produção não.</span></li>
+          <li><span class="mk neg">!</span><span><strong>"Oportunidades" mostra alertas.</strong> A seção <code style="font-family:var(--mono);font-size:12px">SmartAlerts</code> tem título "Oportunidades" mas lista severidades de risco. Nome e conteúdo divergem.</span></li>
+          <li><span class="mk pos">✓</span><span><strong>Realtime via subscribe está correto.</strong> A invalidação por evento (<code style="font-family:var(--mono);font-size:12px">PLACA_STATUS_CHANGED</code>) é bem arquitetada — o problema é só de apresentação.</span></li>
+        </ul>
+        <div class="evidence">
+          <div class="evidence__head"><span class="tag">leak</span><span class="path">components/dashboard/SmartAlerts.jsx · L15</span></div>
+<pre><span class="c">// severidade vem do backend e é exibida CRUA ao usuário</span>
+&lt;span className={<span class="s">`status-pill status-pill--...`</span>}&gt;
+  {alerta.<span class="k">severidade</span>}   <span class="c">// → mostra "<span class="hl">critical</span>" / "<span class="hl">warning</span>" em inglês</span>
+&lt;/span&gt;</pre>
+        </div>
+        <div class="callout warn"><strong>Resposta direta:</strong> parece uma página administrativa genérica. Tem os dados de um centro operacional, mas a hierarquia visual de uma planilha.</div>
+      </section>
+
+      <!-- 02 INVENTÁRIO -->
+      <section id="inventario" class="domain">
+        <div class="domain__bar">
+          <h3><span class="idx">02</span> Inventário</h3>
+          <span class="rating r-medio">Médio</span>
+        </div>
+        <p class="body">A página de Placas tem boa base funcional: filtros por região/status, busca via evento global, paginação com prefetch, e um resumo de status (Disponível/Alugada/Reservada/Manutenção). O problema é <strong>densidade e leitura</strong> — o card carrega informação demais (ver domínio 03).</p>
+        <ul class="findings">
+          <li><span class="mk neu">i</span><span><strong>O operador entende a placa em ~5s, não em 3.</strong> O card repete o código duas vezes e força a vista a processar banner + corpo redundantes antes do dado-chave (status + localização).</span></li>
+          <li><span class="mk neg">!</span><span><strong>Excesso de elementos por card:</strong> contador #01, badge de status, eyebrow "Ativo operacional", título de código, "Placa 01", "Código X", localização, caixa de aluguel, região e um ponto pulsante de sync. Onze elementos para uma unidade.</span></li>
+          <li><span class="mk neg">!</span><span><strong>Filtros como mensagem técnica:</strong> a opção é <code style="font-family:var(--mono);font-size:12px">Indisponível (Alugada)</code> — expõe a modelagem em vez de falar a língua do negócio ("Ocupada").</span></li>
+          <li><span class="mk neg">!</span><span><strong>Paginação numérica pura</strong> (1,2,3…N) construída via <code style="font-family:var(--mono);font-size:12px">cloneElement</code>. Em 50+ placas vira uma régua de botões.</span></li>
+        </ul>
+        <div class="callout"><strong>Respostas:</strong> existe excesso de badges/ícones — sim. Existe informação irrelevante ("Ativo operacional", ponto de sync em todo card) — sim. Existe vazamento técnico ("Indisponível (Alugada)") — sim.</div>
+      </section>
+
+      <!-- 03 CARDS DE PLACAS -->
+      <section id="cards" class="domain">
+        <div class="domain__bar">
+          <h3><span class="idx">03</span> Cards de Placas <span style="font-family:var(--mono);font-size:12px;color:var(--text-faint);font-weight:400">· auditoria profunda</span></h3>
+          <span class="rating r-ruim">Ruim</span>
+        </div>
+        <p class="body">O <code style="font-family:var(--mono);font-size:13px">PlacaCard</code> é o componente mais visto do produto e o mais sobrecarregado. Ele tenta ser banner de mídia, ficha técnica e painel de ações ao mesmo tempo. O resultado é repetição e ruído.</p>
+
+        <div class="grid-2" style="margin-top:18px">
+          <div class="card">
+            <h4 style="font-family:var(--display);font-size:15px;margin-bottom:12px;color:var(--bad)">Estrutura — redundância</h4>
+            <ul class="findings">
+              <li><span class="mk neg">!</span><span>Banner mostra <code style="font-family:var(--mono);font-size:12px">#01</code> + título com o código. O corpo repete <strong>"Placa 01"</strong> e <strong>"Código X"</strong>. O mesmo dado, duas vezes, em 200px.</span></li>
+              <li><span class="mk neg">!</span><span>Eyebrow <strong>"Ativo operacional"</strong> em todo card — rótulo constante que não distingue nada.</span></li>
+              <li><span class="mk neg">!</span><span>Ponto de sync pulsante ("Dados em tempo real") em <em>cada</em> card → 10 animações simultâneas, ruído sem informação.</span></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h4 style="font-family:var(--display);font-size:15px;margin-bottom:12px;color:var(--warn)">Hierarquia & legibilidade</h4>
+            <ul class="findings">
+              <li><span class="mk neg">!</span><span>Borda esquerda colorida 3px + sombra pesada <code style="font-family:var(--mono);font-size:12px">0 10px 24px</code> em todos: a clássica armadilha "card arredondado com faixa de cor". Em grade de 10, vira peso visual.</span></li>
+              <li><span class="mk neg">!</span><span>Localização em <code style="font-family:var(--mono);font-size:12px">1.3rem</code> (≈13px) — o dado mais útil ao operador é dos menores.</span></li>
+              <li><span class="mk neu">i</span><span>Estados (skeleton, hover, disabled) existem e estão bem-feitos.</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="evidence">
+          <div class="evidence__head"><span class="tag">redundância</span><span class="path">components/PlacaCard/PlacaCard.jsx · banner + body</span></div>
+<pre>&lt;h3 className=<span class="s">"placa-card__media-title"</span>&gt;{<span class="k">displayCode</span>}&lt;/h3&gt;   <span class="c">// banner</span>
+<span class="c">...</span>
+&lt;h3 className=<span class="s">"placa-card__numero"</span>&gt;<span class="hl">Placa {formattedNumber}</span>&lt;/h3&gt;
+&lt;span className=<span class="s">"placa-card__codigo"</span>&gt;<span class="hl">Código {displayCode}</span>&lt;/span&gt; <span class="c">// repete</span></pre>
+        </div>
+
+        <div class="callout bad"><strong>Classificação: Ruim.</strong> Não é crítico (funciona, é acessível), mas falha no objetivo central — leitura em 3 segundos — por excesso de redundância e ruído decorativo. Proposta de novo padrão no Blueprint (§ Sistema de Cards).</div>
+      </section>
+
+      <!-- 04 NAVEGAÇÃO -->
+      <section id="navegacao" class="domain">
+        <div class="domain__bar">
+          <h3><span class="idx">04</span> Navegação</h3>
+          <span class="rating r-ruim">Ruim</span>
+        </div>
+        <p class="body"><strong>Lista plana de 9 itens, sem agrupamento por intenção.</strong> A <code style="font-family:var(--mono);font-size:13px">Sidebar</code> mistura operação (Placas, Mapa), gestão (Relatórios), administração (Admin, Auditoria) e infraestrutura (<strong>Sync Ops</strong> — ferramenta de dev) no mesmo nível. Carga cognitiva alta e sem modelo mental.</p>
+        <ul class="findings">
+          <li><span class="mk neg">!</span><span><strong>Português quebrado nos rótulos:</strong> "Regioes", "Relatorios" sem acento — direto no JSX da navegação principal.</span></li>
+          <li><span class="mk neg">!</span><span><strong>"Sync Ops" e "Auditoria" expostos a todos</strong> os perfis com acesso — domínio de infraestrutura tratado como navegação de produto.</span></li>
+          <li><span class="mk neg">!</span><span><strong>Cor da navegação diverge da marca:</strong> hover/ativo usam <code style="font-family:var(--mono);font-size:12px">rgba(116,133,255)</code> (periwinkle), enquanto o token primário do DS é <code style="font-family:var(--mono);font-size:12px">#2563EB</code> (azul). Dois azuis de marca.</span></li>
+          <li><span class="mk pos">✓</span><span><strong>Controle de acesso por rota</strong> (<code style="font-family:var(--mono);font-size:12px">canAccessRoute</code>) está correto e bem aplicado.</span></li>
+        </ul>
+        <div class="evidence">
+          <div class="evidence__head"><span class="tag">flat + i18n</span><span class="path">components/Sidebar/Sidebar.jsx · L70–72</span></div>
+<pre>&lt;NavLink to=<span class="s">"/regioes"</span>&gt;&lt;i .../&gt; &lt;span&gt;<span class="hl">Regioes</span>&lt;/span&gt;&lt;/NavLink&gt;
+&lt;NavLink to=<span class="s">"/relatorios"</span>&gt;&lt;i .../&gt; &lt;span&gt;<span class="hl">Relatorios</span>&lt;/span&gt;&lt;/NavLink&gt;
+&lt;NavLink to=<span class="s">"/admin-sync"</span>&gt;&lt;i .../&gt; &lt;span&gt;Sync Ops&lt;/span&gt;&lt;/NavLink&gt; <span class="c">// dev tool no menu</span></pre>
+        </div>
+        <div class="callout warn"><strong>Resposta direta:</strong> entre "SaaS enterprise / ERP antigo / painel genérico", a navegação atual está mais perto de <strong>painel administrativo genérico</strong>. O redesign anterior já agrupava em OPERAÇÃO / GESTÃO — esse é o caminho.</div>
+      </section>
+
+      <!-- 05 LINGUAGEM -->
+      <section id="linguagem" class="domain">
+        <div class="domain__bar">
+          <h3><span class="idx">05</span> Linguagem Operacional</h3>
+          <span class="rating r-critico">Crítico</span>
+        </div>
+        <p class="body">Único domínio classificado como <strong>Crítico</strong>: há termos de backend, enums internos e até <strong>texto corrompido (mojibake)</strong> chegando ao usuário final. Quebra imediatamente a percepção de produto premium.</p>
+        <ul class="findings">
+          <li><span class="mk neg">!</span><span><strong>Mojibake no código-fonte.</strong> Um dos ramos de status grava literalmente <code style="font-family:var(--mono);font-size:12px">'ManutenÃ§Ã£o'</code> — UTF-8 corrompido renderizado no card.</span></li>
+          <li><span class="mk neg">!</span><span><strong>Enums internos na UI:</strong> <code style="font-family:var(--mono);font-size:12px">CONTRACTED_ACTIVE</code>, <code style="font-family:var(--mono);font-size:12px">FUTURE_RESERVED</code>, <code style="font-family:var(--mono);font-size:12px">OCCUPIED</code> são estados de máquina tratados na camada visual.</span></li>
+          <li><span class="mk neg">!</span><span><strong>Severidade em inglês cru:</strong> "critical" / "warning" exibidos como rótulo (Dashboard).</span></li>
+          <li><span class="mk neg">!</span><span><strong>Estado modelado como rótulo de UI:</strong> "Indisponível (Alugada)" no filtro mistura a regra de negócio com a palavra do usuário.</span></li>
+        </ul>
+        <div class="evidence">
+          <div class="evidence__head"><span class="tag">mojibake</span><span class="path">components/PlacaCard/PlacaCard.jsx · getStatusInfo</span></div>
+<pre>} <span class="k">else if</span> (commercialStatus === <span class="s">'MAINTENANCE'</span>) {
+  statusText = <span class="hl">'ManutenÃ§Ã£o'</span>;   <span class="c">// ← UTF-8 corrompido, vai pra tela</span>
+  statusClass = <span class="s">'placa-card__badge--manutencao'</span>;</pre>
+        </div>
+        <div class="callout bad"><strong>Lista de vazamentos:</strong> <code style="font-family:var(--mono);font-size:12px">CONTRACTED_ACTIVE</code>, <code style="font-family:var(--mono);font-size:12px">OCCUPIED</code>, <code style="font-family:var(--mono);font-size:12px">RESERVED</code>, <code style="font-family:var(--mono);font-size:12px">FUTURE_RESERVED</code>, <code style="font-family:var(--mono);font-size:12px">MAINTENANCE</code>, <code style="font-family:var(--mono);font-size:12px">critical</code>, <code style="font-family:var(--mono);font-size:12px">warning</code>, <code style="font-family:var(--mono);font-size:12px">'ManutenÃ§Ã£o'</code>, "Indisponível (Alugada)". Precisam de uma camada de tradução (i18n / status map) entre domínio e apresentação.</div>
+      </section>
+
+      <!-- 06 DESIGN SYSTEM -->
+      <section id="designsystem" class="domain">
+        <div class="domain__bar">
+          <h3><span class="idx">06</span> Design System</h3>
+          <span class="rating r-medio">Médio</span>
+        </div>
+        <p class="body"><strong>Existe um Design System de verdade</strong> — <code style="font-family:var(--mono);font-size:13px">tokens.js</code> é nível enterprise (escala Slate, semântica completa, tipografia, espaçamento 4px, sombras, z-index). O problema não é ausência: é <strong>fragmentação</strong>. Três sistemas de tokens convivem e os componentes ignoram o oficial.</p>
+        <div class="grid-3" style="margin-top:18px">
+          <div class="card" style="padding:18px 20px"><div style="font-family:var(--mono);font-size:12px;color:var(--text-3);margin-bottom:6px">Sistema 1 · legado</div><div style="font-family:var(--mono);font-size:13px;color:var(--bad)">--bg-color<br>--text-color</div></div>
+          <div class="card" style="padding:18px 20px"><div style="font-family:var(--mono);font-size:12px;color:var(--text-3);margin-bottom:6px">Sistema 2 · "oficial"</div><div style="font-family:var(--mono);font-size:13px;color:var(--warn)">--ds-primary<br>--ds-surface</div></div>
+          <div class="card" style="padding:18px 20px"><div style="font-family:var(--mono);font-size:12px;color:var(--text-3);margin-bottom:6px">Sistema 3 · foundation</div><div style="font-family:var(--mono);font-size:13px;color:var(--info)">--fdn-color-*<br>--fdn-radius-*</div></div>
+        </div>
+        <ul class="findings" style="margin-top:18px">
+          <li><span class="mk neg">!</span><span>O próprio <code style="font-family:var(--mono);font-size:12px">index.css</code> diz "componentes novos devem usar <code style="font-family:var(--mono);font-size:12px">--ds-*</code>" — mas Dashboard e Sidebar usam <code style="font-family:var(--mono);font-size:12px">--fdn-*</code> com fallback para o legado e ainda hardcodam cores.</span></li>
+          <li><span class="mk neg">!</span><span><strong>Cores hardcoded fora do token:</strong> Dashboard usa <code style="font-family:var(--mono);font-size:12px">rgba(20,27,41,.94)</code> como fundo de card; Sidebar usa <code style="font-family:var(--mono);font-size:12px">#7485ff</code>. Nenhum vem do DS.</span></li>
+          <li><span class="mk neg">!</span><span><strong>Deriva de paleta:</strong> verde do token é <code style="font-family:var(--mono);font-size:12px">#16A34A</code>, mas o badge do card usa <code style="font-family:var(--mono);font-size:12px">#22C55E</code> / <code style="font-family:var(--mono);font-size:12px">#87f0b2</code>.</span></li>
+        </ul>
+        <div class="callout warn"><strong>Resposta direta:</strong> existe um Design System — mas é <strong>aspiracional, não vinculante</strong>. Componentes reutilizam estilos ad hoc em paralelo aos tokens. É um DS no papel, não na prática.</div>
+      </section>
+
+      <!-- 07 RESPONSIVIDADE -->
+      <section id="responsividade" class="domain">
+        <div class="domain__bar">
+          <h3><span class="idx">07</span> Responsividade</h3>
+          <span class="rating r-ruim">Ruim</span>
+        </div>
+        <ul class="findings">
+          <li><span class="mk neg">!</span><span><strong>Hack de fonte que encolhe a base.</strong> <code style="font-family:var(--mono);font-size:12px">html { font-size: 62.5% }</code> (10px) cai para 56.25% (9px) e <strong>50% (8px)</strong> em telas pequenas — texto de corpo abaixo do mínimo de acessibilidade.</span></li>
+          <li><span class="mk neg">!</span><span><strong>Sidebar vira barra estática no topo</strong> &lt;1024px, com nav rolável de <code style="font-family:var(--mono);font-size:12px">max-height:26rem</code> — não é um padrão mobile, é a mesma sidebar deitada.</span></li>
+          <li><span class="mk neg">!</span><span><strong>Tabelas com scroll horizontal forçado</strong> (<code style="font-family:var(--mono);font-size:12px">min-width:780px</code>). Em tablet/mobile, a tabela de regiões quebra para fora.</span></li>
+          <li><span class="mk neu">i</span><span>Grades de KPIs e cards usam <code style="font-family:var(--mono);font-size:12px">auto-fit/minmax</code> corretamente — esse pedaço reflui bem.</span></li>
+        </ul>
+        <div class="callout bad"><strong>Overflows confirmados:</strong> tabelas (min-width), sidebar mobile clumsy, e tipografia sub-9px. Mobile não foi desenhado — foi adaptado por encolhimento.</div>
+      </section>
+
+      <!-- 08 CONSISTÊNCIA -->
+      <section id="consistencia" class="domain">
+        <div class="domain__bar">
+          <h3><span class="idx">08</span> Consistência Global</h3>
+          <span class="rating r-ruim">Ruim</span>
+        </div>
+        <p class="body">Atravessando Dashboard, Inventário, Comercial, Contratos e Mapa, a sensação é de <strong>vários sistemas colados</strong>, não de um produto único. As superfícies não compartilham a mesma fonte de verdade visual.</p>
+        <ul class="findings">
+          <li><span class="mk neg">!</span><span><strong>Tema fragmentado:</strong> default em localStorage é <code style="font-family:var(--mono);font-size:12px">'dark'</code>, mas o CSS chama o light de "padrão". Coexistem <code style="font-family:var(--mono);font-size:12px">light-theme</code>, <code style="font-family:var(--mono);font-size:12px">dark-theme</code> e <code style="font-family:var(--mono);font-size:12px">foundation-theme</code> — três camadas de tema disputando.</span></li>
+          <li><span class="mk neg">!</span><span><strong>Modo claro quebrado:</strong> os cards do Dashboard hardcodam fundo escuro <code style="font-family:var(--mono);font-size:12px">rgba(20,27,41,.94)</code> e dependem de um seletor <code style="font-family:var(--mono);font-size:12px">body.light-theme</code> de correção por cima — frágil e incompleto.</span></li>
+          <li><span class="mk neg">!</span><span><strong>Fronteira "legacy" explícita</strong> (<code style="font-family:var(--mono);font-size:12px">.legacy-root</code> vs <code style="font-family:var(--mono);font-size:12px">.v4p-root</code>) confirma que V3 e V4 convivem no mesmo runtime visual.</span></li>
+        </ul>
+        <div class="callout warn"><strong>Resposta direta:</strong> parece <strong>vários sistemas colados</strong>. A boa notícia: a cola é de tokens, não de arquitetura — consertável consolidando para uma única fonte de verdade (ver Plano P0).</div>
+      </section>
+
+      <!-- ====================================================== -->
+      <!-- FASE 2 — TOP 20 ===================================== -->
+      <!-- ====================================================== -->
+      <div class="section-head" id="top20">
+        <div class="kicker">Fase 2 — Priorização</div>
+        <h2>Os 20 maiores problemas</h2>
+        <p>Ordenados por impacto na operação e na percepção de qualidade. Impacto = severidade × frequência de exposição ao usuário.</p>
+      </div>
+
+      <div class="problems">
+        <div class="problem"><div class="problem__rank">01</div><div class="problem__body"><h4>Texto corrompido (mojibake) na tela</h4><p><code>'ManutenÃ§Ã£o'</code> hardcoded no <code>PlacaCard</code> — visível ao usuário</p></div><div class="problem__meta"><span class="pill p0">P0</span><span class="impact-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></div></div>
+
+        <div class="problem"><div class="problem__rank">02</div><div class="problem__body"><h4>Três sistemas de tokens em paralelo</h4><p><code>--bg-color</code> · <code>--ds-*</code> · <code>--fdn-*</code> — nenhum é vinculante</p></div><div class="problem__meta"><span class="pill p0">P0</span><span class="impact-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></div></div>
+
+        <div class="problem"><div class="problem__rank">03</div><div class="problem__body"><h4>Enums de backend exibidos ao usuário</h4><p><code>CONTRACTED_ACTIVE</code>, <code>critical</code>, <code>warning</code> sem tradução</p></div><div class="problem__meta"><span class="pill p0">P0</span><span class="impact-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></div></div>
+
+        <div class="problem"><div class="problem__rank">04</div><div class="problem__body"><h4>Marca com 3 cores primárias diferentes</h4><p>token <code>#2563EB</code> vs nav <code>#7485ff</code> vs <code>#2F80ED</code></p></div><div class="problem__meta"><span class="pill p0">P0</span><span class="impact-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></div></div>
+
+        <div class="problem"><div class="problem__rank">05</div><div class="problem__body"><h4>Modo claro quebrado</h4><p>Cards do Dashboard hardcodam fundo escuro; light é "correção por cima"</p></div><div class="problem__meta"><span class="pill p0">P0</span><span class="impact-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></div></div>
+
+        <div class="problem"><div class="problem__rank">06</div><div class="problem__body"><h4>Dashboard sem hierarquia de comando</h4><p>8 KPIs idênticos + 7 blocos empilhados; alertas abaixo da dobra</p></div><div class="problem__meta"><span class="pill p1">P1</span><span class="impact-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></div></div>
+
+        <div class="problem"><div class="problem__rank">07</div><div class="problem__body"><h4>Navegação plana, sem agrupamento</h4><p>9 itens misturando operação, gestão, admin e dev (Sync Ops)</p></div><div class="problem__meta"><span class="pill p1">P1</span><span class="impact-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></div></div>
+
+        <div class="problem"><div class="problem__rank">08</div><div class="problem__body"><h4>PlacaCard com dado duplicado</h4><p>Código e número de placa renderizados duas vezes por card</p></div><div class="problem__meta"><span class="pill p1">P1</span><span class="impact-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span></div></div>
+
+        <div class="problem"><div class="problem__rank">09</div><div class="problem__body"><h4>Tipografia abaixo do mínimo no mobile</h4><p><code>font-size:50%</code> → base de 8px em telas pequenas</p></div><div class="problem__meta"><span class="pill p1">P1</span><span class="impact-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span></div></div>
+
+        <div class="problem"><div class="problem__rank">10</div><div class="problem__body"><h4>Dois modelos de status no mesmo componente</h4><p><code>commercialStatus</code> (enum) vs <code>aluguel_ativo/futuro</code> (boolean)</p></div><div class="problem__meta"><span class="pill p1">P1</span><span class="impact-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span></div></div>
+
+        <div class="problem"><div class="problem__rank">11</div><div class="problem__body"><h4>Ruído decorativo no inventário</h4><p>Ponto de sync pulsante + eyebrow "Ativo operacional" em todo card</p></div><div class="problem__meta"><span class="pill p2">P2</span><span class="impact-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span></div></div>
+
+        <div class="problem"><div class="problem__rank">12</div><div class="problem__body"><h4>"Oportunidades" exibe alertas de risco</h4><p>Título e conteúdo do <code>SmartAlerts</code> divergem</p></div><div class="problem__meta"><span class="pill p2">P2</span><span class="impact-dots"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span></div></div>
+
+        <div class="problem"><div class="problem__rank">13</div><div class="problem__body"><h4>Tabelas com scroll horizontal forçado</h4><p><code>min-width:780px</code> quebra em tablet/mobile</p></div><div class="problem__meta"><span class="pill p2">P2</span><span class="impact-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span></div></div>
+
+        <div class="problem"><div class="problem__rank">14</div><div class="problem__body"><h4>Acentuação faltando em rótulos de nav</h4><p>"Regioes", "Relatorios" sem acento</p></div><div class="problem__meta"><span class="pill p2">P2</span><span class="impact-dots"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span></div></div>
+
+        <div class="problem"><div class="problem__rank">15</div><div class="problem__body"><h4>Sombra e faixa de cor pesadas no card</h4><p>Padrão "card arredondado + borda-accent" repetido na grade inteira</p></div><div class="problem__meta"><span class="pill p2">P2</span><span class="impact-dots"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span></div></div>
+
+        <div class="problem"><div class="problem__rank">16</div><div class="problem__body"><h4>Filtros falam a língua do banco</h4><p>"Indisponível (Alugada)" expõe a modelagem</p></div><div class="problem__meta"><span class="pill p2">P2</span><span class="impact-dots"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span></div></div>
+
+        <div class="problem"><div class="problem__rank">17</div><div class="problem__body"><h4>Sidebar mobile é a desktop deitada</h4><p>Sem padrão de navegação mobile real (drawer / bottom-nav)</p></div><div class="problem__meta"><span class="pill p2">P2</span><span class="impact-dots"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span></div></div>
+
+        <div class="problem"><div class="problem__rank">18</div><div class="problem__body"><h4>Paginação numérica pura</h4><p>1…N botões via <code>cloneElement</code>; não escala</p></div><div class="problem__meta"><span class="pill p3">P3</span><span class="impact-dots"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span></div></div>
+
+        <div class="problem"><div class="problem__rank">19</div><div class="problem__body"><h4>Sync Ops / Auditoria como item de produto</h4><p>Infra e auditoria no mesmo nível da operação</p></div><div class="problem__meta"><span class="pill p3">P3</span><span class="impact-dots"><i class="on"></i><i></i><i></i><i></i><i></i></span></div></div>
+
+        <div class="problem"><div class="problem__rank">20</div><div class="problem__body"><h4>Fronteira legacy/v4 no runtime visual</h4><p><code>.legacy-root</code> vs <code>.v4p-root</code> — dívida a quitar</p></div><div class="problem__meta"><span class="pill p3">P3</span><span class="impact-dots"><i class="on"></i><i></i><i></i><i></i><i></i></span></div></div>
+      </div>
+
+      <!-- ====================================================== -->
+      <!-- FASE 3 — PLANO ===================================== -->
+      <!-- ====================================================== -->
+      <div class="section-head" id="plano">
+        <div class="kicker">Fase 3 — Execução</div>
+        <h2>Plano de correção</h2>
+        <p>Sequência por prioridade. P0 não é "o mais difícil" — é o que mais sangra credibilidade enterprise por exposição diária.</p>
+      </div>
+
+      <div class="plan">
+        <div class="phase">
+          <div class="phase__head"><span class="phase__tag p0">P0</span><h4>Parar o sangramento</h4><span class="when">Sprint 1 · ~1 semana</span></div>
+          <div class="phase__body"><ul>
+            <li><strong>Corrigir o mojibake</strong> e auditar todo o repositório por UTF-8 corrompido (lint de encoding no CI).</li>
+            <li><strong>Camada de tradução de status:</strong> um único <code style="font-family:var(--mono);font-size:12px">statusMap</code> domínio→rótulo. Nenhum enum ou inglês cru chega à tela.</li>
+            <li><strong>Eleger UMA fonte de verdade de tokens</strong> (<code style="font-family:var(--mono);font-size:12px">--ds-*</code>). Congelar legado e <code style="font-family:var(--mono);font-size:12px">--fdn-*</code>; mapear um para o outro via alias.</li>
+            <li><strong>Unificar a cor de marca</strong> em um único primário e remover hex hardcoded de Sidebar e Dashboard.</li>
+            <li><strong>Consertar o modo claro:</strong> cards lendo tokens, não <code style="font-family:var(--mono);font-size:12px">rgba()</code> fixo.</li>
+          </ul></div>
+        </div>
+
+        <div class="phase">
+          <div class="phase__head"><span class="phase__tag p1">P1</span><h4>Reconstruir os pontos de maior tráfego</h4><span class="when">Sprint 2–3 · ~2–3 semanas</span></div>
+          <div class="phase__body"><ul>
+            <li><strong>Dashboard operacional:</strong> topo de "Exceções/o que precisa de ação", KPIs hierarquizados (2 primários + secundários), não 8 iguais.</li>
+            <li><strong>Novo PlacaCard:</strong> um código, um status, localização legível, ações no hover. Remover redundância e ruído (ver Blueprint).</li>
+            <li><strong>Navegação por intenção:</strong> grupos OPERAÇÃO / COMERCIAL / GESTÃO / ADMIN; tirar dev tools do menu.</li>
+            <li><strong>Modelo de status único</strong> no front (derivar de uma só fonte; eliminar o caminho boolean legado).</li>
+            <li><strong>Tipografia mobile</strong> com mínimo de 14px de corpo; abandonar o encolhimento de base.</li>
+          </ul></div>
+        </div>
+
+        <div class="phase">
+          <div class="phase__head"><span class="phase__tag p2">P2</span><h4>Polir e padronizar</h4><span class="when">Sprint 4–5</span></div>
+          <div class="phase__body"><ul>
+            <li><strong>Tabelas responsivas</strong> (colunas prioritárias + colapso para lista em mobile) — fim do scroll horizontal.</li>
+            <li><strong>Sistema de Badges/Status</strong> único e documentado (4 estados, mesma anatomia em todo lugar).</li>
+            <li><strong>Linguagem de produto:</strong> filtros e rótulos na voz do negócio ("Ocupada", não "Indisponível (Alugada)").</li>
+            <li><strong>Aliviar a decoração:</strong> sombras sutis, sem faixa-de-cor em todo card, sync indicado uma vez no header global.</li>
+          </ul></div>
+        </div>
+
+        <div class="phase">
+          <div class="phase__head"><span class="phase__tag p3">P3</span><h4>Quitar dívida estrutural</h4><span class="when">Contínuo</span></div>
+          <div class="phase__body"><ul>
+            <li><strong>Remover a fronteira legacy</strong> (<code style="font-family:var(--mono);font-size:12px">.legacy-root</code>) migrando as telas V3 restantes.</li>
+            <li><strong>Paginação escalável</strong> (cursor / "carregar mais" / janela de páginas).</li>
+            <li><strong>Mobile real:</strong> drawer de navegação e padrões touch (alvos ≥44px).</li>
+            <li><strong>Documentar o DS</strong> como contrato (Storybook/MDX) para o token voltar a ser vinculante.</li>
+          </ul></div>
+        </div>
+      </div>
+
+      <!-- ====================================================== -->
+      <!-- FASE 4 — BLUEPRINT ================================== -->
+      <!-- ====================================================== -->
+      <div class="section-head" id="blueprint">
+        <div class="kicker">Fase 4 — Direção</div>
+        <h2>Blueprint UX Enterprise</h2>
+        <p>O alvo: um único produto operacional, denso de informação mas calmo, com a clareza do Linear e a densidade do Datadog. Princípios, não pixels — o redesenho de telas é a próxima fase.</p>
+      </div>
+
+      <div class="bp-grid">
+        <div class="bp">
+          <h4><span class="num">A</span> Arquitetura UX</h4>
+          <p>Navegação <strong>por intenção</strong>, não por entidade. O operador pensa em "o que preciso fazer", não "qual tabela abrir".</p>
+          <ul>
+            <li><strong>Operação</strong> — Visão geral, Inventário, Mapa, Ordens de campo</li>
+            <li><strong>Comercial</strong> — Propostas (PI), Contratos, Clientes</li>
+            <li><strong>Gestão</strong> — Relatórios, BI &amp; Analytics, Faturamento</li>
+            <li><strong>Sistema</strong> — Admin, Auditoria, Sync (fora do menu principal)</li>
+          </ul>
+        </div>
+
+        <div class="bp">
+          <h4><span class="num">B</span> Design Language</h4>
+          <p>Uma fonte de verdade. Superfícies calmas, tipografia em escala real (px/rem sem hack), acento único.</p>
+          <div class="swatches">
+            <div class="sw"><i style="background:#080B12"></i><span>bg</span></div>
+            <div class="sw"><i style="background:#111722"></i><span>surface</span></div>
+            <div class="sw"><i style="background:#6E8BFF"></i><span>accent</span></div>
+            <div class="sw"><i style="background:#3DD68C"></i><span>good</span></div>
+            <div class="sw"><i style="background:#F2B544"></i><span>warn</span></div>
+            <div class="sw"><i style="background:#FF6B6B"></i><span>bad</span></div>
+          </div>
+        </div>
+
+        <div class="bp">
+          <h4><span class="num">C</span> Hierarquia Visual</h4>
+          <p>Cada tela responde a uma pergunta em ordem: <strong>o que está errado → o que mudou → o todo</strong>.</p>
+          <ul>
+            <li><strong>Nível 1</strong> — exceções e ações pendentes (topo, alto contraste)</li>
+            <li><strong>Nível 2</strong> — 2–3 métricas decisivas com tendência</li>
+            <li><strong>Nível 3</strong> — detalhe e tabelas, sob demanda</li>
+          </ul>
+        </div>
+
+        <div class="bp">
+          <h4><span class="num">D</span> Sistema de Status</h4>
+          <p>Quatro estados, uma anatomia, traduzidos na borda do domínio. Backend nunca fala com o usuário.</p>
+          <div class="chip-row">
+            <span class="chip s-disp">Disponível</span>
+            <span class="chip s-ocup">Ocupada</span>
+            <span class="chip s-resv">Reservada</span>
+            <span class="chip s-manu">Manutenção</span>
+          </div>
+        </div>
+
+        <div class="bp">
+          <h4><span class="num">E</span> Sistema de Badges</h4>
+          <p>Badge = estado, não decoração. Regras: máximo 1 badge de status por card; metadados viram texto, não pílula.</p>
+          <ul>
+            <li>Cor semântica + texto — nunca cor sozinha (acessibilidade)</li>
+            <li>Peso e tamanho idênticos em card, tabela e detalhe</li>
+            <li>Severidade traduzida: <code style="font-family:var(--mono);font-size:12px">critical</code> → "Crítico"</li>
+          </ul>
+        </div>
+
+        <div class="bp">
+          <h4><span class="num">F</span> Sistema de Cards</h4>
+          <p>O card responde 3 perguntas em 3 segundos: <strong>qual placa, em que estado, onde</strong>. Tudo além disso é ruído.</p>
+          <ul>
+            <li>Um identificador (código), um status, uma localização</li>
+            <li>Ações reveladas no hover/foco, não permanentes</li>
+            <li>Sombra sutil, sem faixa-de-cor; estado = badge</li>
+            <li>Cliente/datas só quando ocupada</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3 class="block-title"><span class="idx">G</span> Dashboard Ideal — antes & depois</h3>
+      <div class="compare">
+        <div class="before">
+          <h5>Hoje</h5>
+          <ul>
+            <li>8 KPIs de peso idêntico abrem a tela</li>
+            <li>7 blocos empilhados sem hierarquia</li>
+            <li>Alertas escondidos no 6º bloco</li>
+            <li>Severidade em inglês cru</li>
+            <li>"Oportunidades" mostra riscos</li>
+          </ul>
+        </div>
+        <div class="after">
+          <h5>Alvo</h5>
+          <ul>
+            <li>Faixa de exceções/ações no topo absoluto</li>
+            <li>2 métricas-herói (Receita, Ocupação) + tendência</li>
+            <li>KPIs secundários compactos, abaixo</li>
+            <li>Status e severidade traduzidos</li>
+            <li>Seções nomeadas pelo que contêm</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3 class="block-title"><span class="idx">H</span> Inventário Ideal — antes & depois</h3>
+      <div class="compare">
+        <div class="before">
+          <h5>Hoje</h5>
+          <ul>
+            <li>11 elementos por card; código duplicado</li>
+            <li>Ponto de sync pulsante em cada card</li>
+            <li>Filtros na língua do banco</li>
+            <li>Localização (dado-chave) em ~13px</li>
+            <li>Leitura em ~5s</li>
+          </ul>
+        </div>
+        <div class="after">
+          <h5>Alvo</h5>
+          <ul>
+            <li>Código · status · local em destaque</li>
+            <li>Sync indicado uma vez no header global</li>
+            <li>Filtros na voz do negócio + busca densa</li>
+            <li>Alternância grade ⇄ tabela densa</li>
+            <li>Leitura em &lt;3s</li>
+          </ul>
+        </div>
+      </div>
+
+      <footer class="report-footer">
+        <p><strong>Fim da Fase 1–4.</strong> Esta auditoria diagnostica e direciona — não redesenha telas (conforme o briefing: primeiro auditar). A próxima etapa natural é a <strong>Fase 5</strong>: protótipos clicáveis em alta-fidelidade do Dashboard e Inventário ideais, já sobre a fonte de verdade única de tokens. Diga o que priorizar e eu construo.</p>
+        <p style="margin-top:14px;font-family:var(--mono);font-size:11.5px;color:var(--text-faint)">Evidência baseada em leitura direta de Guiirs/InMidia-Software@main · REACT/src</p>
+      </footer>
+
+    </div>
+  </main>
+</div>
+
+<script>
+  // Scrollspy — destaca o item ativo na nav lateral
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('.sidenav a'));
+    var map = {};
+    links.forEach(function (a) {
+      var id = a.getAttribute('href').slice(1);
+      var el = document.getElementById(id);
+      if (el) map[id] = a;
+    });
+    var ids = Object.keys(map);
+    function onScroll() {
+      var pos = window.scrollY + 120;
+      var current = ids[0];
+      for (var i = 0; i < ids.length; i++) {
+        var el = document.getElementById(ids[i]);
+        if (el && el.offsetTop <= pos) current = ids[i];
+      }
+      links.forEach(function (a) { a.classList.remove('active'); });
+      if (map[current]) map[current].classList.add('active');
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  })();
+</script>
+</body>
+</html>

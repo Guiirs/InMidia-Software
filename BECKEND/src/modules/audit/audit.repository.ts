@@ -55,6 +55,9 @@ export class AuditRepository {
   }
 
   private buildFilter(query: AuditQuery): FilterQuery<AuditLogDocument> {
+    if (!query.isSuperadmin && !query.empresaId) {
+      throw new Error('[AuditRepository] empresaId é obrigatório para queries não-superadmin');
+    }
     const filter: FilterQuery<AuditLogDocument> = {};
     if (!query.isSuperadmin) filter.empresaId = query.empresaId;
     if (query.module) filter.module = query.module;

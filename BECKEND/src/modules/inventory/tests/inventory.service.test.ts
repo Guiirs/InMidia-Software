@@ -136,4 +136,48 @@ describe('InventoryService', () => {
     expect(result.item.availability.status).toBe('occupied');
     expect(result.item.occupancy.occupied).toBe(true);
   });
+
+  // ── Commercial Projection preference (FASE 3 migration) ─────────────────
+
+  it('prefers commercialStatus=CONTRACTED_ACTIVE over legacy fields', () => {
+    const result = inventoryService.evaluateInventoryItem(baseSource({
+      commercialStatus: 'CONTRACTED_ACTIVE',
+      // legacy fields absent — projection is the sole source
+    }), { now: NOW });
+
+    expect(result.item.availability.status).toBe('occupied');
+    expect(result.item.availability.reason).toBe('COMMERCIAL_PROJECTION_OCCUPIED');
+    expect(result.item.occupancy.occupied).toBe(true);
+  });
+
+  it('prefers commercialStatus=FUTURE_RESERVED over legacy fields', () => {
+    const result = inventoryService.evaluateInventoryItem(baseSource({
+      commercialStatus: 'FUTURE_RESERVED',
+    }), { now: NOW });
+
+    expect(result.item.availability.status).toBe('reserved');
+    expect(result.item.availability.reason).toBe('COMMERCIAL_PROJECTION_RESERVED');
+    expect(result.item.occupancy.reserved).toBe(true);
+  });
+
+  it('prefers commercialStatus=AVAILABLE even when legacy aluguel_ativo is true', () => {
+    // If Commercial Projection says AVAILABLE, the projection wins.
+    const result = inventoryService.evaluateInventoryItem(baseSource({
+      commercialStatus: 'AVAILABLE',
+      aluguel_ativo: true,
+    }), { now: NOW });
+
+    expect(result.item.availability.status).toBe('available');
+    expect(result.item.availability.reason).toBe('COMMERCIAL_PROJECTION_AVAILABLE');
+  });
+
+  it('falls through to legacy when commercialStatus=UNKNOWN', () => {
+    const result = inventoryService.evaluateInventoryItem(baseSource({
+      commercialStatus: 'UNKNOWN',
+      statusAluguel: 'alugada',
+    }), { now: NOW });
+
+    expect(result.item.availability.status).toBe('occupied');
+    expect(result.item.availability.reason).toBe('LEGACY_STATUS_OCCUPIED');
+  });
 });

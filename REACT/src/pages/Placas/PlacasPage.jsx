@@ -19,6 +19,7 @@ import {
   applyDragMove,
   getFriendlyOrganizationError,
 } from './placaOrganizationUtils';
+import { resolvePlacaStatus } from '../../utils/statusMap';
 import './Placas.css';
 
 const ITEMS_PER_PAGE = 10;
@@ -179,17 +180,12 @@ function PlacasPage() {
   const statusCounts = useMemo(() => {
     const counts = { disponiveis: 0, alugadas: 0, reservadas: 0, manutencao: 0 };
     placas.forEach(placa => {
-      if (placa.aluguel_ativo) {
-        if (placa.aluguel_futuro) {
-          counts.reservadas++;
-        } else {
-          counts.alugadas++;
-        }
-      } else if (placa.disponivel === false || placa.ativa === false) {
-        counts.manutencao++;
-      } else {
-        counts.disponiveis++;
-      }
+      // resolvePlacaStatus prefers commercialStatus (Commercial Projection) → statusComercial → legacy booleans
+      const status = resolvePlacaStatus(placa);
+      if (status === 'ocupada') counts.alugadas++;
+      else if (status === 'reservada') counts.reservadas++;
+      else if (status === 'manutencao') counts.manutencao++;
+      else counts.disponiveis++;
     });
     return counts;
   }, [placas]);

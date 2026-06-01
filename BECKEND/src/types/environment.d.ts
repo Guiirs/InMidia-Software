@@ -30,6 +30,12 @@ export interface IEnvironment {
   // API Keys
   API_KEY?: string;
   
+  // Backup
+  BACKUP_DIR?: string;
+  BACKUP_RETENTION_DAYS?: string;
+  BACKUP_OFFSITE_ENABLED?: string;
+  BACKUP_PROVIDER?: string;
+
   // Other
   CORS_ORIGIN?: string;
   RATE_LIMIT_WINDOW_MS?: string;

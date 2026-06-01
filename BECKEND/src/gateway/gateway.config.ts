@@ -2,6 +2,8 @@
  * API Gateway Configuration
  */
 
+import { FEATURES } from '@config/features';
+
 export interface ServiceRoute {
   path: string;
   target: string;
@@ -383,12 +385,14 @@ export const gatewayConfig: GatewayConfig = {
 
 export function findRoute(path: string): ServiceRoute | undefined {
   return gatewayConfig.routes.find(route => {
+    if (!isModuleEnabled(route.module)) return false;
     const pattern = route.path.replace(/\*/g, '.*');
     const regex = new RegExp(`^${pattern}$`);
     return regex.test(path);
   });
 }
 
-export function isModuleEnabled(_moduleName: string): boolean {
+export function isModuleEnabled(moduleName: string): boolean {
+  if (moduleName === 'whatsapp') return FEATURES.whatsapp;
   return true;
 }

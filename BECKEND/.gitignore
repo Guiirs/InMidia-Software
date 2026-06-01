@@ -55,6 +55,10 @@ playwright-report/
 playwright/.cache/
 __snapshots__/
 
+# ─── DOCS OPERACIONAIS (manter rastreados) ────────────────────────────────────
+!docs/
+!docs/*.md
+
 # ─── BANCOS DE DADOS / DUMPS ──────────────────────────────────────────────────
 *.rdb
 dump.rdb

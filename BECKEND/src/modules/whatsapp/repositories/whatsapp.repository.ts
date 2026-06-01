@@ -221,9 +221,10 @@ export class WhatsAppRepository {
   /**
    * Buscar template por ID
    */
-  async findTemplateById(id: string): Promise<Result<TemplateEntity | null, DomainError>> {
+  async findTemplateById(id: string, empresaId: string): Promise<Result<TemplateEntity | null, DomainError>> {
+    if (!empresaId) throw new Error('[WhatsAppRepository] empresaId é obrigatório para findTemplateById');
     try {
-      const template = await WhatsAppTemplate.findById(id);
+      const template = await WhatsAppTemplate.findOne({ _id: id, empresaId });
 
       if (!template) {
         return Result.ok(null);

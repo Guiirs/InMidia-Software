@@ -5,6 +5,7 @@
  */
 
 import { Router } from 'express';
+import { FEATURES } from '@config/features';
 
 import authRoutes from '@modules/auth/auth.routes';
 import userRoutes from '@modules/users/user.routes';
@@ -23,7 +24,6 @@ import webhookRoutes from '@modules/webhooks/webhook.routes';
 import publicApiRoutes from '@modules/public-api/public-api.routes';
 import publicApiV1Routes from '@modules/public-api/public-api-v1.routes';
 import relatorioRoutes from '@modules/relatorios/relatorios.routes';
-import whatsappRoutes from '@modules/whatsapp/whatsapp.routes';
 import adminRoutes from '@modules/admin/admin.routes';
 import checkingRoutes from '@modules/checking/checking.routes';
 import queueRoutes from '@modules/system/queue/queue.routes';
@@ -53,6 +53,12 @@ import clientsV4Routes from '@modules/clientes/clients.routes';
 import mediaRoutes from '@modules/media/media.routes';
 import publicPlatesRoutes from '@modules/public-plates/public-plates.routes';
 import diagnosticsRoutes from '@modules/diagnostics/diagnostics.routes';
+import commercialProjectionRoutes from '@modules/commercial-projection/commercial-projection.routes';
+
+const disabledRouter = Router();
+const whatsappRoutes: Router = FEATURES.whatsapp
+  ? (require('@modules/whatsapp/whatsapp.routes').default as Router)
+  : disabledRouter;
 
 export interface ModuleDefinition {
   name: string;
@@ -243,7 +249,7 @@ export const modules: ModuleDefinition[] = [
     description: 'Integracao com WhatsApp',
     domain: 'integration',
     version: '1.0.0',
-    enabled: true,
+    enabled: FEATURES.whatsapp,
   },
   {
     name: 'relatorios',
@@ -459,6 +465,15 @@ export const modules: ModuleDefinition[] = [
     description: 'Diagnosticos internos operacionais protegidos por admin',
     domain: 'system',
     version: '1.0.0',
+    enabled: true,
+  },
+  {
+    name: 'commercial-projection-v4',
+    basePath: '/api/v4/commercial-projection',
+    router: commercialProjectionRoutes,
+    description: 'Commercial Projection V4.1: fonte canonica comercial por placa — status, contrato, cliente, valor',
+    domain: 'sales',
+    version: '4.1.0',
     enabled: true,
   },
   {

@@ -1,7 +1,9 @@
 import Placa from '@modules/placas/Placa';
 import Aluguel from '@modules/alugueis/Aluguel';
-import { InventoryProjectionService, boardStatusFromCommercialProjection } from './inventory-projection.service';
 import { regionService } from '@modules/regions/region.service';
+import { commercialProjectionService } from '@modules/commercial-projection/commercial-projection.service';
+import type { CommercialProjection } from '@modules/commercial-projection/commercial-projection.types';
+import { mapCommercialStatusToLegacyStatusComercial } from '@modules/placas/utils/commercial-status.utils';
 import mongoose from 'mongoose';
 import AppError from '@shared/container/AppError';
 
@@ -118,6 +120,21 @@ function getBoardStatus(placa: any, rentals: any[], now: Date): BoardStatus {
   return 'available';
 }
 
+function commercialStatusToBoardStatus(cs: string): BoardStatus {
+  if (cs === 'CONTRACTED_ACTIVE') return 'occupied';
+  if (cs === 'RESERVED') return 'occupied';
+  if (cs === 'FUTURE_RESERVED') return 'reserved';
+  if (cs === 'MAINTENANCE') return 'maintenance';
+  if (cs === 'UNKNOWN') return 'critical';
+  return 'available';
+}
+
+function commercialStatusToLegacyStatusAluguel(cs: string): string {
+  if (cs === 'CONTRACTED_ACTIVE' || cs === 'RESERVED') return 'alugada';
+  if (cs === 'FUTURE_RESERVED') return 'reservada';
+  return 'disponivel';
+}
+
 export interface BoardListItem {
   id: string;
   codigo: string;
@@ -147,18 +164,38 @@ export interface BoardListItem {
   archivedAt: string | null;
   disponivel: boolean;
   status: BoardStatus;
+  /** Canonical Commercial Projection V4.1 */
+  commercialProjection?: {
+    commercialStatus: string;
+    activeContract?: CommercialProjection['activeContract'];
+    reservation: CommercialProjection['reservation'];
+    pricing?: CommercialProjection['pricing'];
+    resolvedAt: string;
+  };
+  /** Shorthand from commercialProjection; kept for backward compat with v4/adapters */
   commercialStatus?: string;
+  /** @deprecated kept for backward compat with commercial-availability projection consumers */
   commercialAvailabilitySource?: string;
+  /** @deprecated kept for backward compat */
   isCommerciallyAvailable?: boolean;
+  /** @deprecated kept for backward compat */
   isPhysicallyBlocked?: boolean;
   regiao: { id: string; nome: string; codigo?: string } | null;
   valorMensal: number;
+  /** Alias of valorMensal — legacy snake_case field consumers */
+  valor_mensal?: number;
   aluguelAtivo: {
     id: string;
     clienteId: string | null;
     startDate: string | null;
     endDate: string | null;
   } | null;
+  /** Legacy compat: derived from commercialProjection.commercialStatus */
+  statusComercial?: string;
+  statusAluguel?: string;
+  aluguel_ativo?: boolean;
+  aluguel_futuro?: boolean;
+  cliente_nome?: string | null;
 }
 
 export interface BoardsListResult {
@@ -278,7 +315,11 @@ export class InventoryBoardsService {
         ? await Aluguel.find({
             empresaId,
             status: { $ne: 'cancelado' },
-            $or: [{ placaId: { $in: placaIds } }, { placa: { $in: placaIds } }],
+            $and: [
+              { $or: [{ placaId: { $in: placaIds } }, { placa: { $in: placaIds } }] },
+              // Excluir contratos expirados (alinha com enrichWithAluguelDataLegacy)
+              { $or: [{ endDate: { $gte: now } }, { data_fim: { $gte: now } }] },
+            ],
           }).lean()
         : [];
 
@@ -290,18 +331,22 @@ export class InventoryBoardsService {
       rentalsByBoard.get(pid)!.push(a);
     });
 
-    const inventoryProjection = await new InventoryProjectionService().resolveCommercialProjection({
+    // Batch-resolve Commercial Projection (O(1) round trips, no N+1)
+    const cpProjections = await commercialProjectionService.resolveBatch(
+      placas.map((placa: any) => String(placa._id)),
       empresaId,
-      placaIds: placas.map((placa: any) => String(placa._id)),
-      at: now,
-    });
+      now,
+    );
 
     const boards: BoardListItem[] = placas.map((placa: any) => {
       const rentals = rentalsByBoard.get(String(placa._id)) ?? [];
-      const commercialStatus = inventoryProjection.statusByPlateId.get(String(placa._id));
-      const status = commercialStatus
-        ? boardStatusFromCommercialProjection(commercialStatus)
+      const cp = cpProjections.get(String(placa._id));
+
+      // Status: prefer Commercial Projection, fallback to legacy rental scan
+      const status: BoardStatus = cp
+        ? commercialStatusToBoardStatus(cp.commercialStatus)
         : getBoardStatus(placa, rentals, now);
+
       const activeRental = rentals.find((r) => isActive(r, now)) ?? null;
       const regiaoRaw = placa.regiaoId;
       const coordinates = normalizeInventoryBoardCoordinates(placa);
@@ -309,6 +354,14 @@ export class InventoryBoardsService {
       const regiaoId = toId(regiaoRaw) || toId(placa.regiaoId) || null;
       const imageContract = this.normalizeImageContract(placa);
       const imagemPrincipal = imageContract.imagemPrincipal;
+
+      // Legacy compat fields derived from Commercial Projection
+      const legacyIsOccupied = cp
+        ? cp.commercialStatus === 'CONTRACTED_ACTIVE' || cp.commercialStatus === 'RESERVED'
+        : rentals.some((r) => isActive(r, now));
+      const legacyIsFuture = cp
+        ? cp.commercialStatus === 'FUTURE_RESERVED'
+        : rentals.some((r) => isFuture(r, now));
 
       return {
         id: String(placa._id),
@@ -339,10 +392,21 @@ export class InventoryBoardsService {
         archivedAt: placa.archivedAt ? (toDate(placa.archivedAt)?.toISOString() ?? null) : null,
         disponivel: placa.disponivel ?? true,
         status,
-        commercialStatus: commercialStatus?.status,
-        commercialAvailabilitySource: commercialStatus?.source,
-        isCommerciallyAvailable: commercialStatus?.isCommerciallyAvailable,
-        isPhysicallyBlocked: commercialStatus?.isPhysicallyBlocked,
+        // Canonical Commercial Projection V4.1
+        commercialProjection: cp
+          ? {
+              commercialStatus: cp.commercialStatus,
+              activeContract: cp.activeContract,
+              reservation: cp.reservation,
+              pricing: cp.pricing,
+              resolvedAt: cp.resolvedAt,
+            }
+          : undefined,
+        // Shorthand + backward compat with v4/adapters
+        commercialStatus: cp?.commercialStatus,
+        commercialAvailabilitySource: undefined,
+        isCommerciallyAvailable: cp ? cp.commercialStatus === 'AVAILABLE' : undefined,
+        isPhysicallyBlocked: cp ? cp.commercialStatus === 'MAINTENANCE' && !cp.reservation.active && !cp.reservation.future : undefined,
         regiao: regiaoRaw && typeof regiaoRaw === 'object'
           ? {
               id: toId(regiaoRaw),
@@ -356,7 +420,9 @@ export class InventoryBoardsService {
               polygon: (regiaoRaw as any).polygon ?? null,
             } as any
           : null,
-        valorMensal: toNumber(placa.valor_mensal),
+        // Fonte primária: CP pricing.contractValue. Fallback: campo legado da placa.
+        valorMensal: toNumber(cp?.pricing?.contractValue ?? placa.valor_mensal),
+        valor_mensal: toNumber(cp?.pricing?.contractValue ?? placa.valor_mensal),
         aluguelAtivo: activeRental
           ? {
               id: String(activeRental._id),
@@ -365,6 +431,15 @@ export class InventoryBoardsService {
               endDate: toDate(activeRental.endDate ?? activeRental.data_fim)?.toISOString() ?? null,
             }
           : null,
+        // Legacy compat fields — derived from Commercial Projection; kept for consumers not yet migrated
+        // statusComercial usa enum legado (AVAILABLE|RESERVED|OCCUPIED|UNAVAILABLE); CP usa enum canônico.
+        statusComercial: cp
+          ? mapCommercialStatusToLegacyStatusComercial(cp.commercialStatus)
+          : placa.statusComercial,
+        statusAluguel: cp ? commercialStatusToLegacyStatusAluguel(cp.commercialStatus) : undefined,
+        aluguel_ativo: legacyIsOccupied,
+        aluguel_futuro: legacyIsFuture,
+        cliente_nome: cp?.activeContract?.clientName ?? null,
       };
     });
 
