@@ -339,6 +339,68 @@ describe('MapPage integration surface', () => {
       expect(screen.getByTestId('operational-map')).not.toHaveAttribute('data-selected-region');
     });
   });
+
+  describe('toMapPoints — metadata comercial', () => {
+    it('MapPoint preserva commercialStatus no metadata', async () => {
+      setMapData({
+        regions: [{ id: 'r1', name: 'R1', occupancyRate: 0.5, totalBoards: 1, availableBoards: 1 }],
+        boards: [{
+          id: 'b1', codigo: 'T-001', nome: 'Teste', lat: -23.1, lng: -46.1, status: 'occupied', regionId: 'r1', localizacao: 'X',
+          commercialStatus: 'CONTRACTED_ACTIVE',
+        }],
+      });
+      const { default: MapPage } = await import('./MapPage.jsx');
+      const source = readFileSync(MAP_PAGE_SOURCE, 'utf8');
+      expect(source).toContain('commercialStatus');
+      expect(source).toContain('metadata:');
+    });
+
+    it('MapPoint preserva commercialProjection no metadata', () => {
+      const source = readFileSync(MAP_PAGE_SOURCE, 'utf8');
+      expect(source).toContain('commercialProjection');
+      expect(source).toContain('cp?.activeContract');
+    });
+
+    it('MapPoint preserva cliente_nome no metadata', () => {
+      const source = readFileSync(MAP_PAGE_SOURCE, 'utf8');
+      expect(source).toContain('cliente_nome');
+    });
+
+    it('MapPoint preserva valorMensal no metadata', () => {
+      const source = readFileSync(MAP_PAGE_SOURCE, 'utf8');
+      expect(source).toContain('valorMensal');
+      expect(source).toContain('receitaEstimada');
+    });
+
+    it('MapPoint preserva activeContract no metadata', () => {
+      const source = readFileSync(MAP_PAGE_SOURCE, 'utf8');
+      expect(source).toContain('activeContract');
+    });
+
+    it('MapPoint preserva reservation no metadata', () => {
+      const source = readFileSync(MAP_PAGE_SOURCE, 'utf8');
+      expect(source).toContain('reservation');
+    });
+
+    it('toMapPoints repassa commercialStatus no data-points via metadata', async () => {
+      setMapData({
+        regions: [{ id: 'r1', name: 'R1', occupancyRate: 0.8, totalBoards: 1, availableBoards: 0 }],
+        boards: [{
+          id: 'b1', codigo: 'COM-001', nome: 'Comercial', lat: -23.1, lng: -46.1,
+          status: 'occupied', regionId: 'r1', localizacao: 'Av Teste',
+          commercialStatus: 'CONTRACTED_ACTIVE',
+          cliente_nome: 'Itau',
+          valor_mensal: 5000,
+          activeContract: { clientName: 'Itau', startDate: '2026-01-01', endDate: '2026-12-31' },
+        }],
+      });
+      const { default: MapPage } = await import('./MapPage.jsx');
+      render(<MemoryRouter><MapPage /></MemoryRouter>);
+      // O mock de V4OperationalMap recebe os points — verificar que a placa chegou
+      const mapEl = screen.getByTestId('operational-map');
+      expect(mapEl.dataset.points).toContain('COM-001');
+    });
+  });
 });
 
 describe('V4OperationalMap flyTo e highlight', () => {

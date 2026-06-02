@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import { GeoJSON, MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -21,6 +21,16 @@ const STATUS_LABELS = {
   reserved:    'Reservada',
   maintenance: 'Manutencao',
   critical:    'Critica',
+};
+
+const COMMERCIAL_STATUS_LABELS = {
+  CONTRACTED_ACTIVE: 'Contratada ativa',
+  FUTURE_RESERVED:   'Reservada futura',
+  RESERVED_FUTURE:   'Reservada futura',
+  RESERVED:          'Reservada',
+  MAINTENANCE:       'Manutencao',
+  AVAILABLE:         'Disponivel',
+  OCCUPIED:          'Ocupada',
 };
 
 const DEFAULT_PIN_COLOR = '#8390a6';
@@ -62,6 +72,19 @@ function collectGeometryLatLngs(geometry) {
   };
   walk(geometry?.coordinates);
   return latLngs;
+}
+
+function fmtDate(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return null;
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function fmtMoney(value) {
+  const n = Number(value);
+  if (!value || !Number.isFinite(n) || n <= 0) return null;
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(n);
 }
 
 function MapFitBounds({ points, regionBoundaries }) {
@@ -106,6 +129,137 @@ function MapFlyTo({ flyTo }) {
   return null;
 }
 
+function MapStatusLegend({ compact }) {
+  return (
+    <div
+      className={`v4-geomap-legend${compact ? ' v4-geomap-legend--compact' : ''}`}
+      aria-label="Legenda de status"
+    >
+      {Object.entries(STATUS_LABELS).map(([key, label]) => (
+        <span key={key} className="v4-geomap-legend__item">
+          <span
+            className="v4-geomap-legend__dot"
+            style={{ background: STATUS_COLORS[key] }}
+            aria-hidden="true"
+          />
+          {!compact && (
+            <span className="v4-geomap-legend__label">{label}</span>
+          )}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function BoardPopupContent({ point }) {
+  const m = point.metadata ?? {};
+  const clientName     = m.activeContract?.clientName ?? m.cliente_nome ?? null;
+  const contractValue  = m.commercialProjection?.pricing?.contractValue ?? m.valorMensal ?? m.valor_mensal ?? null;
+  const startDate      = m.activeContract?.startDate ?? null;
+  const endDate        = m.activeContract?.endDate   ?? null;
+  const hasReservation = Boolean(m.reservation);
+  const commStatus     = m.commercialStatus ?? null;
+
+  const hasCommercial = clientName || contractValue || commStatus || hasReservation || startDate || endDate;
+
+  return (
+    <div className="v4-geomap-popup">
+      <SafeImage
+        src={point.mainImageUrl}
+        alt={`Imagem da placa ${point.title}`}
+        className="v4-geomap-popup__image"
+        fallbackClassName="v4-geomap-popup__image-empty"
+        fallbackLabel="Sem imagem"
+      />
+      <strong className="v4-geomap-popup__title">{point.title}</strong>
+      {point.subtitle && (
+        <span className="v4-geomap-popup__sub">{point.subtitle}</span>
+      )}
+      {point.address && (
+        <span className="v4-geomap-popup__addr">{point.address}</span>
+      )}
+      {point.status && (
+        <span className="v4-geomap-popup__status" style={{ color: pinColor(point.status) }}>
+          {STATUS_LABELS[point.status] ?? point.status}
+        </span>
+      )}
+      {point.region && (
+        <span className="v4-geomap-popup__region">{point.region}</span>
+      )}
+
+      {hasCommercial && (
+        <div className="v4-geomap-popup__commercial">
+          {commStatus && (
+            <span className="v4-geomap-popup__comm-status">
+              {COMMERCIAL_STATUS_LABELS[commStatus] ?? commStatus}
+            </span>
+          )}
+          {clientName && (
+            <span className="v4-geomap-popup__row">
+              <span className="v4-geomap-popup__label">Cliente</span>
+              <span className="v4-geomap-popup__value">{clientName}</span>
+            </span>
+          )}
+          {contractValue && fmtMoney(contractValue) && (
+            <span className="v4-geomap-popup__row">
+              <span className="v4-geomap-popup__label">Valor</span>
+              <span className="v4-geomap-popup__value">{fmtMoney(contractValue)}</span>
+            </span>
+          )}
+          {(startDate || endDate) && (
+            <span className="v4-geomap-popup__row">
+              <span className="v4-geomap-popup__label">Contrato</span>
+              <span className="v4-geomap-popup__value">
+                {fmtDate(startDate) ?? '?'} – {fmtDate(endDate) ?? '...'}
+              </span>
+            </span>
+          )}
+          {hasReservation && (
+            <span className="v4-geomap-popup__reservation">
+              <span className="material-symbols-rounded" aria-hidden="true">event_available</span>
+              Reserva ativa
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MissingBoardsPanel({ missingPoints, onClose }) {
+  return (
+    <div className="v4-geomap-missing" role="dialog" aria-modal="true" aria-label="Placas sem coordenadas">
+      <div className="v4-geomap-missing__header">
+        <span className="v4-geomap-missing__title">
+          <span className="material-symbols-rounded" aria-hidden="true">location_off</span>
+          {missingPoints.length} placa{missingPoints.length !== 1 ? 's' : ''} sem coordenadas
+        </span>
+        <button
+          type="button"
+          className="v4-geomap-missing__close"
+          onClick={onClose}
+          aria-label="Fechar lista"
+        >
+          <span className="material-symbols-rounded">close</span>
+        </button>
+      </div>
+      <ul className="v4-geomap-missing__list">
+        {missingPoints.map((point) => (
+          <li key={point.id} className="v4-geomap-missing__item">
+            <strong className="v4-geomap-missing__code">{point.title}</strong>
+            {point.address && (
+              <span className="v4-geomap-missing__addr">{point.address}</span>
+            )}
+            {point.region && (
+              <span className="v4-geomap-missing__region">{point.region}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /**
  * Mapa geográfico operacional com ruas (OpenStreetMap via Leaflet).
  *
@@ -139,6 +293,7 @@ function V4OperationalMap({
 }) {
   const mapContainerRef = useRef(null);
   const prevHoveredId   = useRef(null);
+  const [showMissingList, setShowMissingList] = useState(false);
 
   useEffect(() => {
     function handleHover(e) {
@@ -182,11 +337,21 @@ function V4OperationalMap({
       return acc;
     }, []);
   }, [points]);
+
+  const missingPoints = useMemo(
+    () => points.filter((p) => {
+      const lat = toFiniteCoordinate(p?.latitude);
+      const lng = toFiniteCoordinate(p?.longitude);
+      return lat === null || lng === null;
+    }),
+    [points],
+  );
+
   const validBoundaries = useMemo(
     () => regionBoundaries.filter((region) => region.id && region.geometry?.coordinates),
     [regionBoundaries],
   );
-  const missingCount = points.length - validPoints.length;
+  const missingCount = missingPoints.length;
   const mapHeight = height ?? (compact ? 280 : 480);
   const hasMapGeometry = validPoints.length > 0 || validBoundaries.length > 0;
 
@@ -317,41 +482,37 @@ function V4OperationalMap({
               }}
             >
               <Popup>
-                <div className="v4-geomap-popup">
-                  <SafeImage
-                    src={point.mainImageUrl}
-                    alt={`Imagem da placa ${point.title}`}
-                    className="v4-geomap-popup__image"
-                    fallbackClassName="v4-geomap-popup__image-empty"
-                    fallbackLabel="Sem imagem"
-                  />
-                  <strong className="v4-geomap-popup__title">{point.title}</strong>
-                  {point.subtitle && (
-                    <span className="v4-geomap-popup__sub">{point.subtitle}</span>
-                  )}
-                  {point.address && (
-                    <span className="v4-geomap-popup__addr">{point.address}</span>
-                  )}
-                  {point.status && (
-                    <span className="v4-geomap-popup__status" style={{ color: pinColor(point.status) }}>
-                      {STATUS_LABELS[point.status] ?? point.status}
-                    </span>
-                  )}
-                  {point.region && (
-                    <span className="v4-geomap-popup__region">{point.region}</span>
-                  )}
-                </div>
+                <BoardPopupContent point={point} />
               </Popup>
             </Marker>
           );
         })}
       </MapContainer>
 
+      <MapStatusLegend compact={compact} />
+
       {missingCount > 0 && (
-        <div className="v4-geomap__notice" role="status" aria-live="polite">
+        <button
+          type="button"
+          className="v4-geomap__notice v4-geomap__notice--clickable"
+          onClick={() => setShowMissingList((v) => !v)}
+          aria-expanded={showMissingList}
+          aria-controls="v4-geomap-missing-panel"
+          title="Ver placas sem coordenadas"
+        >
           <span className="material-symbols-rounded">info</span>
-          {missingCount} placa{missingCount !== 1 ? 's' : ''} sem coordenadas — nao exibida{missingCount !== 1 ? 's' : ''}
-        </div>
+          {missingCount} placa{missingCount !== 1 ? 's' : ''} sem coordenadas
+          <span className="material-symbols-rounded v4-geomap__notice-chevron">
+            {showMissingList ? 'expand_more' : 'chevron_right'}
+          </span>
+        </button>
+      )}
+
+      {showMissingList && missingCount > 0 && (
+        <MissingBoardsPanel
+          missingPoints={missingPoints}
+          onClose={() => setShowMissingList(false)}
+        />
       )}
     </div>
   );

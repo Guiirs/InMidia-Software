@@ -16,6 +16,7 @@ const EMPTY_SUMMARY = {};
 function toMapPoints(boards) {
   return boards.map((board) => {
     const coords = normalizeBoardCoordinates(board);
+    const cp = board.commercialProjection ?? null;
     return {
       id: board.id ?? board.codigo,
       title: board.codigo,
@@ -28,7 +29,16 @@ function toMapPoints(boards) {
       mainImageUrl: board.mainImageUrl ?? board.imagemPrincipal ?? board.imageUrl ?? null,
       images: board.images ?? board.imagens ?? [],
       imageStatus: board.imageStatus ?? (board.mainImageUrl || board.imagemPrincipal || board.imageUrl ? 'AVAILABLE' : 'MISSING'),
-      metadata: { coordinateSource: coords.source },
+      metadata: {
+        coordinateSource:    coords.source,
+        commercialStatus:    board.commercialStatus    ?? board.statusComercial   ?? null,
+        commercialProjection: cp,
+        cliente_nome:        board.cliente_nome        ?? board.cliente           ?? null,
+        valorMensal:         board.valorMensal         ?? board.valor_mensal      ?? board.receitaEstimada ?? null,
+        valor_mensal:        board.valor_mensal        ?? null,
+        activeContract:      board.activeContract      ?? cp?.activeContract      ?? null,
+        reservation:         board.reservation         ?? cp?.reservation         ?? null,
+      },
     };
   });
 }
