@@ -397,6 +397,7 @@ function MapPage({ focusBoard, onClearFocus }) {
         id: region.id,
         label: region.label,
         color: region.regionColor ?? region.cor ?? '#22d3ee',
+        occupancy: region.ocupacao,
         geometry: region.boundary,
       })),
     [mapRegions],
@@ -574,6 +575,7 @@ function MapPage({ focusBoard, onClearFocus }) {
                 error={status === 'error' ? (error ?? 'Nao foi possivel carregar as placas.') : null}
                 selectedPointId={selectedMarker?.id}
                 onSelectPoint={setSelectedMarker}
+                onClearSelection={() => setSelectedMarker(null)}
                 height={520}
                 flyTo={flyTo}
                 selectedRegionId={selectedRegionId}

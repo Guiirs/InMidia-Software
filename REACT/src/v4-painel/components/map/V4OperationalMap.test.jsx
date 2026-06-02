@@ -13,7 +13,9 @@ vi.mock('leaflet', () => ({
 
 vi.mock('react-leaflet', () => ({
   MapContainer:  ({ children }) => <div data-testid="map-container">{children}</div>,
-  TileLayer:     () => null,
+  TileLayer:     ({ url, attribution, subdomains }) => (
+    <div data-testid="tile-layer" data-url={url} data-attribution={attribution} data-subdomains={subdomains ?? ''} />
+  ),
   Marker:        ({ children, eventHandlers, position }) => (
     <div data-testid="marker" data-pos={position?.join(',')}>
       <button onClick={eventHandlers?.click}>click</button>
@@ -21,7 +23,14 @@ vi.mock('react-leaflet', () => ({
     </div>
   ),
   Popup:         ({ children }) => <div data-testid="popup">{children}</div>,
-  GeoJSON:       () => null,
+  GeoJSON:       ({ data, style }) => (
+    <div
+      data-testid="geojson"
+      data-region-id={data?.properties?.id}
+      data-fill={style?.fillColor}
+      data-fill-opacity={style?.fillOpacity}
+    />
+  ),
   useMap:        () => ({ setView: vi.fn(), flyTo: vi.fn(), fitBounds: vi.fn() }),
 }));
 
@@ -76,6 +85,41 @@ function points(count) {
   }));
 }
 
+function selectedHarnessPoint(overrides = {}) {
+  return point({
+    id: 'p-details',
+    title: 'DET-001',
+    subtitle: 'Painel premium',
+    status: 'occupied',
+    region: 'r1',
+    address: 'Rua Enterprise, 123',
+    metadata: {
+      commercialStatus: 'CONTRACTED_ACTIVE',
+      activeContract: {
+        clientName: 'Itau',
+        startDate: '2026-01-01',
+        endDate: '2026-12-31',
+      },
+      commercialProjection: { pricing: { contractValue: 12000 } },
+      reservation: { id: 'res-1' },
+    },
+    ...overrides,
+  });
+}
+
+function ControlledMap({ points: mapPoints = [selectedHarnessPoint()], ...props }) {
+  const [selected, setSelected] = React.useState(null);
+  return (
+    <V4OperationalMap
+      points={mapPoints}
+      selectedPointId={selected?.id ?? null}
+      onSelectPoint={setSelected}
+      onClearSelection={() => setSelected(null)}
+      {...props}
+    />
+  );
+}
+
 describe('V4OperationalMap â€” clustering e fullscreen', () => {
   it('renderiza markers diretos quando pontos <= 50', () => {
     render(<V4OperationalMap points={points(50)} />);
@@ -112,6 +156,136 @@ describe('V4OperationalMap â€” clustering e fullscreen', () => {
     const button = screen.getByLabelText('Abrir mapa em tela cheia');
     expect(() => fireEvent.click(button)).not.toThrow();
     expect(button).toHaveClass('v4-geomap-fullscreen--unsupported');
+  });
+
+  it('permite alternar clusters pelo controle visual', () => {
+    render(<V4OperationalMap points={points(51)} />);
+
+    expect(screen.getByTestId('marker-cluster-group')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Desligar clusters'));
+    expect(screen.queryByTestId('marker-cluster-group')).toBeNull();
+    expect(screen.getAllByTestId('marker')).toHaveLength(51);
+  });
+});
+
+describe('V4OperationalMap - tile provider e controles enterprise', () => {
+  it('renderiza CartoDB Positron como tile provider padrao', () => {
+    render(<V4OperationalMap points={[point()]} />);
+
+    const tile = screen.getByTestId('tile-layer');
+    expect(tile.dataset.url).toContain('basemaps.cartocdn.com');
+    expect(tile.dataset.url).toContain('light_all');
+    expect(tile.dataset.attribution).toContain('CARTO');
+  });
+
+  it('preserva fallback OSM quando provider desconhecido e usado', () => {
+    render(<V4OperationalMap points={[point()]} tileProvider="unknown" />);
+
+    const tile = screen.getByTestId('tile-layer');
+    expect(tile.dataset.url).toContain('tile.openstreetmap.org');
+    expect(tile.dataset.attribution).toContain('OpenStreetMap');
+  });
+
+  it('renderiza controles e dispara alternancias principais', () => {
+    const mapPoints = [
+      point({ id: 'p1', latitude: -23.55, longitude: -46.63 }),
+      point({ id: 'p2', latitude: null, longitude: null, title: 'SEM-001' }),
+    ];
+
+    render(
+      <V4OperationalMap
+        points={mapPoints}
+        regionBoundaries={[{
+          id: 'r1',
+          label: 'Regiao 1',
+          occupancy: 0.8,
+          geometry: { type: 'Polygon', coordinates: [[[-46.7, -23.6], [-46.6, -23.6], [-46.6, -23.5], [-46.7, -23.5], [-46.7, -23.6]]] },
+        }]}
+      />,
+    );
+
+    expect(screen.getByLabelText('Abrir mapa em tela cheia')).toBeInTheDocument();
+    expect(screen.getByLabelText('Centralizar todos os pontos')).toBeInTheDocument();
+    expect(screen.getByLabelText('Ligar heatmap regional')).toBeInTheDocument();
+    expect(screen.getByLabelText('Desligar clusters')).toBeInTheDocument();
+    expect(screen.getByLabelText('Mostrar placas sem coordenadas')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Ligar heatmap regional'));
+    expect(screen.getByLabelText('Heatmap de ocupacao regional')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Mostrar placas sem coordenadas'));
+    expect(screen.getByRole('dialog')).toHaveTextContent('SEM-001');
+
+    expect(() => fireEvent.click(screen.getByLabelText('Centralizar todos os pontos'))).not.toThrow();
+  });
+});
+
+describe('V4OperationalMap - slideout da placa selecionada', () => {
+  it('abre slideout ao selecionar placa', () => {
+    render(<ControlledMap />);
+
+    fireEvent.click(screen.getByText('click'));
+
+    expect(screen.getByLabelText('Detalhes da placa selecionada')).toBeInTheDocument();
+    expect(screen.getByLabelText('Detalhes da placa selecionada')).toHaveTextContent('DET-001');
+  });
+
+  it('mostra dados comerciais no slideout sem chamada extra', () => {
+    render(<ControlledMap />);
+
+    fireEvent.click(screen.getByText('click'));
+    const panel = screen.getByLabelText('Detalhes da placa selecionada');
+
+    expect(panel).toHaveTextContent('Contratada ativa');
+    expect(panel).toHaveTextContent('Itau');
+    expect(panel).toHaveTextContent(/R\$\s*12\.000/);
+    expect(panel).toHaveTextContent('Reserva ativa/futura');
+  });
+
+  it('fecha slideout corretamente', () => {
+    render(<ControlledMap />);
+
+    fireEvent.click(screen.getByText('click'));
+    expect(screen.getByLabelText('Detalhes da placa selecionada')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Fechar detalhes da placa'));
+    expect(screen.queryByLabelText('Detalhes da placa selecionada')).toBeNull();
+  });
+
+  it('bottom sheet mobile possui classe responsiva', () => {
+    render(<ControlledMap />);
+
+    fireEvent.click(screen.getByText('click'));
+    expect(screen.getByLabelText('Detalhes da placa selecionada')).toHaveClass('v4-geomap-bottom-sheet');
+  });
+});
+
+describe('V4OperationalMap - heatmap regional', () => {
+  it('heatmap toggle renderiza boundaries quando existem', () => {
+    render(
+      <V4OperationalMap
+        points={[point()]}
+        regionBoundaries={[{
+          id: 'r1',
+          label: 'Regiao 1',
+          occupancy: 0.2,
+          geometry: { type: 'Polygon', coordinates: [[[-46.7, -23.6], [-46.6, -23.6], [-46.6, -23.5], [-46.7, -23.5], [-46.7, -23.6]]] },
+        }]}
+      />,
+    );
+
+    expect(screen.getByTestId('geojson')).toHaveAttribute('data-region-id', 'r1');
+    fireEvent.click(screen.getByLabelText('Ligar heatmap regional'));
+
+    expect(screen.getByLabelText('Heatmap de ocupacao regional')).toHaveTextContent('Baixa ocupacao (1)');
+    expect(screen.getByTestId('geojson')).toHaveAttribute('data-fill', '#ef4444');
+  });
+
+  it('nao quebra sem boundaries ao alternar heatmap', () => {
+    render(<V4OperationalMap points={[point()]} />);
+
+    expect(() => fireEvent.click(screen.getByLabelText('Ligar heatmap regional'))).not.toThrow();
+    expect(screen.queryByLabelText('Heatmap de ocupacao regional')).toBeNull();
   });
 });
 

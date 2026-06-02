@@ -40,6 +40,21 @@ const DEFAULT_PIN_COLOR = '#8390a6';
 const BRAZIL_CENTER = [-15.793, -47.882];
 const BRAZIL_ZOOM   = 5;
 const CLUSTER_THRESHOLD = 50;
+const TILE_PROVIDERS = {
+  cartodbPositron: {
+    name: 'CartoDB Positron',
+    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 20,
+  },
+  openStreetMap: {
+    name: 'OpenStreetMap',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
+    maxZoom: 19,
+  },
+};
 
 function toFiniteCoordinate(value) {
   if (value === null || value === undefined || value === '') return null;
@@ -57,7 +72,7 @@ function createDivIcon(color, selected, dimmed, boardId) {
   const idAttr = boardId != null ? ` data-board-id="${boardId}"` : '';
   return L.divIcon({
     className: '',
-    html: `<span class="v4-geomap-pin${selected ? ' v4-geomap-pin--selected' : ''}${dimmed ? ' v4-geomap-pin--dimmed' : ''}"${idAttr} style="--pin-color:${color};width:${size}px;height:${size}px;opacity:${opacity}"></span>`,
+    html: `<span class="v4-geomap-pin${selected ? ' v4-geomap-pin--selected' : ''}${dimmed ? ' v4-geomap-pin--dimmed' : ''}"${idAttr} style="--pin-color:${color};width:${size}px;height:${size}px;opacity:${opacity}">${selected ? '<span class="v4-geomap-pin__pulse"></span>' : ''}</span>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
     popupAnchor: [0, -(size / 2 + 6)],
@@ -91,27 +106,48 @@ function fmtMoney(value) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(n);
 }
 
+function mapBoundsFrom(points, regionBoundaries) {
+  const pointBounds = points.map((p) => [p.latitude, p.longitude]);
+  const boundaryBounds = regionBoundaries.flatMap((region) => collectGeometryLatLngs(region.geometry));
+  return [...pointBounds, ...boundaryBounds];
+}
+
+function fitMapToBounds(map, bounds) {
+  if (bounds.length === 0) return;
+  if (bounds.length === 1) {
+    map.setView(bounds[0], 14, { animate: false });
+  } else {
+    map.fitBounds(
+      bounds,
+      { padding: [44, 44], maxZoom: 14, animate: false },
+    );
+  }
+}
+
 function MapFitBounds({ points, regionBoundaries }) {
   const map = useMap();
   const fitted = useRef(false);
 
   useEffect(() => {
     if (fitted.current) return;
-    const pointBounds = points.map((p) => [p.latitude, p.longitude]);
-    const boundaryBounds = regionBoundaries.flatMap((region) => collectGeometryLatLngs(region.geometry));
-    const bounds = [...pointBounds, ...boundaryBounds];
+    const bounds = mapBoundsFrom(points, regionBoundaries);
     if (bounds.length === 0) return;
     fitted.current = true;
-
-    if (bounds.length === 1) {
-      map.setView(bounds[0], 14, { animate: false });
-    } else {
-      map.fitBounds(
-        bounds,
-        { padding: [44, 44], maxZoom: 14, animate: false },
-      );
-    }
+    fitMapToBounds(map, bounds);
   }, [map, points, regionBoundaries]);
+
+  return null;
+}
+
+function MapResetBounds({ points, regionBoundaries, resetSignal }) {
+  const map = useMap();
+  const prevSignal = useRef(resetSignal);
+
+  useEffect(() => {
+    if (resetSignal === prevSignal.current) return;
+    prevSignal.current = resetSignal;
+    fitMapToBounds(map, mapBoundsFrom(points, regionBoundaries));
+  }, [map, points, regionBoundaries, resetSignal]);
 
   return null;
 }
@@ -180,7 +216,7 @@ function MarkerLayer({ children, clustered }) {
   );
 }
 
-function FullscreenControl({ targetRef, compact }) {
+function FullscreenButton({ targetRef, compact }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [unsupported, setUnsupported] = useState(false);
 
@@ -224,6 +260,60 @@ function FullscreenControl({ targetRef, compact }) {
         {unsupported ? 'fullscreen_exit' : isFullscreen ? 'close_fullscreen' : 'open_in_full'}
       </span>
     </button>
+  );
+}
+
+function MapControls({
+  targetRef,
+  compact,
+  heatmapEnabled,
+  onToggleHeatmap,
+  clustersEnabled,
+  onToggleClusters,
+  onResetBounds,
+  missingCount,
+  showMissingList,
+  onToggleMissing,
+}) {
+  return (
+    <div className={`v4-geomap-controls${compact ? ' v4-geomap-controls--compact' : ''}`} aria-label="Controles do mapa">
+      <FullscreenButton targetRef={targetRef} compact={compact} />
+      <button type="button" onClick={onResetBounds} aria-label="Centralizar todos os pontos" title="Centralizar todos">
+        <span className="material-symbols-rounded" aria-hidden="true">center_focus_strong</span>
+      </button>
+      <button
+        type="button"
+        className={heatmapEnabled ? 'v4-geomap-controls__button--active' : ''}
+        onClick={onToggleHeatmap}
+        aria-label={heatmapEnabled ? 'Desligar heatmap regional' : 'Ligar heatmap regional'}
+        aria-pressed={heatmapEnabled}
+        title="Heatmap regional"
+      >
+        <span className="material-symbols-rounded" aria-hidden="true">gradient</span>
+      </button>
+      <button
+        type="button"
+        className={clustersEnabled ? 'v4-geomap-controls__button--active' : ''}
+        onClick={onToggleClusters}
+        aria-label={clustersEnabled ? 'Desligar clusters' : 'Ligar clusters'}
+        aria-pressed={clustersEnabled}
+        title="Clusters"
+      >
+        <span className="material-symbols-rounded" aria-hidden="true">hub</span>
+      </button>
+      {missingCount > 0 && (
+        <button
+          type="button"
+          className={showMissingList ? 'v4-geomap-controls__button--active' : ''}
+          onClick={onToggleMissing}
+          aria-label={showMissingList ? 'Ocultar placas sem coordenadas' : 'Mostrar placas sem coordenadas'}
+          aria-pressed={showMissingList}
+          title="Placas sem coordenadas"
+        >
+          <span className="material-symbols-rounded" aria-hidden="true">location_off</span>
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -299,6 +389,105 @@ function BoardPopupContent({ point }) {
         </div>
       )}
     </div>
+  );
+}
+
+function pointCommercialData(point) {
+  const m = point?.metadata ?? {};
+  return {
+    clientName: m.activeContract?.clientName ?? m.cliente_nome ?? null,
+    contractValue: m.commercialProjection?.pricing?.contractValue ?? m.valorMensal ?? m.valor_mensal ?? null,
+    startDate: m.activeContract?.startDate ?? null,
+    endDate: m.activeContract?.endDate ?? null,
+    reservation: m.reservation ?? null,
+    commercialStatus: m.commercialStatus ?? null,
+  };
+}
+
+function SelectedBoardPanel({ point, onClose }) {
+  if (!point) return null;
+  const commercial = pointCommercialData(point);
+  const copyAddress = async () => {
+    if (!point.address || !navigator.clipboard?.writeText) return;
+    await navigator.clipboard.writeText(point.address);
+  };
+
+  return (
+    <aside className="v4-geomap-slideout v4-geomap-bottom-sheet" aria-label="Detalhes da placa selecionada">
+      <div className="v4-geomap-slideout__header">
+        <div>
+          <span className="v4-geomap-slideout__eyebrow">Placa selecionada</span>
+          <strong>{point.title}</strong>
+          {point.subtitle && <p>{point.subtitle}</p>}
+        </div>
+        <button type="button" onClick={onClose} aria-label="Fechar detalhes da placa">
+          <span className="material-symbols-rounded" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <SafeImage
+        src={point.mainImageUrl}
+        alt={`Imagem da placa ${point.title}`}
+        className="v4-geomap-slideout__image"
+        fallbackClassName="v4-geomap-slideout__image-empty"
+        fallbackLabel="Sem imagem"
+      />
+      <dl className="v4-geomap-slideout__facts">
+        {point.address && (
+          <>
+            <dt>Endereco</dt>
+            <dd>{point.address}</dd>
+          </>
+        )}
+        {point.region && (
+          <>
+            <dt>Regiao</dt>
+            <dd>{point.region}</dd>
+          </>
+        )}
+        {point.status && (
+          <>
+            <dt>Status operacional</dt>
+            <dd>{STATUS_LABELS[point.status] ?? point.status}</dd>
+          </>
+        )}
+        {commercial.commercialStatus && (
+          <>
+            <dt>Status comercial</dt>
+            <dd>{COMMERCIAL_STATUS_LABELS[commercial.commercialStatus] ?? commercial.commercialStatus}</dd>
+          </>
+        )}
+        {commercial.clientName && (
+          <>
+            <dt>Cliente ativo</dt>
+            <dd>{commercial.clientName}</dd>
+          </>
+        )}
+        {commercial.contractValue && fmtMoney(commercial.contractValue) && (
+          <>
+            <dt>Valor</dt>
+            <dd>{fmtMoney(commercial.contractValue)}</dd>
+          </>
+        )}
+        {(commercial.startDate || commercial.endDate) && (
+          <>
+            <dt>Periodo</dt>
+            <dd>{fmtDate(commercial.startDate) ?? '?'} - {fmtDate(commercial.endDate) ?? '...'}</dd>
+          </>
+        )}
+        {commercial.reservation && (
+          <>
+            <dt>Reserva</dt>
+            <dd>Reserva ativa/futura</dd>
+          </>
+        )}
+      </dl>
+      <div className="v4-geomap-slideout__actions">
+        <a href={`/placas/${encodeURIComponent(point.id)}`}>Ver detalhes</a>
+        {point.address && (
+          <button type="button" onClick={copyAddress}>Copiar endereco</button>
+        )}
+      </div>
+    </aside>
   );
 }
 
@@ -386,6 +575,40 @@ function MissingBoardsPanel({ missingPoints, onClose }) {
   );
 }
 
+function heatmapColor(occupancy) {
+  const value = Number(occupancy ?? 0);
+  if (value >= 0.75) return '#38c78f';
+  if (value >= 0.45) return '#e3b456';
+  return '#ef4444';
+}
+
+function heatmapLabel(occupancy) {
+  const value = Number(occupancy ?? 0);
+  if (value >= 0.75) return 'Alta ocupacao';
+  if (value >= 0.45) return 'Media ocupacao';
+  return 'Baixa ocupacao';
+}
+
+function RegionHeatmapLegend({ regions }) {
+  if (regions.length === 0) return null;
+  const counts = regions.reduce((acc, region) => {
+    const label = heatmapLabel(region.occupancy);
+    acc[label] = (acc[label] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  return (
+    <div className="v4-geomap-heatmap-legend" aria-label="Heatmap de ocupacao regional">
+      {['Baixa ocupacao', 'Media ocupacao', 'Alta ocupacao'].map((label) => (
+        <span key={label}>
+          <i style={{ background: label === 'Alta ocupacao' ? '#38c78f' : label === 'Media ocupacao' ? '#e3b456' : '#ef4444' }} />
+          {label} ({counts[label] ?? 0})
+        </span>
+      ))}
+    </div>
+  );
+}
+
 /**
  * Mapa geográfico operacional com ruas (OpenStreetMap via Leaflet).
  *
@@ -416,10 +639,15 @@ function V4OperationalMap({
   selectedRegionId = null,
   regionColorMap = {},
   regionBoundaries = [],
+  tileProvider = 'cartodbPositron',
+  onClearSelection,
 }) {
   const mapContainerRef = useRef(null);
   const prevHoveredId   = useRef(null);
   const [showMissingList, setShowMissingList] = useState(false);
+  const [heatmapEnabled, setHeatmapEnabled] = useState(false);
+  const [clustersEnabled, setClustersEnabled] = useState(true);
+  const [resetSignal, setResetSignal] = useState(0);
 
   useEffect(() => {
     function handleHover(e) {
@@ -480,7 +708,9 @@ function V4OperationalMap({
   const missingCount = missingPoints.length;
   const mapHeight = height ?? (compact ? 280 : 480);
   const hasMapGeometry = validPoints.length > 0 || validBoundaries.length > 0;
-  const clustered = validPoints.length > CLUSTER_THRESHOLD;
+  const clustered = clustersEnabled && validPoints.length > CLUSTER_THRESHOLD;
+  const selectedPoint = validPoints.find((point) => point.id === selectedPointId) ?? null;
+  const provider = TILE_PROVIDERS[tileProvider] ?? TILE_PROVIDERS.openStreetMap;
 
   if (loading) {
     return (
@@ -550,32 +780,36 @@ function V4OperationalMap({
         scrollWheelZoom={!compact}
       >
         <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
-          maxZoom={19}
+          url={provider.url}
+          attribution={provider.attribution}
+          subdomains={provider.subdomains}
+          maxZoom={provider.maxZoom}
         />
         <MapFitBounds points={validPoints} regionBoundaries={validBoundaries} />
+        <MapResetBounds points={validPoints} regionBoundaries={validBoundaries} resetSignal={resetSignal} />
         {flyTo && <MapFlyTo flyTo={flyTo} />}
         {validBoundaries.map((region) => {
           const selected = selectedRegionId === region.id;
           const dimmed = selectedRegionId != null && !selected;
-          const color = region.color ?? regionColorMap[region.id] ?? DEFAULT_PIN_COLOR;
+          const color = heatmapEnabled
+            ? heatmapColor(region.occupancy)
+            : region.color ?? regionColorMap[region.id] ?? DEFAULT_PIN_COLOR;
 
           return (
             <GeoJSON
-              key={`${region.id}-${selected ? 'selected' : 'base'}`}
+              key={`${region.id}-${selected ? 'selected' : 'base'}-${heatmapEnabled ? 'heat' : 'territory'}`}
               data={{
                 type: 'Feature',
-                properties: { id: region.id, label: region.label },
+                properties: { id: region.id, label: region.label, occupancy: region.occupancy },
                 geometry: region.geometry,
               }}
               style={{
                 color,
-                weight: selected ? 3 : 1.5,
-                opacity: selected ? 0.95 : dimmed ? 0.28 : 0.58,
+                weight: heatmapEnabled ? selected ? 3 : 2 : selected ? 3 : 1.5,
+                opacity: heatmapEnabled ? selected ? 0.96 : 0.78 : selected ? 0.95 : dimmed ? 0.28 : 0.58,
                 fillColor: color,
-                fillOpacity: selected ? 0.18 : dimmed ? 0.035 : 0.075,
-                dashArray: selected ? null : '5 5',
+                fillOpacity: heatmapEnabled ? selected ? 0.34 : 0.24 : selected ? 0.18 : dimmed ? 0.035 : 0.075,
+                dashArray: heatmapEnabled || selected ? null : '5 5',
               }}
             />
           );
@@ -620,7 +854,19 @@ function V4OperationalMap({
       </MapContainer>
 
       <MapStatusLegend compact={compact} />
-      <FullscreenControl targetRef={mapContainerRef} compact={compact} />
+      <MapControls
+        targetRef={mapContainerRef}
+        compact={compact}
+        heatmapEnabled={heatmapEnabled}
+        onToggleHeatmap={() => setHeatmapEnabled((value) => !value)}
+        clustersEnabled={clustersEnabled}
+        onToggleClusters={() => setClustersEnabled((value) => !value)}
+        onResetBounds={() => setResetSignal((value) => value + 1)}
+        missingCount={missingCount}
+        showMissingList={showMissingList}
+        onToggleMissing={() => setShowMissingList((value) => !value)}
+      />
+      {heatmapEnabled && <RegionHeatmapLegend regions={validBoundaries} />}
 
       {clustered && (
         <div className="v4-geomap__cluster-notice" role="status">
@@ -652,6 +898,12 @@ function V4OperationalMap({
           onClose={() => setShowMissingList(false)}
         />
       )}
+      <SelectedBoardPanel
+        point={selectedPoint}
+        onClose={() => {
+          onClearSelection?.();
+        }}
+      />
     </div>
   );
 }
