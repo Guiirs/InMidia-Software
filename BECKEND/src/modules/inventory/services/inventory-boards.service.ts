@@ -9,6 +9,7 @@ import {
   resolvePlacaGallery,
   resolvePlacaImageReference,
 } from '@modules/media/placa-image-reference.resolver';
+import { buildProxyImageUrl } from '@modules/public-plates/public-plates.presenter';
 import mongoose from 'mongoose';
 import AppError from '@shared/container/AppError';
 
@@ -270,7 +271,11 @@ export class InventoryBoardsService {
   } {
     const imagens = resolvePlacaGallery(placa);
     const imageReference = resolvePlacaImageReference(placa);
-    const imagemPrincipal = imageReference.storageKey;
+    const placaId = placa?._id?.toString?.() ?? String(placa?._id ?? '');
+    // Return the proxy URL so consumers (React panel, adapters) get a valid HTTP URL.
+    const imagemPrincipal = imageReference.hasImage && placaId
+      ? buildProxyImageUrl(placaId)
+      : null;
 
     return {
       imagemPrincipal,

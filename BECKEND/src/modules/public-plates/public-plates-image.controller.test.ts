@@ -667,3 +667,96 @@ describe('erros', () => {
     expect(JSON.stringify(res._body)).not.toContain('stack');
   });
 });
+
+// ── Endpoint canônico — requisitos de regressão (regra 8) ─────────────────────
+
+describe('endpoint canônico — /api/v1/public/media/plates/:id/main', () => {
+  it('retorna 200 com Content-Type image/* quando placa tem imagem', async () => {
+    const stream = makeReadableStream();
+    stream.pipe = jest.fn(() => stream) as any;
+    mockedGetR2Client.mockReturnValue({
+      send: jest.fn().mockResolvedValue({
+        Body: stream,
+        ContentType: 'image/jpeg',
+        ContentLength: 204800,
+        ETag: ETAG,
+        LastModified: new Date(LAST_MODIFIED),
+      }),
+    } as any);
+
+    const req = makeReq(PLACA_ID);
+    const res = makeRes();
+    await getPlacaImagem(req, res, jest.fn());
+
+    expect(res._headers['content-type']).toMatch(/^image\//);
+  });
+
+  it('handler único serve o endpoint canônico e as rotas legadas (sem lógica duplicada)', async () => {
+    // getPlacaImagem é o único handler — chamá-lo com diferentes req.originalUrl
+    // deve produzir o mesmo comportamento, confirmando que não há lógica de rota própria.
+    const makeReqWithUrl = (id: string, url: string) => ({ ...makeReq(id), originalUrl: url });
+
+    const stream1 = makeReadableStream();
+    stream1.pipe = jest.fn(() => stream1) as any;
+    const stream2 = makeReadableStream();
+    stream2.pipe = jest.fn(() => stream2) as any;
+
+    const makeClient = (stream: Readable) => ({
+      send: jest.fn().mockResolvedValue({
+        Body: stream,
+        ContentType: 'image/jpeg',
+        ETag: ETAG,
+        LastModified: new Date(LAST_MODIFIED),
+      }),
+    });
+
+    mockedGetR2Client
+      .mockReturnValueOnce(makeClient(stream1) as any)
+      .mockReturnValueOnce(makeClient(stream2) as any);
+
+    const res1 = makeRes();
+    await getPlacaImagem(makeReqWithUrl(PLACA_ID, `/api/v1/public/media/plates/${PLACA_ID}/main`), res1, jest.fn());
+
+    const res2 = makeRes();
+    await getPlacaImagem(makeReqWithUrl(PLACA_ID, `/api/v1/public/placas/${PLACA_ID}/imagem`), res2, jest.fn());
+
+    // Mesmo resultado independente da URL — handler único, sem lógica de rota
+    expect(res1._headers['content-type']).toBe(res2._headers['content-type']);
+    expect(res1._headers['cache-control']).toBe(res2._headers['cache-control']);
+    expect(res1._headers['access-control-allow-origin']).toBe(res2._headers['access-control-allow-origin']);
+  });
+
+  it('304 mantém headers públicos (CORS, CORP, Cache-Control)', async () => {
+    mockedCacheGet.mockResolvedValue(BASE_CACHED_META);
+    const req = makeReq(PLACA_ID, { 'if-none-match': ETAG });
+    const res = makeRes();
+    await getPlacaImagem(req, res, jest.fn());
+
+    expect(res._status).toBe(304);
+    expect(res._headers['access-control-allow-origin']).toBe('*');
+    expect(res._headers['cross-origin-resource-policy']).toBe('cross-origin');
+    expect(res._headers['cache-control']).toContain('public');
+    expect(res._headers['etag']).toBeTruthy();
+  });
+
+  it('traversal continua bloqueado no endpoint canônico', async () => {
+    const req = makeReq(PLACA_ID, {}, { path: '../../../etc/passwd' });
+    const res = makeRes();
+    await getPlacaImagem(req, res, jest.fn());
+    expect(res._status).toBe(400);
+  });
+
+  it('JSON público não vaza key, bucket, R2 ou campos internos nos erros', async () => {
+    mockedGetDoc.mockResolvedValue({ imagemPrincipal: 'https://pub-xyz.r2.dev/inmidia/secret.jpg' });
+    mockedExtractKey.mockReturnValue(null);
+    const req = makeReq(PLACA_ID);
+    const res = makeRes();
+    await getPlacaImagem(req, res, jest.fn());
+
+    const body = JSON.stringify(res._body);
+    expect(body).not.toContain('r2.dev');
+    expect(body).not.toContain('cloudflarestorage');
+    expect(body).not.toContain('inmidia-uploads-sistema');
+    expect(body).not.toContain('secret');
+  });
+});

@@ -48,7 +48,7 @@ export function contentTypeFromStorageKey(value: string | null | undefined): str
 export function normalizePlacaStorageKey(value: unknown): string | null {
   const raw = cleanString(value);
   if (!raw) return null;
-  if (!/^https?:\/\//i.test(raw) && !raw.includes('/')) return null;
+  // extractR2Key handles plain filenames by adding the default folder prefix.
   return extractR2Key(raw);
 }
 

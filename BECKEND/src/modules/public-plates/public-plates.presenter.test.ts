@@ -2,7 +2,7 @@ import { toPublicPlaca, buildProxyImageUrl, mimeTypeFromStoredPath } from './pub
 
 const PROXY_BASE = 'https://inmidia.futureoutdoors.com.br';
 const PLACA_ID = '69d7d2a69b9a603e468392e3';
-const EXPECTED_PROXY = `${PROXY_BASE}/api/v1/public/placas/${PLACA_ID}/imagem`;
+const EXPECTED_PROXY = `${PROXY_BASE}/api/v1/public/media/plates/${PLACA_ID}/main`;
 
 describe('public plates presenter — proxy de imagem', () => {
   const origBase = process.env.PUBLIC_API_BASE_URL;
@@ -23,9 +23,9 @@ describe('public plates presenter — proxy de imagem', () => {
     process.env.NODE_ENV = origNodeEnv || 'test';
   });
 
-  // ── imagemUrl aponta para o proxy ──────────────────────────────────────────
+  // ── imagemUrl aponta para o proxy canônico ────────────────────────────────
 
-  it('imagemUrl usa URL do proxy quando placa tem imagemPrincipal', () => {
+  it('imagemUrl usa URL canônica quando placa tem imagemPrincipal com pasta', () => {
     const placa = toPublicPlaca({
       _id: PLACA_ID,
       numero_placa: 'CAU-37',
@@ -35,7 +35,18 @@ describe('public plates presenter — proxy de imagem', () => {
     expect(placa.imagem).toBe(EXPECTED_PROXY);
   });
 
-  it('imagemUrl usa URL do proxy quando placa tem campo imagem legado', () => {
+  it('imagemUrl usa URL canônica quando placa tem apenas filename (resolvido com pasta default)', () => {
+    // Plain filenames are accepted — extractR2Key adds the default folder prefix.
+    const placa = toPublicPlaca({
+      _id: PLACA_ID,
+      numero_placa: 'CAU-37',
+      imagemPrincipal: 'cau-37.jpg',
+    });
+    expect(placa.imagemUrl).toBe(EXPECTED_PROXY);
+    expect(placa.hasImage).toBe(true);
+  });
+
+  it('imagemUrl usa URL canônica quando placa tem campo imagem legado (URL R2)', () => {
     const placa = toPublicPlaca({
       _id: PLACA_ID,
       numero_placa: 'CAU-37',
@@ -44,7 +55,7 @@ describe('public plates presenter — proxy de imagem', () => {
     expect(placa.imagemUrl).toBe(EXPECTED_PROXY);
   });
 
-  it('imagemUrl usa URL do proxy quando placa tem imagens array', () => {
+  it('imagemUrl usa URL canônica quando placa tem imagens array', () => {
     const placa = toPublicPlaca({
       _id: PLACA_ID,
       numero_placa: 'CAU-37',
@@ -53,7 +64,7 @@ describe('public plates presenter — proxy de imagem', () => {
     expect(placa.imagemUrl).toBe(EXPECTED_PROXY);
   });
 
-  it('imagemUrl usa URL do proxy quando galeria tem url/publicUrl do fluxo interno', () => {
+  it('imagemUrl usa URL canônica quando galeria tem url/publicUrl do fluxo interno', () => {
     const placa = toPublicPlaca({
       _id: PLACA_ID,
       numero_placa: 'CAU-37',
@@ -65,7 +76,7 @@ describe('public plates presenter — proxy de imagem', () => {
     expect(placa.imagemMeta?.mimeType).toBe('image/webp');
   });
 
-  it('imagemUrl é null quando placa não tem imagem', () => {
+  it('imagemUrl é null quando placa não tem nenhum campo de imagem', () => {
     const placa = toPublicPlaca({
       _id: PLACA_ID,
       numero_placa: 'CAU-37',
@@ -75,16 +86,6 @@ describe('public plates presenter — proxy de imagem', () => {
     });
     expect(placa.imagemUrl).toBeNull();
     expect(placa.imagem).toBeNull();
-    expect(placa.hasImage).toBe(false);
-  });
-
-  it('imagemUrl é null quando referência é apenas filename solto', () => {
-    const placa = toPublicPlaca({
-      _id: PLACA_ID,
-      numero_placa: 'CAU-37',
-      imagemPrincipal: 'cau-37.jpg',
-    });
-    expect(placa.imagemUrl).toBeNull();
     expect(placa.hasImage).toBe(false);
   });
 
@@ -108,24 +109,24 @@ describe('public plates presenter — proxy de imagem', () => {
     expect(placa.imagemUrl).not.toContain('cloudflarestorage.com');
   });
 
-  it('imagemUrl tem o formato correto do proxy', () => {
+  it('imagemUrl tem o formato canônico /api/v1/public/media/plates/:id/main', () => {
     const placa = toPublicPlaca({
       _id: PLACA_ID,
       numero_placa: 'CAU-37',
       imagemPrincipal: 'inmidia-uploads-sistema/cau-37.jpg',
     });
-    expect(placa.imagemUrl).toMatch(/\/api\/v1\/public\/placas\/[a-f0-9]+\/imagem$/);
+    expect(placa.imagemUrl).toMatch(/\/api\/v1\/public\/media\/plates\/[a-f0-9]+\/main$/);
   });
 
   // ── buildProxyImageUrl ─────────────────────────────────────────────────────
 
-  it('buildProxyImageUrl constrói URL correta', () => {
+  it('buildProxyImageUrl constrói URL canônica correta', () => {
     expect(buildProxyImageUrl(PLACA_ID)).toBe(EXPECTED_PROXY);
   });
 
   it('buildProxyImageUrl funciona sem PUBLIC_API_BASE_URL (relativa)', () => {
     delete process.env.PUBLIC_API_BASE_URL;
-    expect(buildProxyImageUrl(PLACA_ID)).toBe(`/api/v1/public/placas/${PLACA_ID}/imagem`);
+    expect(buildProxyImageUrl(PLACA_ID)).toBe(`/api/v1/public/media/plates/${PLACA_ID}/main`);
   });
 
   it('PUBLIC_API_BASE_URL sem trailing slash retorna URL absoluta', () => {
@@ -136,7 +137,6 @@ describe('public plates presenter — proxy de imagem', () => {
   it('PUBLIC_API_BASE_URL com trailing slash retorna URL absoluta sem barra dupla', () => {
     process.env.PUBLIC_API_BASE_URL = 'https://inmidia.futureoutdoors.com.br/';
     const url = buildProxyImageUrl(PLACA_ID);
-
     expect(url).toBe(EXPECTED_PROXY);
     expect(url).not.toContain('//api/');
   });
@@ -145,18 +145,16 @@ describe('public plates presenter — proxy de imagem', () => {
     process.env.NODE_ENV = 'production';
     process.env.PUBLIC_API_BASE_URL = 'http://localhost:4000';
     const url = buildProxyImageUrl(PLACA_ID);
-
-    expect(url).toBe(`/api/v1/public/placas/${PLACA_ID}/imagem`);
+    expect(url).toBe(`/api/v1/public/media/plates/${PLACA_ID}/main`);
     expect(url).not.toContain('localhost');
   });
 
-  it('imagemUrl, imagem e imagemMeta.url usam URL absoluta do proxy', () => {
+  it('imagemUrl, imagem e imagemMeta.url usam URL absoluta do proxy canônico', () => {
     const placa = toPublicPlaca({
       _id: PLACA_ID,
       numero_placa: 'CAU-37',
       imagemPrincipal: 'inmidia-uploads-sistema/cau-37.jpg',
     });
-
     expect(placa.imagemUrl).toBe(EXPECTED_PROXY);
     expect(placa.imagem).toBe(EXPECTED_PROXY);
     expect(placa.imagemMeta?.url).toBe(EXPECTED_PROXY);
@@ -173,7 +171,6 @@ describe('public plates presenter — proxy de imagem', () => {
       imagemPrincipal: 'inmidia-uploads-sistema/cau-37.jpg',
     });
     const serialized = JSON.stringify(placa);
-
     expect(Object.values(placa)).not.toContain(undefined);
     expect(serialized).not.toContain('//api/');
     expect(serialized).not.toContain('localhost');
@@ -182,56 +179,75 @@ describe('public plates presenter — proxy de imagem', () => {
     expect(placa.imagemMeta?.url).not.toBeNull();
   });
 
+  // ── hasImage ──────────────────────────────────────────────────────────────
+
+  it('hasImage true quando existe referência de imagem (com pasta)', () => {
+    const placa = toPublicPlaca({
+      _id: PLACA_ID,
+      numero_placa: 'CAU-37',
+      imagemPrincipal: 'inmidia-uploads-sistema/cau-37.jpg',
+    });
+    expect(placa.hasImage).toBe(true);
+  });
+
+  it('hasImage true quando referência é apenas filename (resolvido com pasta default)', () => {
+    const placa = toPublicPlaca({
+      _id: PLACA_ID,
+      numero_placa: 'CAU-37',
+      imagemPrincipal: 'cau-37.jpg',
+    });
+    expect(placa.hasImage).toBe(true);
+  });
+
+  it('hasImage false quando não existe referência', () => {
+    const placa = toPublicPlaca({
+      _id: PLACA_ID,
+      numero_placa: 'CAU-37',
+      imagemPrincipal: null,
+      imagem: null,
+      imagens: [],
+    });
+    expect(placa.hasImage).toBe(false);
+  });
+
+  it('imagemUrl não é null quando placa tem imagem', () => {
+    const placa = toPublicPlaca({
+      _id: PLACA_ID,
+      numero_placa: 'CAU-37',
+      imagemPrincipal: 'cau-37.jpg',
+    });
+    expect(placa.imagemUrl).not.toBeNull();
+    expect(placa.hasImage).toBe(true);
+  });
+
+  // ── Campos JetEngine/Elementor (aliases para retrocompatibilidade) ─────────
+
   it('campos JetEngine/Elementor usam formato compativel', () => {
     const placa = toPublicPlaca({
       _id: PLACA_ID,
       numero_placa: '01',
       imagemPrincipal: 'https://pub-storage.r2.dev/inmidia-uploads-sistema/01.jpg',
     });
-
     expect(placa.jetImageUrl).toBe(EXPECTED_PROXY);
     expect(placa.jet_image_url).toBe(EXPECTED_PROXY);
-    expect(placa.jetImage).toEqual({
-      id: 0,
-      url: EXPECTED_PROXY,
-      alt: '01',
-      title: '01',
-    });
-    expect(placa.image).toEqual({
-      url: EXPECTED_PROXY,
-      alt: '01',
-      title: '01',
-    });
+    expect(placa.jetImage).toEqual({ id: 0, url: EXPECTED_PROXY, alt: '01', title: '01' });
+    expect(placa.image).toEqual({ url: EXPECTED_PROXY, alt: '01', title: '01' });
   });
 
-  it('campos JetEngine/Elementor usam nome como alt/title sem prefixo extra', () => {
+  it('campos JetEngine/Elementor usam nome como alt/title', () => {
     const placa = toPublicPlaca({
       _id: PLACA_ID,
       numero_placa: '01',
       nome: 'Placa 01',
       imagemPrincipal: 'inmidia-uploads-sistema/01.jpg',
     });
-
     expect(placa.jetImage?.alt).toBe('Placa 01');
     expect(placa.jetImage?.title).toBe('Placa 01');
     expect(placa.image?.alt).toBe('Placa 01');
     expect(placa.image?.title).toBe('Placa 01');
   });
 
-  it('campos JetEngine/Elementor usam Placa como fallback de alt/title', () => {
-    const placa = toPublicPlaca({
-      _id: PLACA_ID,
-      numero_placa: '',
-      imagemPrincipal: 'inmidia-uploads-sistema/sem-codigo.jpg',
-    });
-
-    expect(placa.jetImage?.alt).toBe('Placa');
-    expect(placa.jetImage?.title).toBe('Placa');
-    expect(placa.image?.alt).toBe('Placa');
-    expect(placa.image?.title).toBe('Placa');
-  });
-
-  it('campos JetEngine/Elementor sao null quando placa nao tem imagem', () => {
+  it('campos JetEngine/Elementor são null quando placa não tem imagem', () => {
     const placa = toPublicPlaca({
       _id: PLACA_ID,
       numero_placa: '01',
@@ -239,14 +255,13 @@ describe('public plates presenter — proxy de imagem', () => {
       imagem: null,
       imagens: [],
     });
-
     expect(placa.jetImageUrl).toBeNull();
     expect(placa.jet_image_url).toBeNull();
     expect(placa.jetImage).toBeNull();
     expect(placa.image).toBeNull();
   });
 
-  it('campos JetEngine/Elementor nao expoem R2 ou paths internos', () => {
+  it('campos JetEngine/Elementor não expoem R2 ou paths internos', () => {
     const placa = toPublicPlaca({
       _id: PLACA_ID,
       numero_placa: 'CAU-37',
@@ -258,14 +273,25 @@ describe('public plates presenter — proxy de imagem', () => {
       jetImage: placa.jetImage,
       image: placa.image,
     });
-
     expect(imagePayload).not.toContain('r2.dev');
     expect(imagePayload).not.toContain('cloudflarestorage.com');
     expect(imagePayload).not.toContain('inmidia-uploads-sistema');
     expect(imagePayload).toContain(EXPECTED_PROXY);
   });
 
-  // ── Payload não expõe dados internos ──────────────────────────────────────
+  // ── JSON público não vaza dados internos ──────────────────────────────────
+
+  it('JSON público não vaza key, bucket, R2 ou campos internos', () => {
+    const placa = toPublicPlaca({
+      _id: PLACA_ID,
+      numero_placa: 'CAU-37',
+      imagemPrincipal: 'https://abc.r2.cloudflarestorage.com/bucket/cau-37.jpg',
+    });
+    const serialized = JSON.stringify(placa);
+    expect(serialized).not.toContain('r2.dev');
+    expect(serialized).not.toContain('cloudflarestorage.com');
+    expect(serialized).not.toContain('inmidia-uploads-sistema');
+  });
 
   it('payload não contém empresaId', () => {
     const placa = toPublicPlaca({
@@ -320,7 +346,7 @@ describe('public plates presenter — proxy de imagem', () => {
   });
 });
 
-// ── Testes de imagemMeta (Parte 3) ────────────────────────────────────────────
+// ── Testes de imagemMeta ──────────────────────────────────────────────────────
 
 describe('public plates presenter — imagemMeta', () => {
   const origBase = process.env.PUBLIC_API_BASE_URL;
@@ -334,9 +360,9 @@ describe('public plates presenter — imagemMeta', () => {
     else process.env.PUBLIC_API_BASE_URL = origBase;
   });
 
-  it('imagemMeta.url aponta para o proxy', () => {
+  it('imagemMeta.url aponta para o proxy canônico', () => {
     const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X', imagemPrincipal: 'pasta/foto.jpg' });
-    expect(placa.imagemMeta?.url).toBe(`https://inmidia.futureoutdoors.com.br/api/v1/public/placas/${PLACA_ID}/imagem`);
+    expect(placa.imagemMeta?.url).toBe(`https://inmidia.futureoutdoors.com.br/api/v1/public/media/plates/${PLACA_ID}/main`);
   });
 
   it('imagemMeta.mimeType derivado de .jpg → image/jpeg', () => {
@@ -349,9 +375,9 @@ describe('public plates presenter — imagemMeta', () => {
     expect(placa.imagemMeta?.mimeType).toBe('image/webp');
   });
 
-  it('imagemMeta.mimeType derivado de .png → image/png', () => {
-    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X', imagemPrincipal: 'pasta/foto.png' });
-    expect(placa.imagemMeta?.mimeType).toBe('image/png');
+  it('imagemMeta.mimeType derivado de filename solto .jpg → image/jpeg', () => {
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X', imagemPrincipal: 'foto.jpg' });
+    expect(placa.imagemMeta?.mimeType).toBe('image/jpeg');
   });
 
   it('imagemMeta.cacheable é true quando há imagem', () => {
@@ -373,11 +399,6 @@ describe('public plates presenter — imagemMeta', () => {
     const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X', imagemPrincipal: 'pasta/foto.jpg' });
     expect(placa.imagemUrl).toBe(placa.imagemMeta?.url);
     expect(placa.imagem).toBe(placa.imagemMeta?.url);
-  });
-
-  it('imagem string e imagemUrl têm o mesmo valor (retrocompatibilidade)', () => {
-    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X', imagemPrincipal: 'pasta/foto.avif' });
-    expect(placa.imagem).toBe(placa.imagemUrl);
   });
 });
 

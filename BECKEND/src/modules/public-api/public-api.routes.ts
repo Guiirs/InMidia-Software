@@ -25,10 +25,13 @@ router.get('/v1/availability', availabilityCache, requirePublicApiScope('invento
 router.get('/v1/media/:id', mediaCache, requirePublicApiScope('media:read'), publicApiController.getMedia);
 router.get('/v1/geo', shortCache, requirePublicApiScope('geo:read'), publicApiController.getGeo);
 
+// Endpoint canônico de imagem — todas as integrações devem usar este path.
+router.get('/media/plates/:id/main', imageRateLimiter, imageAccessMiddleware, publicImageSecurityHeaders, getPlacaImagem);
+
 // Legacy compatibility routes kept for existing integrations.
 router.get('/placas/disponiveis', shortCache, requirePublicApiScope('inventory:read'), publicApiController.getAvailablePlacas);
 router.get('/placas', shortCache, requirePublicKey, getPlacas);
-// Proxy público de imagem — SEM requirePublicKey (WordPress/JetEngine usa <img src="">)
+// Proxy de imagem legado — delega ao mesmo handler do endpoint canônico.
 router.get('/placas/:id/imagem', imageRateLimiter, imageAccessMiddleware, publicImageSecurityHeaders, getPlacaImagem);
 router.get('/placas/:id', shortCache, requirePublicKey, getPlacaById);
 

@@ -1,18 +1,17 @@
 /**
  * Mapeia um documento de Placa (com regiaoId populado) para o payload público seguro.
  *
- * imagemUrl e imagem apontam para o proxy seguro interno (/api/v1/public/placas/:id/imagem),
- * nunca para URLs diretas do R2 ou do bucket privado.
+ * imagemUrl aponta para o proxy seguro canônico (/api/v1/public/media/plates/:id/main).
+ * Campos legados (imagem, jetImageUrl, etc.) são mantidos como aliases para
+ * retrocompatibilidade com integrações WordPress/JetEngine.
+ * Nunca expõe URLs diretas do R2 ou credenciais do bucket.
  */
 import logger from '@shared/container/logger';
 import { contentTypeFromStorageKey, resolvePlacaImageReference } from '@modules/media/placa-image-reference.resolver';
 
-/** Metadata rica de imagem — novo campo adicionado na v2 do payload. */
 export interface PublicImageMeta {
   url: string;
-  /** MIME type derivado da extensão do arquivo. Null se não for possível inferir. */
   mimeType: string | null;
-  /** Indica que a imagem é servida via proxy com Cache-Control CDN-ready. */
   cacheable: boolean;
   updatedAt: string | null;
 }
@@ -37,7 +36,7 @@ export interface PublicPlacaPayload {
   nome: string;
   localizacao: string | null;
   status: 'disponivel' | 'reservado' | 'ocupado' | 'indisponivel' | 'desconhecido';
-  /** URL do proxy de imagem. Mantido para compatibilidade. @see imagemMeta */
+  /** URL canônica do proxy de imagem. */
   imagemUrl: string | null;
   hasImage: boolean;
   latitude: number | null;
@@ -47,13 +46,17 @@ export interface PublicPlacaPayload {
   cidade: string | null;
   categoria: string | null;
   medidas: string | null;
-  /** Alias de imagemUrl. Mantido para compatibilidade com consumidores legados. */
+  /** @deprecated Alias de imagemUrl — mantido para retrocompatibilidade. */
   imagem: string | null;
-  /** Metadata rica de imagem (novo campo v2). Null se placa não tiver imagem. */
+  /** @deprecated Alias de imagemUrl — mantido para retrocompatibilidade. */
   imagemMeta: PublicImageMeta | null;
+  /** @deprecated Alias de imagemUrl — mantido para retrocompatibilidade com JetEngine. */
   jetImageUrl: string | null;
+  /** @deprecated Alias de imagemUrl — mantido para retrocompatibilidade com JetEngine. */
   jet_image_url: string | null;
+  /** @deprecated Alias de imagemUrl — mantido para retrocompatibilidade com JetEngine. */
   jetImage: PublicJetImagePayload | null;
+  /** @deprecated Alias de imagemUrl — mantido para retrocompatibilidade com Elementor. */
   image: PublicImagePayload | null;
   disponibilidade: 'disponivel' | 'reservado' | 'ocupado' | 'indisponivel' | 'desconhecido';
   updatedAt: string | null;
@@ -149,12 +152,12 @@ export function validatePublicApiBaseUrlAtStartup(): void {
 }
 
 /**
- * Constrói a URL do proxy seguro de imagem para a placa com o id informado.
+ * Constrói a URL canônica do proxy seguro de imagem para a placa com o id informado.
  * Nunca expõe a URL real do R2 ou do bucket.
  */
 export function buildProxyImageUrl(placaId: string): string {
   const base = getPublicApiBaseUrl();
-  return `${base}/api/v1/public/placas/${placaId}/imagem`;
+  return `${base}/api/v1/public/media/plates/${placaId}/main`;
 }
 
 /** @internal Mantido apenas para uso em testes legados. Não usar em produção. */
@@ -212,6 +215,7 @@ export function toPublicPlaca(raw: any): PublicPlacaPayload {
   const proxyUrl = hasImage && id ? buildProxyImageUrl(id) : null;
   const resolvedUpdatedAt = raw.updatedAt ? new Date(raw.updatedAt).toISOString() : null;
 
+  // Deprecated alias fields — mantidos para retrocompatibilidade com WordPress/JetEngine/Elementor.
   const imagemMeta: PublicImageMeta | null = proxyUrl
     ? {
         url: proxyUrl,
@@ -221,19 +225,10 @@ export function toPublicPlaca(raw: any): PublicPlacaPayload {
       }
     : null;
   const jetImage: PublicJetImagePayload | null = proxyUrl
-    ? {
-        id: 0,
-        url: proxyUrl,
-        alt: imageLabel,
-        title: imageLabel,
-      }
+    ? { id: 0, url: proxyUrl, alt: imageLabel, title: imageLabel }
     : null;
   const image: PublicImagePayload | null = proxyUrl
-    ? {
-        url: proxyUrl,
-        alt: imageLabel,
-        title: imageLabel,
-      }
+    ? { url: proxyUrl, alt: imageLabel, title: imageLabel }
     : null;
 
   return {

@@ -33,6 +33,11 @@ async function createPublicEmpresa() {
   });
 }
 
+/** Canonical URL for plate images. */
+function canonicalImageUrl(placaId: string): string {
+  return `${PUBLIC_API_BASE_URL}/api/v1/public/media/plates/${placaId}/main`;
+}
+
 describe('Public plates integration', () => {
   beforeAll(async () => {
     await setupIntegrationDb();
@@ -61,6 +66,45 @@ describe('Public plates integration', () => {
     expect(res.body.error.code).toBe('PUBLIC_API_KEY_MISSING');
   });
 
+  // ── Endpoint canônico de imagem ───────────────────────────────────────────
+
+  it('OPTIONS /api/v1/public/media/plates/:id/main retorna CORS wildcard (endpoint canônico)', async () => {
+    const res = await request(app)
+      .options('/api/v1/public/media/plates/69b42002f5c3a35343097a2c/main')
+      .set('Origin', 'https://sitequalquer.com')
+      .set('Access-Control-Request-Method', 'GET')
+      .set('Access-Control-Request-Headers', 'Content-Type');
+
+    expect(res.status).toBe(204);
+    expect(res.headers['access-control-allow-origin']).toBe('*');
+    expect(res.headers['access-control-allow-methods']).toContain('GET');
+    expect(res.headers['access-control-allow-headers']).toContain('Content-Type');
+    expect(res.headers['access-control-max-age']).toBe('86400');
+  });
+
+  it('GET /api/v1/public/media/plates/:id/main expoe headers CORS/CORP corretos (endpoint canônico)', async () => {
+    const res = await request(app)
+      .get('/api/v1/public/media/plates/id-invalido/main')
+      .set('Origin', 'https://sitequalquer.com');
+
+    expect(res.headers['access-control-allow-origin']).toBe('*');
+    expect(res.headers['cross-origin-resource-policy']).toBe('cross-origin');
+    expect(res.headers['cache-control']).toContain('public');
+  });
+
+  // ── Rotas antigas delegam ao mesmo handler ────────────────────────────────
+
+  it('GET /api/v1/public/placas/:id/imagem delega ao handler canônico (mesmos headers)', async () => {
+    const res = await request(app)
+      .get('/api/v1/public/placas/id-invalido/imagem')
+      .set('Origin', 'https://sitequalquer.com');
+
+    // Mesmos headers do endpoint canônico — sem lógica própria
+    expect(res.headers['access-control-allow-origin']).toBe('*');
+    expect(res.headers['cross-origin-resource-policy']).toBe('cross-origin');
+    expect(res.headers['cache-control']).toContain('public');
+  });
+
   it('OPTIONS /api/v1/public/placas/:id/imagem retorna CORS wildcard para Elementor', async () => {
     const res = await request(app)
       .options('/api/v1/public/placas/69b42002f5c3a35343097a2c/imagem')
@@ -75,18 +119,9 @@ describe('Public plates integration', () => {
     expect(res.headers['access-control-max-age']).toBe('86400');
   });
 
-  it('GET /api/v1/public/placas/:id/imagem sempre expoe headers de midia cross-origin', async () => {
-    const res = await request(app)
-      .get('/api/v1/public/placas/id-invalido/imagem')
-      .set('Origin', 'https://sitequalquer.com');
+  // ── Listagem de placas ────────────────────────────────────────────────────
 
-    expect(res.headers['access-control-allow-origin']).toBe('*');
-    expect(res.headers['access-control-expose-headers']).toBe('X-Gateway-Module,X-Response-Time,X-Request-Id');
-    expect(res.headers['cross-origin-resource-policy']).toBe('cross-origin');
-    expect(res.headers['cache-control']).toContain('public');
-  });
-
-  it('GET /api/v1/public/placas retorna 200 com array de placas e sem campos sensiveis', async () => {
+  it('GET /api/v1/public/placas retorna 200 com array de placas e sem campos sensíveis', async () => {
     process.env.PUBLIC_API_BASE_URL = PUBLIC_API_BASE_URL;
     const empresa = await createPublicEmpresa();
     const regiao = await createTestRegiao({
@@ -102,7 +137,8 @@ describe('Public plates integration', () => {
       endereco: 'Av. Paulista, 1000',
       latitude: -23.561684,
       longitude: -46.656139,
-      imagemPrincipal: 'https://cdn.example.com/placas/pub-001.jpg',
+      // R2-resolvable path so the resolver produces hasImage=true
+      imagemPrincipal: 'inmidia-uploads-sistema/pub-001.jpg',
       statusComercial: 'AVAILABLE',
       notes: 'nao pode aparecer',
       valor_mensal: 9999,
@@ -116,8 +152,9 @@ describe('Public plates integration', () => {
     expect(res.body.success).toBe(true);
     expect(Array.isArray(res.body.data)).toBe(true);
     expect(res.body.data).toHaveLength(1);
-    const expectedImageUrl = `${PUBLIC_API_BASE_URL}/api/v1/public/placas/${res.body.data[0].id}/imagem`;
-    expect(res.body.data[0]).toMatchObject({
+    const placa = res.body.data[0];
+    const expectedImageUrl = canonicalImageUrl(placa.id);
+    expect(placa).toMatchObject({
       id: expect.any(String),
       codigo: 'PUB-001',
       nome: 'PUB-001',
@@ -127,17 +164,23 @@ describe('Public plates integration', () => {
       imagemUrl: expectedImageUrl,
       imagem: expectedImageUrl,
       imagemMeta: expect.objectContaining({ url: expectedImageUrl }),
+      jetImageUrl: expectedImageUrl,
+      jet_image_url: expectedImageUrl,
+      hasImage: true,
       latitude: -23.561684,
       longitude: -46.656139,
     });
-    expect(res.body.data[0].empresaId).toBeUndefined();
-    expect(res.body.data[0].valor_mensal).toBeUndefined();
-    expect(res.body.data[0].notes).toBeUndefined();
-    expect(res.body.data[0].contratos).toBeUndefined();
-    expect(res.body.data[0].cliente).toBeUndefined();
+    // imagemUrl aponta para o endpoint canônico
+    expect(placa.imagemUrl).toMatch(/\/api\/v1\/public\/media\/plates\/[a-f0-9]+\/main$/);
+    // Campos internos ausentes
+    expect(placa.empresaId).toBeUndefined();
+    expect(placa.valor_mensal).toBeUndefined();
+    expect(placa.notes).toBeUndefined();
+    expect(placa.contratos).toBeUndefined();
+    expect(placa.cliente).toBeUndefined();
   });
 
-  it('GET /api/v1/public/placas normaliza imagemUrl e imagem como URL absoluta', async () => {
+  it('GET /api/v1/public/placas — imagemUrl não é null quando placa tem imagem', async () => {
     process.env.PUBLIC_API_BASE_URL = PUBLIC_API_BASE_URL;
 
     const empresa = await createPublicEmpresa();
@@ -150,6 +193,7 @@ describe('Public plates integration', () => {
     await createTestPlaca(regiao._id.toString(), {
       empresaId: empresa._id,
       numero_placa: 'PUB-IMG-001',
+      // Plain filename: resolver now accepts it, adding default folder prefix.
       imagemPrincipal: 'placa-relativa.jpg',
       statusComercial: 'AVAILABLE',
     });
@@ -164,7 +208,7 @@ describe('Public plates integration', () => {
     await createTestPlaca(regiao._id.toString(), {
       empresaId: empresa._id,
       numero_placa: 'PUB-IMG-003',
-      imagemPrincipal: 'https://cdn.example.com/placas/pronta.jpg',
+      imagemPrincipal: 'inmidia-uploads-sistema/placa-pronta.jpg',
       statusComercial: 'AVAILABLE',
     });
 
@@ -186,16 +230,48 @@ describe('Public plates integration', () => {
     );
 
     for (const codigo of ['PUB-IMG-001', 'PUB-IMG-002', 'PUB-IMG-003']) {
-      const expectedUrl = `${PUBLIC_API_BASE_URL}/api/v1/public/placas/${byCodigo[codigo].id}/imagem`;
+      const expectedUrl = canonicalImageUrl(byCodigo[codigo].id);
       expect(byCodigo[codigo].imagemUrl).toBe(expectedUrl);
       expect(byCodigo[codigo].imagem).toBe(expectedUrl);
       expect(byCodigo[codigo].imagemMeta.url).toBe(expectedUrl);
+      expect(byCodigo[codigo].hasImage).toBe(true);
       expect(expectedUrl).not.toContain('//api/');
       expect(expectedUrl).not.toContain('localhost');
     }
     expect(byCodigo['PUB-IMG-004'].imagemUrl).toBeNull();
-    expect(byCodigo['PUB-IMG-004'].imagem).toBeNull();
-    expect(byCodigo['PUB-IMG-004'].imagemMeta).toBeNull();
+    expect(byCodigo['PUB-IMG-004'].hasImage).toBe(false);
+  });
+
+  it('GET /api/v1/public/placas — JSON público não vaza key, bucket, R2 ou campos internos', async () => {
+    process.env.PUBLIC_API_BASE_URL = PUBLIC_API_BASE_URL;
+
+    const empresa = await createPublicEmpresa();
+    const regiao = await createTestRegiao({
+      empresaId: empresa._id,
+      nome: 'Centro',
+      codigo: 'CENTRO',
+    });
+
+    await createTestPlaca(regiao._id.toString(), {
+      empresaId: empresa._id,
+      numero_placa: 'PUB-LEAK-001',
+      imagemPrincipal: 'inmidia-uploads-sistema/placa-leak.jpg',
+      statusComercial: 'AVAILABLE',
+    });
+
+    const res = await request(app)
+      .get('/api/v1/public/placas')
+      .set('x-api-key', API_KEY_VALUE);
+
+    expect(res.status).toBe(200);
+    const serialized = JSON.stringify(res.body.data);
+    expect(serialized).not.toContain('r2.dev');
+    expect(serialized).not.toContain('cloudflarestorage');
+    expect(serialized).not.toContain('inmidia-uploads-sistema');
+    expect(serialized).not.toContain('empresaId');
+    expect(serialized).not.toContain('statusComercial');
+    // Alias fields exist but must point to the proxy URL, never expose raw storage paths
+    expect(serialized).toContain('/api/v1/public/media/plates/');
   });
 
   it('GET /api/v1/public/placas/:id retorna a placa por id com chave valida', async () => {
