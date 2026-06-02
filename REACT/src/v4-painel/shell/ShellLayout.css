@@ -1026,3 +1026,27 @@
   gap: 5px;
   padding-inline: 8px;
 }
+
+.v4p-page-loading {
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--v4p-density-gap-sm);
+  border: 1px dashed rgba(148, 163, 184, 0.16);
+  border-radius: var(--v4p-r-lg);
+  background: rgba(13, 20, 32, 0.42);
+  color: var(--v4p-text-3);
+  font-size: var(--v4p-fs-sm);
+}
+
+.v4p-page-loading .material-symbols-rounded {
+  color: var(--v4p-accent);
+  font-size: 24px;
+  animation: v4p-loading-spin 1.4s linear infinite;
+}
+
+@keyframes v4p-loading-spin {
+  to { transform: rotate(360deg); }
+}

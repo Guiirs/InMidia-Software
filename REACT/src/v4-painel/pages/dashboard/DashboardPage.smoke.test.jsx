@@ -25,9 +25,8 @@ vi.mock('../../providers/RealtimeProvider.jsx', () => ({
   useRealtime: () => testState.realtime,
 }));
 
-vi.mock('../../components/map/index.js', () => ({
-  OperationalMap: () => <div data-testid="operational-map">Mapa operacional</div>,
-  V4OperationalMap: () => <div data-testid="operational-map">Mapa operacional</div>,
+vi.mock('../../components/map/V4OperationalMap.jsx', () => ({
+  default: () => <div data-testid="operational-map">Mapa operacional</div>,
 }));
 
 function dashboardContext(overrides = {}) {
@@ -128,12 +127,12 @@ describe('DashboardPage smoke por role', () => {
     };
   });
 
-  it('operador ve saude e operacao sem blocos financeiros de gestao', () => {
+  it('operador ve saude e operacao sem blocos financeiros de gestao', async () => {
     renderDashboard('operador');
 
     expect(screen.getByText('Saude operacional')).toBeInTheDocument();
     expect(screen.getByText('Operacao')).toBeInTheDocument();
-    expect(screen.getByTestId('operational-map')).toBeInTheDocument();
+    expect(await screen.findByTestId('operational-map')).toBeInTheDocument();
     expect(screen.queryByText('Comercial e gestao')).not.toBeInTheDocument();
     expect(screen.queryByText('Receita ativa')).not.toBeInTheDocument();
     expect(screen.queryByText('Contratos a renovar')).not.toBeInTheDocument();

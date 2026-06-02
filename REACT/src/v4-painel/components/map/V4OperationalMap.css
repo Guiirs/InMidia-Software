@@ -8,9 +8,11 @@
 .v4-geomap {
   position: relative;
   width: 100%;
+  min-height: 420px;
   border-radius: var(--v4p-r-lg, 16px);
   overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.10);
+  border: 1px solid var(--v4p-border);
+  background: var(--v4p-bg-card);
   isolation: isolate;
 }
 
@@ -35,7 +37,7 @@
 
 .v4-geomap__map .leaflet-control-zoom {
   border: none;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.36);
+  box-shadow: var(--v4p-shadow-sm);
 }
 
 .v4-geomap__map .leaflet-control-zoom a {
@@ -45,7 +47,7 @@
   width: 30px;
   height: 30px;
   background: rgba(8, 13, 23, 0.94);
-  border: 1px solid rgba(148, 163, 184, 0.14) !important;
+  border: 1px solid var(--v4p-border) !important;
   color: var(--v4p-text-2, #d4dcea);
   font-size: 16px;
   font-weight: 500;
@@ -118,10 +120,10 @@
   flex-direction: column;
   gap: 6px;
   padding: 5px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  border-radius: 10px;
+  border: 1px solid var(--v4p-border);
+  border-radius: var(--v4p-r-sm);
   background: rgba(8, 13, 23, 0.88);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.26);
+  box-shadow: var(--v4p-shadow-sm);
   backdrop-filter: blur(8px);
 }
 
@@ -137,11 +139,11 @@
   width: 30px;
   height: 30px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--v4p-r-sm);
   background: rgba(255, 255, 255, 0.045);
   color: var(--v4p-text-2, #d4dcea);
   cursor: pointer;
-  transition: background 120ms, color 120ms, border-color 120ms;
+  transition: background var(--v4p-t-fast), color var(--v4p-t-fast), border-color var(--v4p-t-fast);
 }
 
 .v4-geomap-controls button:hover,
@@ -181,7 +183,7 @@
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
-  border: 1px solid rgba(34, 211, 238, 0.22);
+  border: 1px solid var(--v4p-status-info-border);
   border-radius: 999px;
   background: rgba(8, 13, 23, 0.88);
   color: rgba(212, 220, 234, 0.86);
@@ -200,8 +202,8 @@
   flex-direction: column;
   gap: 4px;
   padding: 7px 9px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  border-radius: 10px;
+  border: 1px solid var(--v4p-border);
+  border-radius: var(--v4p-r-sm);
   background: rgba(8, 13, 23, 0.86);
   color: rgba(212, 220, 234, 0.78);
   font-size: 10px;
@@ -244,9 +246,9 @@
 
 .v4-geomap__map .leaflet-popup-content-wrapper {
   background: rgba(8, 13, 23, 0.97) !important;
-  border: 1px solid rgba(148, 163, 184, 0.18) !important;
-  border-radius: 12px !important;
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.44) !important;
+  border: 1px solid var(--v4p-border-strong) !important;
+  border-radius: var(--v4p-r-md) !important;
+  box-shadow: var(--v4p-shadow-lg) !important;
   padding: 0;
 }
 
@@ -715,8 +717,8 @@
 .v4-geomap-missing__actions button {
   height: 22px;
   padding: 0 8px;
-  border: 1px solid rgba(148, 163, 184, 0.12);
-  border-radius: 7px;
+  border: 1px solid var(--v4p-border);
+  border-radius: var(--v4p-r-xs);
   background: rgba(255, 255, 255, 0.04);
   color: var(--v4p-text-3, #b0bdd0);
   font-size: 9px;
@@ -742,10 +744,10 @@
   flex-direction: column;
   gap: 10px;
   padding: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  border-radius: 12px;
+  border: 1px solid var(--v4p-border-strong);
+  border-radius: var(--v4p-r-md);
   background: rgba(8, 13, 23, 0.96);
-  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.48);
+  box-shadow: var(--v4p-shadow-lg);
   color: var(--v4p-text-2, #d4dcea);
   overflow-y: auto;
   backdrop-filter: blur(10px);
@@ -787,8 +789,8 @@
   justify-content: center;
   width: 26px;
   height: 26px;
-  border: 1px solid rgba(148, 163, 184, 0.12);
-  border-radius: 8px;
+  border: 1px solid var(--v4p-border);
+  border-radius: var(--v4p-r-sm);
   background: rgba(255, 255, 255, 0.04);
   color: var(--v4p-text-3, #b0bdd0);
   cursor: pointer;
@@ -799,7 +801,7 @@
 .v4-geomap-slideout__image-empty {
   width: 100%;
   aspect-ratio: 16 / 9;
-  border-radius: 8px;
+  border-radius: var(--v4p-r-sm);
   object-fit: cover;
   background: rgba(148, 163, 184, 0.10);
   border: 1px solid rgba(148, 163, 184, 0.12);
@@ -848,8 +850,8 @@
   justify-content: center;
   height: 30px;
   padding: 0 11px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  border-radius: 8px;
+  border: 1px solid var(--v4p-border);
+  border-radius: var(--v4p-r-sm);
   background: rgba(255, 255, 255, 0.045);
   color: var(--v4p-text-2, #d4dcea);
   font-family: var(--v4p-font, sans-serif);
@@ -907,9 +909,28 @@
 
 /* ── Responsividade ──────────────────────────────────────────── */
 
+@media (max-width: 768px) {
+  .v4-geomap {
+    min-height: 380px;
+  }
+
+  .v4-geomap-controls {
+    top: 8px;
+    right: 8px;
+  }
+
+  .v4-geomap-legend {
+    max-width: calc(100vw - 112px);
+  }
+
+  .v4-geomap-slideout {
+    width: min(300px, calc(100% - 72px));
+  }
+}
+
 @media (max-width: 600px) {
   .v4-geomap {
-    min-height: 340px;
+    min-height: 360px;
   }
 
   .v4-geomap-popup {
@@ -985,5 +1006,38 @@
 
   .v4-geomap-slideout__facts {
     grid-template-columns: 84px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 390px) {
+  .v4-geomap {
+    min-height: 340px;
+  }
+
+  .v4-geomap__cluster-notice {
+    max-width: calc(100vw - 86px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .v4-geomap-legend {
+    max-width: calc(100vw - 90px);
+  }
+
+  .v4-geomap-missing {
+    width: calc(100vw - 20px);
+    max-width: none;
+  }
+
+  .v4-geomap-slideout.v4-geomap-bottom-sheet {
+    left: 4px;
+    right: 4px;
+    bottom: 4px;
+    max-height: 68%;
+  }
+
+  .v4-geomap-slideout__actions a,
+  .v4-geomap-slideout__actions button {
+    flex: 1 1 100%;
   }
 }

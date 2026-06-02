@@ -1,7 +1,7 @@
 import { memo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext.jsx';
-import { RegionManagerPanel } from '../../components/map/index.js';
+import RegionManagerPanel from '../../components/map/RegionManagerPanel.jsx';
 import './RegionsPage.css';
 
 function RegionsPage() {

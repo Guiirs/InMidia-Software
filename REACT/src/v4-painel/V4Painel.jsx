@@ -1,21 +1,30 @@
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import { RuntimeProvider } from './providers/RuntimeProvider.jsx';
 import AppShell from './shell/AppShell.jsx';
 import { NAV_ITEM_ID } from './foundation/navigation.js';
 import V4DebugPanel from './debug/V4DebugPanel.jsx';
 
-import { DashboardPage } from './pages/dashboard/index.js';
-import { OperationsPage } from './pages/operations/index.js';
-import { InventoryPage } from './pages/inventory/index.js';
-import { MapPage } from './pages/map/index.js';
-import { RegionsPage } from './pages/regions/index.js';
-import { CommercialPage } from './pages/commercial/index.js';
-import { ContractsPage } from './pages/contracts/index.js';
-import { ReportsPage } from './pages/reports/index.js';
-import { AlertsPage } from './pages/alerts/index.js';
-import { ActivityPage } from './pages/activity/index.js';
-import { CampaignsPage } from './pages/campaigns/index.js';
-import EmpresaSettingsV4 from './pages/empresa/EmpresaSettingsV4.jsx';
+const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage.jsx'));
+const OperationsPage = lazy(() => import('./pages/operations/OperationsPage.jsx'));
+const InventoryPage = lazy(() => import('./pages/inventory/InventoryPage.jsx'));
+const MapPage = lazy(() => import('./pages/map/MapPage.jsx'));
+const RegionsPage = lazy(() => import('./pages/regions/RegionsPage.jsx'));
+const CommercialPage = lazy(() => import('./pages/commercial/CommercialPage.jsx'));
+const ContractsPage = lazy(() => import('./pages/contracts/ContractsPage.jsx'));
+const ReportsPage = lazy(() => import('./pages/reports/ReportsPage.jsx'));
+const AlertsPage = lazy(() => import('./pages/alerts/AlertsPage.jsx'));
+const ActivityPage = lazy(() => import('./pages/activity/ActivityPage.jsx'));
+const CampaignsPage = lazy(() => import('./pages/campaigns/CampaignsPage.jsx'));
+const EmpresaSettingsV4 = lazy(() => import('./pages/empresa/EmpresaSettingsV4.jsx'));
+
+function V4PageFallback() {
+  return (
+    <div className="v4p-page-loading" role="status" aria-live="polite">
+      <span className="material-symbols-rounded" aria-hidden="true">progress_activity</span>
+      <strong>Carregando area operacional</strong>
+    </div>
+  );
+}
 
 export default function V4Painel({ initialPage = NAV_ITEM_ID.DASHBOARD, density = 'default' }) {
   const [activeItemId, setActiveItemId] = useState(initialPage);
@@ -79,7 +88,9 @@ export default function V4Painel({ initialPage = NAV_ITEM_ID.DASHBOARD, density 
         activeId={activeItemId}
         onNavigate={handleNavigateWithClear}
       >
-        {renderPage()}
+        <Suspense fallback={<V4PageFallback />}>
+          {renderPage()}
+        </Suspense>
       </AppShell>
       {import.meta.env.DEV && <V4DebugPanel />}
     </RuntimeProvider>

@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { mapBus } from '../../modules/map/mapBus.js';
 
 import { useSyncResource } from '../../../core/sync-core/hooks/useSyncResource.js';
-import { V4OperationalMap, OpportunityMapPanel, RegionSidebar } from '../../components/map/index.js';
+import V4OperationalMap from '../../components/map/V4OperationalMap.jsx';
+import OpportunityMapPanel from '../../components/map/OpportunityMapPanel.jsx';
+import RegionSidebar from '../../components/map/RegionSidebar.jsx';
 import { OPERATIONAL_STATE } from '../../foundation/operationalStates.js';
 import { normalizeBoardCoordinates } from '../../integration/adapters/boardCoordinates.js';
 import { isBoardWithoutRegion } from '../../utils/regionUtils.js';

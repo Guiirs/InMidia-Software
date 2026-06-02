@@ -17,17 +17,10 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...actual, useNavigate: () => vi.fn() };
 });
 
-vi.mock('../../components/map/index.js', () => ({
-  RegionManagerPanel: ({ onRegionSelect }) => (
+vi.mock('../../components/map/RegionManagerPanel.jsx', () => ({
+  default: ({ onRegionSelect }) => (
     <div data-testid="region-manager-panel">RegionManagerPanel</div>
   ),
-  V4OperationalMap: () => null,
-  RegionSidebar: () => null,
-  OpportunityMapPanel: () => null,
-  RegionManager: () => null,
-  RegionList: () => null,
-  RegionSummaryCard: () => null,
-  RegionPlateList: () => null,
 }));
 
 describe('RegionsPage integration surface', () => {

@@ -1,9 +1,8 @@
-import { memo, useMemo } from 'react';
+import { Suspense, lazy, memo, useMemo } from 'react';
 
 import { useAuth } from '../../../context/AuthContext.jsx';
 import { StatusBadge } from '../../design-system/badges/index.js';
 import DataSourceBadge from '../../design-system/states/DataSourceBadge.jsx';
-import { V4OperationalMap } from '../../components/map/index.js';
 import {
   V4Badge,
   V4Button,
@@ -18,6 +17,8 @@ import DashboardProvider, { useDashboard } from '../../providers/DashboardProvid
 import { useRealtime } from '../../providers/RealtimeProvider.jsx';
 import { ROLE_RANK } from '../../foundation/navigation.js';
 import './DashboardPage.css';
+
+const V4OperationalMap = lazy(() => import('../../components/map/V4OperationalMap.jsx'));
 
 const ROLE_LAYER = {
   OPERATOR: 1,
@@ -567,6 +568,15 @@ function ActivityList({ activity = [], loading }) {
   );
 }
 
+function DashboardMapFallback() {
+  return (
+    <div className="v4p-dashboard-map-fallback" role="status">
+      <span className="material-symbols-rounded" aria-hidden="true">map</span>
+      <strong>Carregando mapa</strong>
+    </div>
+  );
+}
+
 function SystemSummary({ dashboard, connected, reconnecting }) {
   return (
     <V4Card className="v4p-dashboard-panel v4p-dashboard-panel--system">
@@ -619,11 +629,13 @@ function DashboardPageInner() {
             description="Ocupacao, alertas e disponibilidade por regiao."
             aside={<StatusBadge state={dashboard.executive?.operationalHealth ?? 'healthy'} size="sm" />}
           />
-          <V4OperationalMap
-            points={mapPoints}
-            loading={isLoading}
-            compact
-          />
+          <Suspense fallback={<DashboardMapFallback />}>
+            <V4OperationalMap
+              points={mapPoints}
+              loading={isLoading}
+              compact
+            />
+          </Suspense>
         </V4Card>
         <div className="v4p-dashboard-side-stack">
           <OperationMix mix={dashboard.operationMix} loading={isLoading} />

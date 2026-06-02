@@ -20,8 +20,8 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...actual, useNavigate: () => vi.fn() };
 });
 
-vi.mock('../../components/map/index.js', () => ({
-  V4OperationalMap: ({ flyTo, selectedRegionId, regionColorMap, regionBoundaries = [], points = [] }) => (
+vi.mock('../../components/map/V4OperationalMap.jsx', () => ({
+  default: ({ flyTo, selectedRegionId, regionColorMap, regionBoundaries = [], points = [] }) => (
     <div
       data-testid="operational-map"
       data-fly-to={flyTo ? `${flyTo.lat},${flyTo.lng}` : null}
@@ -32,19 +32,20 @@ vi.mock('../../components/map/index.js', () => ({
       data-coordinates={points.map((point) => `${point.latitude ?? 'null'},${point.longitude ?? 'null'}`).join('|')}
     />
   ),
-  RegionSidebar: ({ selectedRegionId, onRegionSelect }) => (
+}));
+
+vi.mock('../../components/map/RegionSidebar.jsx', () => ({
+  default: ({ selectedRegionId, onRegionSelect }) => (
     <div data-testid="region-sidebar">
       <span data-testid="sidebar-selected">{selectedRegionId ?? 'none'}</span>
       <button onClick={() => onRegionSelect?.('r1')}>Selecionar Regiao 1</button>
       <button onClick={() => onRegionSelect?.('r2')}>Selecionar sem coords</button>
     </div>
   ),
-  OpportunityMapPanel: () => null,
-  RegionManager: () => null,
-  RegionManagerPanel: () => <div data-testid="region-manager-panel" />,
-  RegionList: () => null,
-  RegionSummaryCard: () => null,
-  RegionPlateList: () => null,
+}));
+
+vi.mock('../../components/map/OpportunityMapPanel.jsx', () => ({
+  default: () => null,
 }));
 
 function resource(data, status = 'success') {

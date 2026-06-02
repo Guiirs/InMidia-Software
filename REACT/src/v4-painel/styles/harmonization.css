@@ -1,0 +1,172 @@
+/* Global UX/UI harmonization layer for V4.
+   Keep selectors scoped to .v4p-root so legacy/public screens stay untouched. */
+
+.v4p-root {
+  --v4p-h-card-bg: var(--v4p-bg-card);
+  --v4p-h-card-border: var(--v4p-border);
+  --v4p-h-card-radius: var(--v4p-r-lg);
+  --v4p-h-card-shadow: var(--v4p-shadow-card);
+  --v4p-h-control-bg: rgba(8, 15, 28, 0.58);
+  --v4p-h-control-bg-hover: rgba(255, 255, 255, 0.06);
+  --v4p-h-control-border: rgba(148, 163, 184, 0.16);
+  --v4p-h-control-border-hover: rgba(148, 163, 184, 0.26);
+  --v4p-h-control-radius: var(--v4p-r-sm);
+  --v4p-h-table-head-bg: rgba(10, 16, 26, 0.94);
+  --v4p-h-table-row-hover: rgba(255, 255, 255, 0.035);
+}
+
+.v4p-root img,
+.v4p-root svg,
+.v4p-root canvas,
+.v4p-root video {
+  max-width: 100%;
+}
+
+.v4p-root input,
+.v4p-root select,
+.v4p-root textarea {
+  min-width: 0;
+  color-scheme: dark;
+}
+
+.v4p-root input::placeholder,
+.v4p-root textarea::placeholder {
+  color: var(--v4p-text-4);
+  opacity: 0.76;
+}
+
+.v4p-root :is(
+  input[type="search"],
+  input[type="text"],
+  input[type="email"],
+  input[type="number"],
+  input[type="date"],
+  input[type="tel"],
+  select,
+  textarea
+):not(.leaflet-control input) {
+  border-color: var(--v4p-h-control-border);
+  border-radius: var(--v4p-h-control-radius);
+  background: var(--v4p-h-control-bg);
+  color: var(--v4p-text-1);
+  transition:
+    border-color var(--v4p-t-fast) var(--v4p-ease),
+    background var(--v4p-t-fast) var(--v4p-ease),
+    box-shadow var(--v4p-t-fast) var(--v4p-ease);
+}
+
+.v4p-root :is(
+  input[type="search"],
+  input[type="text"],
+  input[type="email"],
+  input[type="number"],
+  input[type="date"],
+  input[type="tel"],
+  select,
+  textarea
+):not(.leaflet-control input):hover {
+  border-color: var(--v4p-h-control-border-hover);
+  background: var(--v4p-h-control-bg-hover);
+}
+
+.v4p-root :is(button, a, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid var(--v4p-focus-ring-color);
+  outline-offset: var(--v4p-focus-ring-offset);
+  box-shadow: var(--v4p-focus-ring);
+}
+
+.v4p-root :is(button, input, select, textarea):disabled,
+.v4p-root [aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.v4p-root :is(
+  .v4-ui-card,
+  .v4-ui-stat-card,
+  .v4-ui-data-table,
+  .v4p-page-header,
+  .v4p-map-stage,
+  .v4p-map-filters,
+  .v4p-inventory-summary-card,
+  .v4p-inv-table,
+  .v4p-contracts-table
+) {
+  border-color: var(--v4p-h-card-border);
+  border-radius: var(--v4p-h-card-radius);
+  background-color: var(--v4p-h-card-bg);
+}
+
+.v4p-root :is(.v4-ui-data-table, .v4p-inv-table, .v4p-contracts-table) {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.v4p-root :is(.v4-ui-data-table, .v4p-inv-table, .v4p-contracts-table) table {
+  border-collapse: collapse;
+}
+
+.v4p-root :is(.v4-ui-data-table, .v4p-inv-table, .v4p-contracts-table) th {
+  background: var(--v4p-h-table-head-bg);
+  color: var(--v4p-text-4);
+  font-weight: 700;
+  letter-spacing: var(--v4p-track-label);
+}
+
+.v4p-root :is(.v4-ui-data-table, .v4p-inv-table, .v4p-contracts-table) tbody tr:hover {
+  background: var(--v4p-h-table-row-hover);
+}
+
+.v4p-root :is(.v4p-status-pill, .v4p-chip, .v4p-badge, .v4p-table-badge) {
+  max-width: 100%;
+}
+
+.v4p-root :is(.v4p-status-pill, .v4p-chip, .v4p-badge, .v4p-table-badge) > span:not(.material-symbols-rounded),
+.v4p-root :is(.v4p-status-pill, .v4p-chip, .v4p-badge, .v4p-table-badge) > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.v4p-root .material-symbols-rounded {
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 500,
+    "GRAD" 0,
+    "opsz" 20;
+}
+
+@media (max-width: 768px) {
+  .v4p-page {
+    padding: var(--v4p-page-pad-y) var(--v4p-page-pad-x);
+  }
+
+  .v4p-page-header {
+    gap: var(--v4p-density-gap-sm);
+    border-radius: var(--v4p-r-lg);
+  }
+
+  .v4p-page-header__actions,
+  .v4p-root :is(.v4p-map-filters, .v4p-inventory-filters__controls) {
+    align-items: stretch;
+  }
+
+  .v4p-root :is(.v4p-map-filters input, .v4p-map-filters select, .v4p-map-filters button),
+  .v4p-root :is(.v4p-inventory-filters__search, .v4p-inventory-filters__select, .v4p-inventory-filters__clear) {
+    width: 100%;
+  }
+}
+
+@media (max-width: 390px) {
+  .v4p-root {
+    --v4p-page-pad-x: 12px;
+    --v4p-card-pad: 12px;
+    --v4p-card-pad-lg: 14px;
+  }
+
+  .v4p-root :is(.v4p-status-pill, .v4p-chip, .v4p-badge, .v4p-table-badge) {
+    white-space: normal;
+    text-align: left;
+  }
+}

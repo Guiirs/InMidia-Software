@@ -63,16 +63,16 @@ vi.mock('../debug/V4DebugPanel.jsx', () => ({
 // Mock de todas as páginas V4 com identificador no DOM
 const mockPage = (name) => () => <div data-testid={`v4-page-${name}`}>{name}</div>;
 
-vi.mock('../pages/dashboard/index.js',   () => ({ DashboardPage:   mockPage('dashboard') }));
-vi.mock('../pages/inventory/index.js',   () => ({ InventoryPage:   mockPage('inventario') }));
-vi.mock('../pages/contracts/index.js',   () => ({ ContractsPage:   mockPage('contratos') }));
-vi.mock('../pages/reports/index.js',     () => ({ ReportsPage:     mockPage('relatorios') }));
-vi.mock('../pages/alerts/index.js',      () => ({ AlertsPage:      mockPage('alertas') }));
-vi.mock('../pages/operations/index.js',  () => ({ OperationsPage:  mockPage('operacoes') }));
-vi.mock('../pages/map/index.js',         () => ({ MapPage:         mockPage('mapa') }));
-vi.mock('../pages/commercial/index.js',  () => ({ CommercialPage:  mockPage('comercial') }));
-vi.mock('../pages/campaigns/index.js',   () => ({ CampaignsPage:   mockPage('campanhas') }));
-vi.mock('../pages/activity/index.js',    () => ({ ActivityPage:    mockPage('atividade') }));
+vi.mock('../pages/dashboard/DashboardPage.jsx',   () => ({ default: mockPage('dashboard') }));
+vi.mock('../pages/inventory/InventoryPage.jsx',   () => ({ default: mockPage('inventario') }));
+vi.mock('../pages/contracts/ContractsPage.jsx',   () => ({ default: mockPage('contratos') }));
+vi.mock('../pages/reports/ReportsPage.jsx',       () => ({ default: mockPage('relatorios') }));
+vi.mock('../pages/alerts/AlertsPage.jsx',         () => ({ default: mockPage('alertas') }));
+vi.mock('../pages/operations/OperationsPage.jsx', () => ({ default: mockPage('operacoes') }));
+vi.mock('../pages/map/MapPage.jsx',               () => ({ default: mockPage('mapa') }));
+vi.mock('../pages/commercial/CommercialPage.jsx', () => ({ default: mockPage('comercial') }));
+vi.mock('../pages/campaigns/CampaignsPage.jsx',   () => ({ default: mockPage('campanhas') }));
+vi.mock('../pages/activity/ActivityPage.jsx',      () => ({ default: mockPage('atividade') }));
 
 afterEach(() => {
   cleanup();
@@ -119,27 +119,27 @@ describe('Rotas canônicas V4', () => {
 
   it('/dashboard renderiza DashboardPage dentro do V4', async () => {
     await renderWithRoute('/dashboard');
-    expect(screen.getByTestId('v4-page-dashboard')).toBeInTheDocument();
+    expect(await screen.findByTestId('v4-page-dashboard')).toBeInTheDocument();
   }, 15000);
 
   it('/inventario renderiza InventoryPage', async () => {
     await renderWithRoute('/inventario');
-    expect(screen.getByTestId('v4-page-inventario')).toBeInTheDocument();
+    expect(await screen.findByTestId('v4-page-inventario')).toBeInTheDocument();
   });
 
   it('/contratos renderiza ContractsPage', async () => {
     await renderWithRoute('/contratos');
-    expect(screen.getByTestId('v4-page-contratos')).toBeInTheDocument();
+    expect(await screen.findByTestId('v4-page-contratos')).toBeInTheDocument();
   });
 
   it('/relatorios renderiza ReportsPage', async () => {
     await renderWithRoute('/relatorios');
-    expect(screen.getByTestId('v4-page-relatorios')).toBeInTheDocument();
+    expect(await screen.findByTestId('v4-page-relatorios')).toBeInTheDocument();
   });
 
   it('/alertas renderiza AlertsPage', async () => {
     await renderWithRoute('/alertas');
-    expect(screen.getByTestId('v4-page-alertas')).toBeInTheDocument();
+    expect(await screen.findByTestId('v4-page-alertas')).toBeInTheDocument();
   });
 
   it('V4 não está aninhado em MainLayout (não há .main-layout junto com .v4p-root)', async () => {
