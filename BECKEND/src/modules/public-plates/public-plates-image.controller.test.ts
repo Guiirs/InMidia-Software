@@ -196,8 +196,9 @@ describe('segurança — query params bloqueados', () => {
 });
 
 describe('segurança — traversal e extensão inválida', () => {
-  it('extractR2Key retornando null → 404 (traversal bloqueado)', async () => {
+  it('referencia invalida → 404 (traversal bloqueado)', async () => {
     mockedExtractKey.mockReturnValue(null);
+    mockedGetDoc.mockResolvedValue({ imagemPrincipal: '../secrets/evil.jpg' });
     mockedCacheGet.mockResolvedValue(null);
     const req = makeReq(PLACA_ID);
     const res = makeRes();
@@ -207,7 +208,7 @@ describe('segurança — traversal e extensão inválida', () => {
 
   it('payload de erro não contém r2.dev', async () => {
     mockedExtractKey.mockReturnValue(null);
-    mockedGetDoc.mockResolvedValue({ imagemPrincipal: 'https://pub-xyz.r2.dev/key.jpg' });
+    mockedGetDoc.mockResolvedValue({ imagemPrincipal: 'https://pub-xyz.r2.dev/arquivo.exe' });
     const req = makeReq(PLACA_ID);
     const res = makeRes();
     await getPlacaImagem(req, res, jest.fn());
@@ -364,6 +365,88 @@ describe('Redis cache', () => {
     const res = makeRes();
     await getPlacaImagem(req, res, jest.fn());
     expect(mockedGetDoc).toHaveBeenCalledWith(PLACA_ID);
+  });
+
+  it('usa imagens[].url quando segue o contrato do painel interno', async () => {
+    const galleryKey = 'empresas/empresa-1/plates/placa-1/main/img-1.webp';
+    mockedExtractKey.mockImplementation((value: string) => (
+      value.includes('img-1.webp') ? galleryKey : null
+    ));
+    mockedGetDoc.mockResolvedValue({
+      imagemPrincipal: null,
+      imagem: null,
+      imagens: [{ url: 'https://pub-storage.r2.dev/empresas/empresa-1/plates/placa-1/main/img-1.webp', isMain: true }],
+      updatedAt: new Date(UPDATED_AT),
+    });
+    mockedCacheGet.mockResolvedValue(null);
+
+    const stream = makeReadableStream();
+    stream.pipe = jest.fn(() => stream) as any;
+    const send = jest.fn().mockResolvedValue({
+      Body: stream,
+      ETag: ETAG,
+      LastModified: new Date(LAST_MODIFIED),
+      ContentType: 'image/webp',
+    });
+    mockedGetR2Client.mockReturnValue({ send } as any);
+
+    const req = makeReq(PLACA_ID);
+    const res = makeRes();
+    await getPlacaImagem(req, res, jest.fn());
+
+    expect(send.mock.calls[0][0].input.Key).toBe(galleryKey);
+  });
+
+  it('URL completa salva resolve para a key sem expor bucket', async () => {
+    mockedExtractKey.mockReturnValue(null);
+    mockedGetDoc.mockResolvedValue({
+      imagemPrincipal: 'https://cdn.futureoutdoors.com.br/empresas/empresa-1/plates/placa-1/main/img-2.jpg',
+      updatedAt: new Date(UPDATED_AT),
+    });
+    mockedCacheGet.mockResolvedValue(null);
+
+    const stream = makeReadableStream();
+    stream.pipe = jest.fn(() => stream) as any;
+    const send = jest.fn().mockResolvedValue({
+      Body: stream,
+      ETag: ETAG,
+      LastModified: new Date(LAST_MODIFIED),
+      ContentType: 'image/jpeg',
+    });
+    mockedGetR2Client.mockReturnValue({ send } as any);
+
+    const req = makeReq(PLACA_ID);
+    const res = makeRes();
+    await getPlacaImagem(req, res, jest.fn());
+
+    expect(send.mock.calls[0][0].input.Key).toBe('empresas/empresa-1/plates/placa-1/main/img-2.jpg');
+    expect(JSON.stringify(res._body)).not.toContain('futureoutdoors.com.br');
+  });
+
+  it('placas diferentes usam keys diferentes no endpoint publico', async () => {
+    const firstId = '69d7d2a69b9a603e468392e3';
+    const secondId = '69d7d2a69b9a603e468392e4';
+    mockedExtractKey.mockImplementation((value: string) => value);
+    mockedCacheGet.mockResolvedValue(null);
+
+    const stream = makeReadableStream();
+    stream.pipe = jest.fn(() => stream) as any;
+    const send = jest.fn().mockResolvedValue({
+      Body: stream,
+      ETag: ETAG,
+      LastModified: new Date(LAST_MODIFIED),
+      ContentType: 'image/jpeg',
+    });
+    mockedGetR2Client.mockReturnValue({ send } as any);
+    mockedGetDoc
+      .mockResolvedValueOnce({ imagemPrincipal: 'empresas/e1/plates/p1/main/a.jpg', updatedAt: new Date(UPDATED_AT) })
+      .mockResolvedValueOnce({ imagemPrincipal: 'empresas/e1/plates/p2/main/b.jpg', updatedAt: new Date(UPDATED_AT) });
+
+    await getPlacaImagem(makeReq(firstId), makeRes(), jest.fn());
+    await getPlacaImagem(makeReq(secondId), makeRes(), jest.fn());
+
+    expect(send.mock.calls[0][0].input.Key).toBe('empresas/e1/plates/p1/main/a.jpg');
+    expect(send.mock.calls[1][0].input.Key).toBe('empresas/e1/plates/p2/main/b.jpg');
   });
 
   it('cache miss com GetObject: salva metadata no Redis', async () => {

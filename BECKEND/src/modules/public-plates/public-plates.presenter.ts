@@ -5,6 +5,7 @@
  * nunca para URLs diretas do R2 ou do bucket privado.
  */
 import logger from '@shared/container/logger';
+import { resolvePlacaImageKey } from './placa-image-key.resolver';
 
 /** Metadata rica de imagem — novo campo adicionado na v2 do payload. */
 export interface PublicImageMeta {
@@ -218,15 +219,9 @@ export function toPublicPlaca(raw: any): PublicPlacaPayload {
   const codigo = raw.numero_placa ?? '';
   const imageLabel = buildImageAltTitle({ nome: raw.nome, codigo, numero_placa: raw.numero_placa });
 
-  // Determina se a placa tem imagem cadastrada (sem expor a URL real do storage)
-  const storedPath: string | null =
-    raw.imagemPrincipal ||
-    raw.imagem ||
-    (Array.isArray(raw.imagens) && raw.imagens.length > 0
-      ? (raw.imagens.find((i: any) => i.isMain)?.key ?? raw.imagens[0]?.key ?? null)
-      : null);
-
-  const hasImage = !!storedPath;
+  const resolvedImage = resolvePlacaImageKey(raw);
+  const storedPath = resolvedImage.rawValue;
+  const hasImage = !!resolvedImage.key;
   const proxyUrl = hasImage && id ? buildProxyImageUrl(id) : null;
   const resolvedUpdatedAt = raw.updatedAt ? new Date(raw.updatedAt).toISOString() : null;
 

@@ -255,9 +255,13 @@ export async function listRegioes(empresaId: string): Promise<PublicRegiaoPayloa
 }
 
 export interface PlacaImageDoc {
+  _id?: unknown;
+  empresaId?: unknown;
+  numero_placa?: string | null;
+  nome?: string | null;
   imagemPrincipal?: string | null;
   imagem?: string | null;
-  imagens?: Array<{ key: string; isMain?: boolean }> | null;
+  imagens?: Array<Record<string, unknown>> | null;
   updatedAt?: Date | string | null;
 }
 

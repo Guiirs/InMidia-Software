@@ -35,10 +35,10 @@ import { GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import type { Readable } from 'stream';
 import { PublicErrorPresenter } from '@modules/public-api/presenters/public-error.presenter';
 import { getR2Client, getR2BucketName } from '@shared/infra/storage/r2-client';
-import { extractR2Key } from '@shared/infra/storage/r2-key.helper';
 import { publicApiRateLimiter } from '@shared/infra/http/middlewares/rate-limit.middleware';
 import logger from '@shared/container/logger';
 import { getPlacaDocForImagePublic, type PlacaImageDoc } from './public-plates.service';
+import { getPlacaImageCandidates, resolvePlacaImageKey } from './placa-image-key.resolver';
 import {
   getImageMetaFromCache,
   setImageMetaInCache,
@@ -75,16 +75,6 @@ export function publicImageSecurityHeaders(
 
 function deriveRequestId(req: Request): string {
   return req.header('x-request-id') ?? 'unknown';
-}
-
-function resolveImageValue(doc: PlacaImageDoc): string | null {
-  return (
-    doc.imagemPrincipal ||
-    doc.imagem ||
-    doc.imagens?.find((img) => img.isMain)?.key ||
-    doc.imagens?.[0]?.key ||
-    null
-  );
 }
 
 /** ETag fallback: SHA-256(r2Key + updatedAt), estável e barato. */
@@ -185,6 +175,47 @@ function emitMetrics(metrics: ImageProxyMetrics): void {
     r2LatencyMs: metrics.r2LatencyMs,
     contentType: metrics.contentType,
     bytesSent: metrics.bytesSent,
+  });
+}
+
+function redactImageValue(value: unknown): string {
+  if (typeof value !== 'string' || !value.trim()) return 'empty';
+  const raw = value.trim();
+  const suffix = raw.slice(Math.max(0, raw.length - 18));
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      const parsed = new URL(raw);
+      return `${parsed.protocol}//${parsed.hostname}/...${suffix}`;
+    } catch {
+      return `url:...${suffix}`;
+    }
+  }
+  return `path:...${suffix}`;
+}
+
+function logImageResolutionFailure(input: {
+  endpoint: string;
+  placaId: string;
+  doc: PlacaImageDoc | null;
+  keyResolvida?: string | null;
+  bucket: string;
+  reason: string;
+}): void {
+  const doc: any = input.doc ?? {};
+  logger.warn('[ImageProxy] Falha ao resolver imagem da placa', {
+    endpoint: input.endpoint,
+    reason: input.reason,
+    placaId: input.placaId,
+    codigo: doc.numero_placa ?? doc.codigo ?? null,
+    nome: doc.nome ?? null,
+    empresaId: doc.empresaId ? String(doc.empresaId) : null,
+    tenantId: doc.tenantId ? String(doc.tenantId) : doc.empresaId ? String(doc.empresaId) : null,
+    imageFields: getPlacaImageCandidates(doc).map((candidate) => ({
+      field: candidate.field,
+      value: redactImageValue(candidate.value),
+    })),
+    keyResolvida: input.keyResolvida ? redactImageValue(input.keyResolvida) : null,
+    bucket: input.bucket,
   });
 }
 
@@ -304,16 +335,32 @@ export async function getPlacaImagem(
     return;
   }
 
-  const rawValue = resolveImageValue(doc);
-  if (!rawValue) {
+  const resolvedImage = resolvePlacaImageKey(doc as any);
+  if (!resolvedImage.rawValue) {
     notFound(res, reqId, 'Placa sem imagem cadastrada.');
+    logImageResolutionFailure({
+      endpoint: req.originalUrl ?? req.path ?? '/api/v1/public/placas/:id/imagem',
+      placaId: idParam,
+      doc,
+      keyResolvida: null,
+      bucket,
+      reason: 'missing_image_reference',
+    });
     emitMetrics({ placaId: idParam, cacheStatus, outcome: 404, conditional: isConditional, r2LatencyMs: null, contentType: null, bytesSent: null });
     return;
   }
 
-  const r2Key = extractR2Key(rawValue);
+  const r2Key = resolvedImage.key;
   if (!r2Key) {
     notFound(res, reqId, 'Imagem não disponível.');
+    logImageResolutionFailure({
+      endpoint: req.originalUrl ?? req.path ?? '/api/v1/public/placas/:id/imagem',
+      placaId: idParam,
+      doc,
+      keyResolvida: null,
+      bucket,
+      reason: 'invalid_image_reference',
+    });
     emitMetrics({ placaId: idParam, cacheStatus, outcome: 404, conditional: isConditional, r2LatencyMs: null, contentType: null, bytesSent: null });
     return;
   }
@@ -336,6 +383,14 @@ export async function getPlacaImagem(
       const httpStatus: number = err?.$metadata?.httpStatusCode ?? 0;
       if (err?.name === 'NoSuchKey' || httpStatus === 404) {
         notFound(res, reqId, 'Imagem não encontrada no storage.');
+        logImageResolutionFailure({
+          endpoint: req.originalUrl ?? req.path ?? '/api/v1/public/placas/:id/imagem',
+          placaId: idParam,
+          doc,
+          keyResolvida: r2Key,
+          bucket,
+          reason: 'r2_head_not_found',
+        });
         emitMetrics({ placaId: idParam, cacheStatus, outcome: 404, conditional: true, r2LatencyMs: Date.now() - tHead, contentType: null, bytesSent: null });
         return;
       }
@@ -421,7 +476,7 @@ async function streamFromR2(
     emitMetrics({ placaId, cacheStatus, outcome: 200, conditional: false, r2LatencyMs: Date.now() - tR2, contentType: freshMeta.contentType, bytesSent });
     stream.pipe(res);
   } catch (err: any) {
-    handleR2Error(err, res, reqId, placaId, cacheStatus, t0);
+    handleR2Error(err, res, reqId, placaId, cacheStatus, t0, { bucket, r2Key: meta.r2Key });
   }
 }
 
@@ -487,7 +542,7 @@ async function streamFromR2WithMetaCapture(
     emitMetrics({ placaId, cacheStatus, outcome: 200, conditional: false, r2LatencyMs: Date.now() - tR2, contentType, bytesSent: contentLength ?? null });
     stream.pipe(res);
   } catch (err: any) {
-    handleR2Error(err, res, reqId, placaId, cacheStatus, t0);
+    handleR2Error(err, res, reqId, placaId, cacheStatus, t0, { bucket, r2Key });
   }
 }
 
@@ -498,10 +553,21 @@ function handleR2Error(
   placaId: string,
   cacheStatus: ImageProxyMetrics['cacheStatus'],
   t0: number,
+  context?: { bucket: string; r2Key: string },
 ): void {
   const httpStatus: number = err?.$metadata?.httpStatusCode ?? 0;
   if (err?.name === 'NoSuchKey' || httpStatus === 404) {
     notFound(res, reqId, 'Imagem não encontrada no storage.');
+    if (context) {
+      logImageResolutionFailure({
+        endpoint: '/api/v1/public/placas/:id/imagem',
+        placaId,
+        doc: null,
+        keyResolvida: context.r2Key,
+        bucket: context.bucket,
+        reason: 'r2_get_not_found',
+      });
+    }
     emitMetrics({ placaId, cacheStatus, outcome: 404, conditional: false, r2LatencyMs: Date.now() - t0, contentType: null, bytesSent: null });
     return;
   }

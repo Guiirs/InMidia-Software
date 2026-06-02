@@ -53,6 +53,18 @@ describe('public plates presenter — proxy de imagem', () => {
     expect(placa.imagemUrl).toBe(EXPECTED_PROXY);
   });
 
+  it('imagemUrl usa URL do proxy quando galeria tem url/publicUrl do fluxo interno', () => {
+    const placa = toPublicPlaca({
+      _id: PLACA_ID,
+      numero_placa: 'CAU-37',
+      imagemPrincipal: null,
+      imagem: null,
+      imagens: [{ url: 'https://pub-storage.r2.dev/inmidia-uploads-sistema/cau-37.webp', isMain: true }],
+    });
+    expect(placa.imagemUrl).toBe(EXPECTED_PROXY);
+    expect(placa.imagemMeta?.mimeType).toBe('image/webp');
+  });
+
   it('imagemUrl é null quando placa não tem imagem', () => {
     const placa = toPublicPlaca({
       _id: PLACA_ID,
