@@ -14,6 +14,7 @@ import {
   toDomainError
 } from '@shared/core';
 import { Log } from '@shared/core';
+import { resolvePlacaImageReference } from '@modules/media/placa-image-reference.resolver';
 import type { 
   PlacaEntity, 
   CreatePlacaDTO, 
@@ -405,9 +406,9 @@ export class PlacaRepository implements IPlacaRepository {
 
       const setPayload: Record<string, unknown> = {};
       if (isMain) {
-        const imageReference = image.storageKey ?? image.r2Key ?? image.imagemKey ?? image.key ?? image.url;
-        setPayload.imagemPrincipal = imageReference;
-        setPayload.imagem = imageReference;
+        const imageReference = resolvePlacaImageReference({ mainImage: image });
+        setPayload.imagemPrincipal = imageReference.storageKey;
+        setPayload.imagem = imageReference.storageKey;
       }
 
       const placa = await Placa.findOneAndUpdate(
@@ -452,13 +453,14 @@ export class PlacaRepository implements IPlacaRepository {
         isMain: String(item._id) === imageId || String(item.id) === imageId,
         updatedAt: now,
       }));
+      const imageReference = resolvePlacaImageReference({ mainImage: img });
 
       const updated = await Placa.findOneAndUpdate(
         { _id: id, empresaId },
         {
           $set: {
-            imagemPrincipal: img.storageKey ?? img.r2Key ?? img.imagemKey ?? img.key ?? img.url,
-            imagem: img.storageKey ?? img.r2Key ?? img.imagemKey ?? img.key ?? img.url,
+            imagemPrincipal: imageReference.storageKey,
+            imagem: imageReference.storageKey,
             imagens,
           },
         },
@@ -491,8 +493,11 @@ export class PlacaRepository implements IPlacaRepository {
       if (!target) return Result.fail(new PlacaNotFoundError(`Imagem ${imageId}`));
 
       const remaining = imagens.filter((i: any) => String(i._id) !== imageId && String(i.id) !== imageId);
-      const targetIsMain = Boolean(target.isMain) || target.url === (placa as any).imagemPrincipal || target.url === (placa as any).imagem;
+      const currentReference = resolvePlacaImageReference(placa as any);
+      const targetReference = resolvePlacaImageReference({ mainImage: target });
+      const targetIsMain = Boolean(target.isMain) || targetReference.storageKey === currentReference.storageKey;
       const fallbackMain = targetIsMain ? remaining[0] : remaining.find((i: any) => i.isMain);
+      const fallbackReference = resolvePlacaImageReference({ mainImage: fallbackMain });
       const normalizedRemaining = remaining.map((item: any) => ({
         ...item,
         isMain: fallbackMain ? String(item._id) === String(fallbackMain._id) || String(item.id) === String(fallbackMain.id) : false,
@@ -504,12 +509,8 @@ export class PlacaRepository implements IPlacaRepository {
         {
           $set: {
             imagens: normalizedRemaining,
-            imagemPrincipal: fallbackMain
-              ? fallbackMain.storageKey ?? fallbackMain.r2Key ?? fallbackMain.imagemKey ?? fallbackMain.key ?? fallbackMain.url
-              : null,
-            imagem: fallbackMain
-              ? fallbackMain.storageKey ?? fallbackMain.r2Key ?? fallbackMain.imagemKey ?? fallbackMain.key ?? fallbackMain.url
-              : null,
+            imagemPrincipal: fallbackReference.storageKey,
+            imagem: fallbackReference.storageKey,
           },
         },
         { new: true },

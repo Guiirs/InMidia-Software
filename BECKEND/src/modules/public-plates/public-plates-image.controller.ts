@@ -38,7 +38,7 @@ import { getR2Client, getR2BucketName } from '@shared/infra/storage/r2-client';
 import { publicApiRateLimiter } from '@shared/infra/http/middlewares/rate-limit.middleware';
 import logger from '@shared/container/logger';
 import { getPlacaDocForImagePublic, type PlacaImageDoc } from './public-plates.service';
-import { getPlacaImageCandidates, resolvePlacaImageReference } from './placa-image-key.resolver';
+import { getPlacaImageCandidates, resolvePlacaImageReference } from '@modules/media/placa-image-reference.resolver';
 import {
   getImageMetaFromCache,
   setImageMetaInCache,

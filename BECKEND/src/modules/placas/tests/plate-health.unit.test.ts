@@ -9,7 +9,7 @@ const base = {
   endereco: 'Rua das Flores, 123',
   latitude: -23.5,
   longitude: -46.6,
-  imagemPrincipal: 'https://r2.example.com/placas/img.jpg',
+  imagemPrincipal: 'placas/img.jpg',
   regiaoId: '507f1f77bcf86cd799439011',
   statusOperacional: 'ACTIVE',
   statusComercial: 'AVAILABLE',
@@ -83,9 +83,14 @@ describe('resolvePlateHealth()', () => {
     expect(result.issues).not.toContain('Possui coordenadas');
   });
 
-  it('aceita imagem via array imagens', () => {
-    const result = resolvePlateHealth({ ...base, imagemPrincipal: undefined, imagem: undefined, imagens: [{ url: 'x' }] });
+  it('aceita imagem valida via array imagens', () => {
+    const result = resolvePlateHealth({ ...base, imagemPrincipal: undefined, imagem: undefined, imagens: [{ url: 'placas/x.jpg' }] });
     expect(result.issues).not.toContain('Possui imagem principal');
+  });
+
+  it('rejeita imagem invalida via array imagens', () => {
+    const result = resolvePlateHealth({ ...base, imagemPrincipal: undefined, imagem: undefined, imagens: [{ url: 'x' }] });
+    expect(result.issues).toContain('Possui imagem principal');
   });
 
   it('detecta inconsistência temporal (CONTRACTED_ACTIVE + disponivel=true)', () => {

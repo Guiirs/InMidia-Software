@@ -33,7 +33,8 @@
     "check:ts-nocheck:report": "node scripts/check-ts-nocheck.js --report",
     "audit:multitenancy": "ts-node scripts/audit-multitenancy-queries.ts",
     "audit:multitenancy:report": "ts-node scripts/audit-multitenancy-queries.ts --report",
-    "audit:multitenancy:json": "ts-node scripts/audit-multitenancy-queries.ts --json"
+    "audit:multitenancy:json": "ts-node scripts/audit-multitenancy-queries.ts --json",
+    "audit:placa-images": "ts-node scripts/audit-placa-image-contract.ts --scan"
   },
   "keywords": [],
   "author": "",

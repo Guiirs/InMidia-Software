@@ -15,7 +15,7 @@ import { spatialService } from '@modules/spatial';
 import { eventBus } from '@modules/realtime/event-bus.service';
 import { OPERATIONAL_EVENT_TYPES } from '@modules/realtime/domain-events';
 import { buildProxyImageUrl } from '@modules/public-plates/public-plates.presenter';
-import { resolvePlacaImageReference } from '@modules/public-plates/placa-image-key.resolver';
+import { resolvePlacaGallery, resolvePlacaImageReference } from '@modules/media/placa-image-reference.resolver';
 
 // Express 5: req.params[x] é string | string[] — o cast abaixo é seguro para route params
 type Params = Record<string, string>;
@@ -58,7 +58,7 @@ function emitOperationalEvent(input: {
 }
 
 function withImageContract<T extends Record<string, any>>(placa: T): T {
-  const imagens = Array.isArray(placa?.imagens) ? placa.imagens : [];
+  const imagens = resolvePlacaGallery(placa);
   const placaId = placa?._id?.toString?.() || placa?.id;
   const imageReference = resolvePlacaImageReference({ ...placa, imagens });
   const mainImageUrl = imageReference.hasImage && placaId ? buildProxyImageUrl(String(placaId)) : null;

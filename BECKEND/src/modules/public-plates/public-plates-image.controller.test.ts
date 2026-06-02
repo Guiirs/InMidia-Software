@@ -398,9 +398,9 @@ describe('Redis cache', () => {
   });
 
   it('URL completa salva resolve para a key sem expor bucket', async () => {
-    mockedExtractKey.mockReturnValue(null);
+    mockedExtractKey.mockReturnValue('empresas/empresa-1/plates/placa-1/main/img-2.jpg');
     mockedGetDoc.mockResolvedValue({
-      imagemPrincipal: 'https://cdn.futureoutdoors.com.br/empresas/empresa-1/plates/placa-1/main/img-2.jpg',
+      imagemPrincipal: 'https://pub-storage.r2.dev/empresas/empresa-1/plates/placa-1/main/img-2.jpg',
       updatedAt: new Date(UPDATED_AT),
     });
     mockedCacheGet.mockResolvedValue(null);
@@ -420,7 +420,7 @@ describe('Redis cache', () => {
     await getPlacaImagem(req, res, jest.fn());
 
     expect(send.mock.calls[0][0].input.Key).toBe('empresas/empresa-1/plates/placa-1/main/img-2.jpg');
-    expect(JSON.stringify(res._body)).not.toContain('futureoutdoors.com.br');
+    expect(JSON.stringify(res._body)).not.toContain('pub-storage.r2.dev');
   });
 
   it('placas diferentes usam keys diferentes no endpoint publico', async () => {

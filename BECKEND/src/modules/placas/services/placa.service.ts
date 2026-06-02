@@ -20,6 +20,7 @@ import { inventoryService } from '@modules/inventory';
 import { projectionService } from '@modules/projections';
 import { mediaPipelineService } from '@modules/media';
 import { mediaService } from '@modules/media/media.service';
+import { normalizePlacaStorageKey, resolvePlacaImageReference } from '@modules/media/placa-image-reference.resolver';
 import { temporalEngine } from '@modules/temporal';
 import { commercialAvailabilityProjection } from '@modules/commercial-availability';
 import type { IPlacaRepository } from '../repositories/placa.repository';
@@ -52,28 +53,11 @@ interface S3File {
 }
 
 function storageKeyFromFile(file: S3File): string {
-  return file.key || file.location || '';
+  return normalizePlacaStorageKey(file.key || file.location || '') ?? '';
 }
 
-function deleteKeyFromStoredImage(value: unknown): string | null {
-  if (typeof value !== 'string' || !value.trim()) return null;
-  const raw = value.trim();
-
-  if (/^https?:\/\//i.test(raw)) {
-    try {
-      const url = new URL(raw);
-      return url.pathname.replace(/^\/+/, '') || null;
-    } catch {
-      return null;
-    }
-  }
-
-  if (raw.includes('/')) return raw.replace(/^\/+/, '');
-  return `inmidia-uploads-sistema/inmidia-uploads-sistema/${raw}`;
-}
-
-async function safeDeleteStoredImage(value: unknown): Promise<void> {
-  const key = deleteKeyFromStoredImage(value);
+async function safeDeleteStoredImage(placa: unknown): Promise<void> {
+  const key = resolvePlacaImageReference(placa as any).storageKey;
   if (!key) return;
   try { await safeDeleteFromR2(key); } catch { /* non-critical */ }
 }
@@ -226,20 +210,29 @@ export class PlacaService {
             preservePreviousMain: false,
             version: 1,
           }, empresaId, userId);
-          (validatedData as any).imagem = asset.storageKey || asset.url;
-          (validatedData as any).imagemPrincipal = asset.storageKey || asset.url;
+          const imageKey = asset.storageKey
+            ? normalizePlacaStorageKey(asset.storageKey)
+            : normalizePlacaStorageKey(asset.url);
+          if (!imageKey) {
+            return Result.fail(new ValidationError([{ field: 'imagem', message: 'Referência de imagem inválida' }]));
+          }
+          (validatedData as any).imagem = imageKey;
+          (validatedData as any).imagemPrincipal = imageKey;
         } else {
           const imageKey = storageKeyFromFile(file);
+          if (!imageKey) {
+            return Result.fail(new ValidationError([{ field: 'imagem', message: 'Referência de imagem inválida' }]));
+          }
           (validatedData as any).imagem = imageKey;
           (validatedData as any).imagemPrincipal = imageKey;
         }
 
-        if (placaExistente.imagem) {
-          await safeDeleteStoredImage((placaExistente as any).imagemPrincipal || placaExistente.imagem);
+        if (resolvePlacaImageReference(placaExistente as any).hasImage) {
+          await safeDeleteStoredImage(placaExistente);
         }
       } else if ('imagem' in validatedData && (validatedData as any).imagem === null) {
-        if (placaExistente.imagem) {
-          await safeDeleteStoredImage((placaExistente as any).imagemPrincipal || placaExistente.imagem);
+        if (resolvePlacaImageReference(placaExistente as any).hasImage) {
+          await safeDeleteStoredImage(placaExistente);
         }
         (validatedData as any).imagem = undefined;
         (validatedData as any).imagemPrincipal = undefined;
@@ -346,7 +339,7 @@ export class PlacaService {
         return Result.fail(new BusinessRuleViolationError('Não é possível apagar uma placa que está atualmente alugada ou reservada'));
       }
 
-      await safeDeleteStoredImage((placa as any).imagemPrincipal || placa.imagem);
+      await safeDeleteStoredImage(placa);
 
       const deleteResult = await this.repository.delete(id, empresaId);
       if (deleteResult.isFailure) return Result.fail(deleteResult.error);

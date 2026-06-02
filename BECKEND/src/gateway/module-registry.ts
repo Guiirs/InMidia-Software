@@ -23,6 +23,7 @@ import biWeekRoutes from '@modules/biweeks/biWeeks.routes';
 import webhookRoutes from '@modules/webhooks/webhook.routes';
 import publicApiRoutes from '@modules/public-api/public-api.routes';
 import publicApiV1Routes from '@modules/public-api/public-api-v1.routes';
+import privateApiRoutes from '@modules/private-api/private-api.routes';
 import relatorioRoutes from '@modules/relatorios/relatorios.routes';
 import adminRoutes from '@modules/admin/admin.routes';
 import checkingRoutes from '@modules/checking/checking.routes';
@@ -212,6 +213,15 @@ export const modules: ModuleDefinition[] = [
     router: webhookRoutes,
     description: 'Sistema de webhooks',
     domain: 'integration',
+    version: '1.0.0',
+    enabled: true,
+  },
+  {
+    name: 'private-api',
+    basePath: '/api/v1/private',
+    router: privateApiRoutes,
+    description: 'API privada canonica para painel e aplicacoes internas',
+    domain: 'core',
     version: '1.0.0',
     enabled: true,
   },

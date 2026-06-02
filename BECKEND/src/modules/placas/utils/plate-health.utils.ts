@@ -6,6 +6,7 @@
  */
 
 import type { PlateHealthResult, PlateHealthStatus } from '../dtos/placa.dto';
+import { resolvePlacaImageReference } from '@modules/media/placa-image-reference.resolver';
 
 interface PlateHealthInput {
   numero_placa?: string;
@@ -41,7 +42,7 @@ function hasCoordinates(input: PlateHealthInput): boolean {
 }
 
 function hasMainImage(input: PlateHealthInput): boolean {
-  return !!(input.imagemPrincipal || input.imagem || (Array.isArray(input.imagens) && input.imagens.length > 0));
+  return resolvePlacaImageReference(input as any).hasImage;
 }
 
 function hasRegion(input: PlateHealthInput): boolean {

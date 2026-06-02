@@ -4,6 +4,11 @@ import { regionService } from '@modules/regions/region.service';
 import { commercialProjectionService } from '@modules/commercial-projection/commercial-projection.service';
 import type { CommercialProjection } from '@modules/commercial-projection/commercial-projection.types';
 import { mapCommercialStatusToLegacyStatusComercial } from '@modules/placas/utils/commercial-status.utils';
+import {
+  normalizePlacaStorageKey,
+  resolvePlacaGallery,
+  resolvePlacaImageReference,
+} from '@modules/media/placa-image-reference.resolver';
 import mongoose from 'mongoose';
 import AppError from '@shared/container/AppError';
 
@@ -263,23 +268,14 @@ export class InventoryBoardsService {
     imagens: unknown[];
     imageStatus: 'AVAILABLE' | 'MISSING';
   } {
-    const imagens = Array.isArray(placa.imagens) ? placa.imagens : [];
-    const mainImage = imagens.find((image: any) => image?.isMain)
-      ?? imagens.find((image: any) => image?.category === 'MAIN')
-      ?? null;
-    const imagemPrincipal = placa.mainImageUrl
-      ?? placa.imagemPrincipal
-      ?? mainImage?.publicUrl
-      ?? mainImage?.url
-      ?? placa.imagem
-      ?? placa.foto
-      ?? placa.imageUrl
-      ?? null;
+    const imagens = resolvePlacaGallery(placa);
+    const imageReference = resolvePlacaImageReference(placa);
+    const imagemPrincipal = imageReference.storageKey;
 
     return {
       imagemPrincipal,
       imagens,
-      imageStatus: imagemPrincipal ? 'AVAILABLE' : 'MISSING',
+      imageStatus: imageReference.hasImage ? 'AVAILABLE' : 'MISSING',
     };
   }
 
@@ -376,7 +372,7 @@ export class InventoryBoardsService {
         localizacaoGeo: placa.localizacao && typeof placa.localizacao === 'object' ? placa.localizacao : undefined,
         tamanho: placa.tamanho ?? null,
         tipo: placa.tipo ?? null,
-        imagem: placa.imagem ?? imagemPrincipal,
+        imagem: imagemPrincipal,
         imagemPrincipal,
         mainImageUrl: imagemPrincipal,
         imagens: imageContract.imagens,
@@ -499,11 +495,10 @@ export class InventoryBoardsService {
     }
     if (typeof payload.tamanho === 'string') allowed.tamanho = payload.tamanho.trim();
     if (typeof payload.tipo === 'string') allowed.tipo = payload.tipo.trim();
-    if (typeof payload.imagem === 'string') allowed.imagem = payload.imagem.trim();
-    if (typeof payload.imageUrl === 'string') allowed.imagem = payload.imageUrl.trim();
-    if (typeof payload.imagemPrincipal === 'string') {
-      allowed.imagemPrincipal = payload.imagemPrincipal.trim();
-      allowed.imagem = payload.imagemPrincipal.trim();
+    const imageReference = resolvePlacaImageReference(payload);
+    if (imageReference.hasImage) {
+      allowed.imagemPrincipal = imageReference.storageKey;
+      allowed.imagem = imageReference.storageKey;
     }
     if (typeof payload.disponivel === 'boolean') allowed.disponivel = payload.disponivel;
     if (typeof payload.statusOperacional === 'string') allowed.statusOperacional = payload.statusOperacional.trim();
@@ -548,7 +543,12 @@ export class InventoryBoardsService {
     }
     const address = payload.endereco?.trim() || payload.nomeDaRua?.trim() || payload.localizacao?.trim() || undefined;
     const coordinates = normalizeInventoryBoardCoordinates(payload as Record<string, unknown>);
-    const image = payload.imagemPrincipal?.trim() || payload.imagem?.trim() || payload.imageUrl?.trim() || undefined;
+    const image = normalizePlacaStorageKey(
+      resolvePlacaImageReference(payload).storageKey
+        ?? payload.imagemPrincipal
+        ?? payload.imagem
+        ?? payload.imageUrl,
+    ) ?? undefined;
 
     const doc = await Placa.create({
       numero_placa: codigo,

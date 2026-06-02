@@ -105,6 +105,29 @@ export const tenantRateLimiter = rateLimit({
 });
 
 /**
+ * Private API: camada canonica /api/v1/private/*.
+ * Aplicada depois de JWT + tenant guard, usando empresaId como chave primaria.
+ */
+export const privateApiRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 1000,
+  keyGenerator: keyByTenant,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test',
+  handler: (req, res) => {
+    const authReq = req as IAuthRequest;
+    const empresaId = authReq.user?.empresaId || 'unknown';
+    logger.warn(`[RateLimit] PrivateAPI - empresaId=${empresaId} excedeu 1000/min`);
+    res.status(429).json({
+      success: false,
+      code: 'PRIVATE_API_RATE_LIMITED',
+      message: 'Limite da API privada atingido. Aguarde e tente novamente.',
+    });
+  },
+});
+
+/**
  * Admin: 5 req/min por usuário
  */
 export const adminRateLimiter = rateLimit({

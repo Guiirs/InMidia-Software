@@ -8,7 +8,7 @@ import { ValidationMessages, FieldMessages } from '@shared/validators/validation
 import { GeoPointInputSchema } from '@modules/spatial';
 import { PlateImageCategoryValues } from '@database/schemas/placa.schema';
 import { buildProxyImageUrl } from '@modules/public-plates/public-plates.presenter';
-import { resolvePlacaImageReference } from '@modules/public-plates/placa-image-key.resolver';
+import { normalizePlacaStorageKey, resolvePlacaImageReference } from '@modules/media/placa-image-reference.resolver';
 
 const LEGACY_COMMERCIAL_PLATE_FIELDS = [
   'cliente',
@@ -40,6 +40,40 @@ function stripCommercialPlateFields(data: unknown): Record<string, any> {
     delete normalized[field];
   });
   return normalized;
+}
+
+function normalizeImageMutationFields(data: Record<string, any>): void {
+  const hasRemoval =
+    data.imagem === null ||
+    data.imagemPrincipal === null ||
+    data.imageUrl === null;
+
+  if (hasRemoval) {
+    data.imagem = null;
+    data.imagemPrincipal = null;
+    delete data.imageUrl;
+    return;
+  }
+
+  const imageReference = resolvePlacaImageReference(data);
+  if (imageReference.storageKey) {
+    data.imagem = imageReference.storageKey;
+    data.imagemPrincipal = imageReference.storageKey;
+    delete data.imageUrl;
+    return;
+  }
+
+  for (const field of ['imagem', 'imagemPrincipal', 'imageUrl']) {
+    if (!(field in data)) continue;
+    const normalized = normalizePlacaStorageKey(data[field]);
+    if (normalized) {
+      data.imagem = normalized;
+      data.imagemPrincipal = normalized;
+      delete data.imageUrl;
+      return;
+    }
+    delete data[field];
+  }
 }
 
 // ============================================
@@ -170,7 +204,11 @@ export const CreatePlacaSchema = PlacaBaseSchema.superRefine((data, ctx) => {
   }
 });
 
-export const UpdatePlacaSchema = PlacaBaseSchema.partial().superRefine((data, ctx) => {
+export const UpdatePlacaSchema = PlacaBaseSchema.partial().extend({
+  imagem: z.union([z.string(), z.null()]).optional(),
+  imagemPrincipal: z.union([z.string(), z.null()]).optional(),
+  imageUrl: z.union([z.string(), z.null()]).optional(),
+}).superRefine((data, ctx) => {
   if (
     (data.latitude !== undefined && data.latitude !== null) !==
     (data.longitude !== undefined && data.longitude !== null)
@@ -462,6 +500,7 @@ export function validateUpdatePlaca(data: unknown): UpdatePlacaDTO {
   if (normalized.loteRegional && !normalized.regionalLot) normalized.regionalLot = normalized.loteRegional;
   if (!normalized.endereco && normalized.nomeDaRua) normalized.endereco = normalized.nomeDaRua;
   if (!normalized.endereco && normalized.localizacao) normalized.endereco = normalized.localizacao;
+  normalizeImageMutationFields(normalized);
   return UpdatePlacaSchema.parse(normalized);
 }
 

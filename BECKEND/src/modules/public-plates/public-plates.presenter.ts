@@ -5,7 +5,7 @@
  * nunca para URLs diretas do R2 ou do bucket privado.
  */
 import logger from '@shared/container/logger';
-import { resolvePlacaImageReference } from './placa-image-key.resolver';
+import { contentTypeFromStorageKey, resolvePlacaImageReference } from '@modules/media/placa-image-reference.resolver';
 
 /** Metadata rica de imagem — novo campo adicionado na v2 do payload. */
 export interface PublicImageMeta {
@@ -74,26 +74,12 @@ export interface PublicDisponibilidadePayload {
   indisponivel: number;
 }
 
-const MIME_BY_EXT: Record<string, string> = {
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.png': 'image/png',
-  '.gif': 'image/gif',
-  '.webp': 'image/webp',
-  '.avif': 'image/avif',
-  '.svg': 'image/svg+xml',
-};
-
 /**
  * Deriva MIME type da extensão do path/URL armazenado no banco.
  * Nunca faz chamada ao R2 — resultado é best-effort a partir da extensão.
  */
 export function mimeTypeFromStoredPath(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const path = value.includes('?') ? value.slice(0, value.indexOf('?')) : value;
-  const dotIdx = path.lastIndexOf('.');
-  if (dotIdx === -1) return null;
-  return MIME_BY_EXT[path.slice(dotIdx).toLowerCase()] ?? null;
+  return contentTypeFromStorageKey(value);
 }
 
 const statusComercialMap: Record<string, PublicPlacaPayload['disponibilidade']> = {
@@ -229,7 +215,7 @@ export function toPublicPlaca(raw: any): PublicPlacaPayload {
   const imagemMeta: PublicImageMeta | null = proxyUrl
     ? {
         url: proxyUrl,
-        mimeType: mimeTypeFromStoredPath(storedPath),
+        mimeType: resolvedImage.contentType ?? mimeTypeFromStoredPath(storedPath),
         cacheable: true,
         updatedAt: resolvedUpdatedAt,
       }

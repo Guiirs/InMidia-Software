@@ -225,6 +225,16 @@ export const gatewayConfig: GatewayConfig = {
       requiresAuth: true,
     },
     {
+      path: '/api/v1/private/*',
+      target: 'local',
+      module: 'private-api',
+      requiresAuth: true,
+      rateLimit: {
+        windowMs: 60 * 1000,
+        max: 1000,
+      },
+    },
+    {
       path: '/api/v1/public/*',
       target: 'local',
       module: 'public-api',

@@ -6,6 +6,7 @@ import Placa from '@modules/placas/Placa';
 import type { IMediaAsset, MediaCategory, MediaOwnerType } from '@database/schemas/mediaAsset.schema';
 import { mediaRepository, MediaRepository } from './media.repository';
 import { parseJsonLike, UploadMediaDTO, validateUploadFile } from './media.dto';
+import { resolvePlacaImageReference } from './placa-image-reference.resolver';
 
 type PublicMediaAsset = Omit<IMediaAsset, 'r2Key'> & {
   _id?: unknown;
@@ -255,17 +256,14 @@ export class MediaService {
     if (!plate) return;
     const remaining = ((plate as any).imagens ?? []).filter((image: any) => String(image.id) !== String(asset._id) && String(image._id) !== String(asset._id));
     const fallbackMain = remaining.find((image: any) => image.isMain) ?? remaining[0] ?? null;
+    const fallbackReference = resolvePlacaImageReference({ mainImage: fallbackMain });
     await Placa.updateOne(
       { _id: asset.ownerId, empresaId: asset.empresaId },
       {
         $set: {
           imagens: remaining,
-          imagemPrincipal: fallbackMain
-            ? fallbackMain.storageKey ?? fallbackMain.r2Key ?? fallbackMain.imagemKey ?? fallbackMain.key ?? fallbackMain.url
-            : null,
-          imagem: fallbackMain
-            ? fallbackMain.storageKey ?? fallbackMain.r2Key ?? fallbackMain.imagemKey ?? fallbackMain.key ?? fallbackMain.url
-            : null,
+          imagemPrincipal: fallbackReference.storageKey,
+          imagem: fallbackReference.storageKey,
         },
       },
     );

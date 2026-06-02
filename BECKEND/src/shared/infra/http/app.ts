@@ -16,6 +16,7 @@ import config from '@config/config';
 import { classifyHttpResponse, formatHttpAccessLog, resolveHttpSlowMs } from './http-access-log';
 import { securityScanGuard } from './security-scan-guard';
 import { rootInfoHandler } from './root-info';
+import { isPublicCorsPath } from './cors-policy';
 
 // ── Redis bootstrap — MUST be imported before any service that uses Redis ──
 // This triggers redisManager.connect() via config/redis.ts side-effects.
@@ -107,12 +108,6 @@ const CORS_ALLOW_METHODS = 'GET,POST,PUT,DELETE,PATCH,OPTIONS';
 const CORS_ALLOW_HEADERS = 'Content-Type,Authorization,x-api-key,x-correlation-id,x-request-id';
 const CORS_EXPOSE_HEADERS = 'X-Gateway-Module,X-Response-Time,X-Request-Id';
 const CORS_MAX_AGE = '86400';
-const PUBLIC_CORS_PREFIXES = ['/public/', '/api/v1/public/', '/api/public/'];
-
-function isPublicCorsPath(path: string): boolean {
-  return PUBLIC_CORS_PREFIXES.some((prefix) => path.startsWith(prefix));
-}
-
 logger.info(`[CORS] origins=[${allowedOrigins.join(', ')}]`);
 
 app.use(function corsMiddleware(req: Request, res: Response, next: NextFunction): void {
@@ -272,6 +267,8 @@ app.use('/api', globalRateLimiter);
 // Public integration API — 100 req/15min per API key prefix.
 // Separate limiter: more restrictive than internal, keyed by API key not IP.
 app.use('/public', publicApiRateLimiter);
+app.use('/api/v1/public', publicApiRateLimiter);
+app.use('/api/public', publicApiRateLimiter);
 
 // SSE stream endpoints — limit new connection rate to prevent connection spam.
 // Applied before auth middleware in the gateway; the limiter itself uses keyByUser
