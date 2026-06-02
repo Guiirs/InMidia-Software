@@ -5,7 +5,7 @@
  * nunca para URLs diretas do R2 ou do bucket privado.
  */
 import logger from '@shared/container/logger';
-import { resolvePlacaImageKey } from './placa-image-key.resolver';
+import { resolvePlacaImageReference } from './placa-image-key.resolver';
 
 /** Metadata rica de imagem — novo campo adicionado na v2 do payload. */
 export interface PublicImageMeta {
@@ -39,6 +39,7 @@ export interface PublicPlacaPayload {
   status: 'disponivel' | 'reservado' | 'ocupado' | 'indisponivel' | 'desconhecido';
   /** URL do proxy de imagem. Mantido para compatibilidade. @see imagemMeta */
   imagemUrl: string | null;
+  hasImage: boolean;
   latitude: number | null;
   longitude: number | null;
   endereco: string | null;
@@ -219,9 +220,9 @@ export function toPublicPlaca(raw: any): PublicPlacaPayload {
   const codigo = raw.numero_placa ?? '';
   const imageLabel = buildImageAltTitle({ nome: raw.nome, codigo, numero_placa: raw.numero_placa });
 
-  const resolvedImage = resolvePlacaImageKey(raw);
-  const storedPath = resolvedImage.rawValue;
-  const hasImage = !!resolvedImage.key;
+  const resolvedImage = resolvePlacaImageReference(raw);
+  const storedPath = resolvedImage.storageKey;
+  const hasImage = resolvedImage.hasImage;
   const proxyUrl = hasImage && id ? buildProxyImageUrl(id) : null;
   const resolvedUpdatedAt = raw.updatedAt ? new Date(raw.updatedAt).toISOString() : null;
 
@@ -257,6 +258,7 @@ export function toPublicPlaca(raw: any): PublicPlacaPayload {
     localizacao: endereco,
     status: disponibilidade,
     imagemUrl: proxyUrl,
+    hasImage,
     latitude: typeof raw.latitude === 'number' ? raw.latitude : null,
     longitude: typeof raw.longitude === 'number' ? raw.longitude : null,
     endereco,

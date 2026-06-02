@@ -7,6 +7,8 @@ import { Types } from 'mongoose';
 import { ValidationMessages, FieldMessages } from '@shared/validators/validation-messages';
 import { GeoPointInputSchema } from '@modules/spatial';
 import { PlateImageCategoryValues } from '@database/schemas/placa.schema';
+import { buildProxyImageUrl } from '@modules/public-plates/public-plates.presenter';
+import { resolvePlacaImageReference } from '@modules/public-plates/placa-image-key.resolver';
 
 const LEGACY_COMMERCIAL_PLATE_FIELDS = [
   'cliente',
@@ -272,6 +274,10 @@ export interface PlateImageMeta {
   id?: string;
   url: string;
   key: string;
+  publicUrl?: string;
+  storageKey?: string;
+  imagemKey?: string;
+  r2Key?: string;
   filename?: string;
   mimeType?: string;
   size?: number;
@@ -308,7 +314,10 @@ export interface PlacaEntity {
 
   // Imagens
   imagemPrincipal?: string;
+  mainImageUrl?: string | null;
   imagem?: string;
+  hasImage?: boolean;
+  imageStatus?: 'AVAILABLE' | 'MISSING';
   imagens?: PlateImageMeta[];
 
   // Dimensões
@@ -369,7 +378,10 @@ export interface PlacaListItem {
   longitude?: number;
   coordenadas?: string | { latitude: number; longitude: number };
   imagemPrincipal?: string;
+  mainImageUrl?: string | null;
   imagem?: string;
+  hasImage?: boolean;
+  imageStatus?: 'AVAILABLE' | 'MISSING';
   regiao?: any;
   regiaoId?: any;
   regionId?: any;
@@ -488,10 +500,13 @@ export function toListItem(placa: PlacaEntity & any): PlacaListItem {
   const regiaoNome = typeof regiao === 'object' && regiao?.nome ? regiao.nome : 'Sem região';
   const regiaoId = typeof regiao === 'object' && regiao?._id ? regiao._id : regiao;
   const disponivel = placa.disponivel ?? placa.ativa ?? true;
+  const placaId = placa._id.toString();
+  const imageReference = resolvePlacaImageReference(placa);
+  const imageUrl = imageReference.hasImage ? buildProxyImageUrl(placaId) : null;
 
   return {
-    _id: placa._id.toString(),
-    id: placa._id.toString(),
+    _id: placaId,
+    id: placaId,
     numero_placa: placa.numero_placa,
     numeroOperacional: placa.numeroOperacional,
     endereco: placa.endereco || placa.nomeDaRua || placa.localizacao,
@@ -500,8 +515,11 @@ export function toListItem(placa: PlacaEntity & any): PlacaListItem {
     latitude: placa.latitude,
     longitude: placa.longitude,
     coordenadas: placa.coordenadas,
-    imagemPrincipal: placa.imagemPrincipal || placa.imagem,
-    imagem: placa.imagem || placa.imagemPrincipal,
+    imagemPrincipal: imageUrl ?? undefined,
+    mainImageUrl: imageUrl,
+    imagem: imageUrl ?? undefined,
+    hasImage: imageReference.hasImage,
+    imageStatus: imageReference.hasImage ? 'AVAILABLE' : 'MISSING',
     regiao: typeof regiao === 'object' ? regiao : { _id: regiaoId, id: regiaoId, nome: regiaoNome },
     regiaoId,
     regionId: placa.regionId || regiaoId,

@@ -19,6 +19,12 @@ export interface ResolvePlacaImageKeyResult {
   rawValue: string | null;
 }
 
+export interface PlacaImageReference {
+  hasImage: boolean;
+  storageKey: string | null;
+  sourceField: string | null;
+}
+
 function cleanString(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
@@ -37,7 +43,7 @@ function isPathSafe(key: string): boolean {
   return key.split('/').every((segment) => segment !== '.' && segment !== '..');
 }
 
-function fallbackStoredUrlToKey(value: string): string | null {
+function storedUrlToKey(value: string): string | null {
   let raw = value.trim();
   if (!raw) return null;
 
@@ -58,11 +64,6 @@ function fallbackStoredUrlToKey(value: string): string | null {
     raw = raw.slice(bucket.length + 1);
   }
 
-  if (!raw.includes('/')) {
-    const folder = (process.env.R2_FOLDER_NAME || 'inmidia-uploads-sistema').replace(/^\/+|\/+$/g, '');
-    raw = folder ? `${folder}/${raw}` : raw;
-  }
-
   if (!isPathSafe(raw) || !hasAllowedImageExtension(raw)) return null;
   return raw;
 }
@@ -70,7 +71,10 @@ function fallbackStoredUrlToKey(value: string): string | null {
 function keyFromStoredValue(value: unknown): string | null {
   const raw = cleanString(value);
   if (!raw) return null;
-  return extractR2Key(raw) ?? fallbackStoredUrlToKey(raw);
+  if (!/^https?:\/\//i.test(raw) && !raw.includes('/')) return null;
+  const extracted = extractR2Key(raw);
+  if (extracted && extracted.includes('/')) return extracted;
+  return storedUrlToKey(raw);
 }
 
 function mainImageFromGallery(images: unknown): ImageLike | null {
@@ -116,11 +120,7 @@ export function getPlacaImageCandidates(placa: ImageLike): Array<{ field: string
     : Array.isArray(placa?.imagens)
       ? placa.imagens
       : [];
-  const mainImage = placa?.mainImage ?? mainImageFromGallery(images);
-
   addCandidate(candidates, 'mainImageUrl', placa?.mainImageUrl);
-  addCandidate(candidates, 'imagemPrincipal', placa?.imagemPrincipal);
-  addImageObjectCandidates(candidates, 'mainImage', mainImage);
   addCandidate(candidates, 'imagem', placa?.imagem);
   addImageObjectCandidates(candidates, 'imagem', placa?.imagem);
   addCandidate(candidates, 'foto', placa?.foto);
@@ -128,6 +128,9 @@ export function getPlacaImageCandidates(placa: ImageLike): Array<{ field: string
   addCandidate(candidates, 'imageUrl', placa?.imageUrl);
   addCandidate(candidates, 'fotoUrl', placa?.fotoUrl);
   addCandidate(candidates, 'urlImagem', placa?.urlImagem);
+  addCandidate(candidates, 'imagemPrincipal', placa?.imagemPrincipal);
+  const mainImage = placa?.mainImage ?? mainImageFromGallery(images);
+  addImageObjectCandidates(candidates, 'mainImage', mainImage);
   addCandidate(candidates, 'storageKey', placa?.storageKey);
   addCandidate(candidates, 'imagemKey', placa?.imagemKey);
   addCandidate(candidates, 'r2Key', placa?.r2Key);
@@ -157,6 +160,15 @@ export function resolvePlacaImageKey(placa: ImageLike | null | undefined): Resol
   return { key: null, sourceField: null, rawValue: null };
 }
 
+export function resolvePlacaImageReference(placa: ImageLike | null | undefined): PlacaImageReference {
+  const resolved = resolvePlacaImageKey(placa);
+  return {
+    hasImage: !!resolved.key,
+    storageKey: resolved.key,
+    sourceField: resolved.sourceField,
+  };
+}
+
 export function hasResolvablePlacaImage(placa: ImageLike | null | undefined): boolean {
-  return !!resolvePlacaImageKey(placa).key;
+  return resolvePlacaImageReference(placa).hasImage;
 }

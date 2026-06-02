@@ -405,8 +405,9 @@ export class PlacaRepository implements IPlacaRepository {
 
       const setPayload: Record<string, unknown> = {};
       if (isMain) {
-        setPayload.imagemPrincipal = image.url;
-        setPayload.imagem = image.url;
+        const imageReference = image.storageKey ?? image.r2Key ?? image.imagemKey ?? image.key ?? image.url;
+        setPayload.imagemPrincipal = imageReference;
+        setPayload.imagem = imageReference;
       }
 
       const placa = await Placa.findOneAndUpdate(
@@ -454,7 +455,13 @@ export class PlacaRepository implements IPlacaRepository {
 
       const updated = await Placa.findOneAndUpdate(
         { _id: id, empresaId },
-        { $set: { imagemPrincipal: img.url, imagem: img.url, imagens } },
+        {
+          $set: {
+            imagemPrincipal: img.storageKey ?? img.r2Key ?? img.imagemKey ?? img.key ?? img.url,
+            imagem: img.storageKey ?? img.r2Key ?? img.imagemKey ?? img.key ?? img.url,
+            imagens,
+          },
+        },
         { new: true },
       )
       .populate('regiaoId', 'nome')
@@ -497,8 +504,12 @@ export class PlacaRepository implements IPlacaRepository {
         {
           $set: {
             imagens: normalizedRemaining,
-            imagemPrincipal: fallbackMain?.url ?? null,
-            imagem: fallbackMain?.url ?? null,
+            imagemPrincipal: fallbackMain
+              ? fallbackMain.storageKey ?? fallbackMain.r2Key ?? fallbackMain.imagemKey ?? fallbackMain.key ?? fallbackMain.url
+              : null,
+            imagem: fallbackMain
+              ? fallbackMain.storageKey ?? fallbackMain.r2Key ?? fallbackMain.imagemKey ?? fallbackMain.key ?? fallbackMain.url
+              : null,
           },
         },
         { new: true },

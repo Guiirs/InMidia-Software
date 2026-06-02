@@ -75,6 +75,17 @@ describe('public plates presenter — proxy de imagem', () => {
     });
     expect(placa.imagemUrl).toBeNull();
     expect(placa.imagem).toBeNull();
+    expect(placa.hasImage).toBe(false);
+  });
+
+  it('imagemUrl é null quando referência é apenas filename solto', () => {
+    const placa = toPublicPlaca({
+      _id: PLACA_ID,
+      numero_placa: 'CAU-37',
+      imagemPrincipal: 'cau-37.jpg',
+    });
+    expect(placa.imagemUrl).toBeNull();
+    expect(placa.hasImage).toBe(false);
   });
 
   // ── imagemUrl NÃO expõe URLs do storage ───────────────────────────────────
@@ -101,7 +112,7 @@ describe('public plates presenter — proxy de imagem', () => {
     const placa = toPublicPlaca({
       _id: PLACA_ID,
       numero_placa: 'CAU-37',
-      imagemPrincipal: 'cau-37.jpg',
+      imagemPrincipal: 'inmidia-uploads-sistema/cau-37.jpg',
     });
     expect(placa.imagemUrl).toMatch(/\/api\/v1\/public\/placas\/[a-f0-9]+\/imagem$/);
   });
@@ -143,7 +154,7 @@ describe('public plates presenter — proxy de imagem', () => {
     const placa = toPublicPlaca({
       _id: PLACA_ID,
       numero_placa: 'CAU-37',
-      imagemPrincipal: 'cau-37.jpg',
+      imagemPrincipal: 'inmidia-uploads-sistema/cau-37.jpg',
     });
 
     expect(placa.imagemUrl).toBe(EXPECTED_PROXY);
@@ -159,7 +170,7 @@ describe('public plates presenter — proxy de imagem', () => {
     const placa = toPublicPlaca({
       _id: PLACA_ID,
       numero_placa: 'CAU-37',
-      imagemPrincipal: 'cau-37.jpg',
+      imagemPrincipal: 'inmidia-uploads-sistema/cau-37.jpg',
     });
     const serialized = JSON.stringify(placa);
 
@@ -198,7 +209,7 @@ describe('public plates presenter — proxy de imagem', () => {
       _id: PLACA_ID,
       numero_placa: '01',
       nome: 'Placa 01',
-      imagemPrincipal: '01.jpg',
+      imagemPrincipal: 'inmidia-uploads-sistema/01.jpg',
     });
 
     expect(placa.jetImage?.alt).toBe('Placa 01');
@@ -211,7 +222,7 @@ describe('public plates presenter — proxy de imagem', () => {
     const placa = toPublicPlaca({
       _id: PLACA_ID,
       numero_placa: '',
-      imagemPrincipal: 'sem-codigo.jpg',
+      imagemPrincipal: 'inmidia-uploads-sistema/sem-codigo.jpg',
     });
 
     expect(placa.jetImage?.alt).toBe('Placa');

@@ -18,6 +18,10 @@ const plateImageSchema = new Schema(
     id: { type: String, trim: true },
     url: { type: String, required: true, trim: true },
     key: { type: String, required: true, trim: true },
+    publicUrl: { type: String, trim: true },
+    storageKey: { type: String, trim: true },
+    imagemKey: { type: String, trim: true },
+    r2Key: { type: String, trim: true },
     filename: { type: String, trim: true },
     mimeType: { type: String, trim: true },
     size: { type: Number },
@@ -228,6 +232,10 @@ export type PlateImageDoc = {
   _id: Types.ObjectId;
   url: string;
   key: string;
+  publicUrl?: string;
+  storageKey?: string;
+  imagemKey?: string;
+  r2Key?: string;
   filename?: string;
   mimeType?: string;
   size?: number;

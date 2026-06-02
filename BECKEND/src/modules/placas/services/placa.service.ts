@@ -226,8 +226,8 @@ export class PlacaService {
             preservePreviousMain: false,
             version: 1,
           }, empresaId, userId);
-          (validatedData as any).imagem = asset.publicUrl || asset.url;
-          (validatedData as any).imagemPrincipal = asset.publicUrl || asset.url;
+          (validatedData as any).imagem = asset.storageKey || asset.url;
+          (validatedData as any).imagemPrincipal = asset.storageKey || asset.url;
         } else {
           const imageKey = storageKeyFromFile(file);
           (validatedData as any).imagem = imageKey;

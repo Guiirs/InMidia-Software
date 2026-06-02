@@ -11,6 +11,7 @@ type PublicMediaAsset = Omit<IMediaAsset, 'r2Key'> & {
   _id?: unknown;
   id?: string;
   publicUrl?: string;
+  storageKey?: string;
 };
 
 function objectId(id: string): Types.ObjectId {
@@ -43,6 +44,7 @@ function buildR2Key(empresaId: string, ownerType: MediaOwnerType, ownerId: strin
 
 function stripPrivateFields(asset: any): PublicMediaAsset {
   const plain = typeof asset?.toObject === 'function' ? asset.toObject() : { ...asset };
+  plain.storageKey = plain.r2Key;
   delete plain.r2Key;
   plain.id = String(plain._id ?? plain.id);
   return plain;
@@ -53,7 +55,10 @@ function toPlateImageDoc(asset: any) {
     _id: asset._id,
     id: String(asset._id),
     url: asset.publicUrl || asset.url,
-    key: asset.publicUrl || asset.url,
+    key: asset.r2Key,
+    storageKey: asset.r2Key,
+    r2Key: asset.r2Key,
+    publicUrl: asset.publicUrl || asset.url,
     filename: asset.filename,
     mimeType: asset.mimeType,
     size: asset.size,
@@ -235,8 +240,8 @@ export class MediaService {
         { _id: asset.ownerId, empresaId: asset.empresaId },
         {
           $set: {
-            imagemPrincipal: asset.publicUrl || asset.url,
-            imagem: asset.publicUrl || asset.url,
+            imagemPrincipal: asset.r2Key,
+            imagem: asset.r2Key,
             'imagens.$[img].isMain': true,
           },
         },
@@ -252,7 +257,17 @@ export class MediaService {
     const fallbackMain = remaining.find((image: any) => image.isMain) ?? remaining[0] ?? null;
     await Placa.updateOne(
       { _id: asset.ownerId, empresaId: asset.empresaId },
-      { $set: { imagens: remaining, imagemPrincipal: fallbackMain?.url ?? null, imagem: fallbackMain?.url ?? null } },
+      {
+        $set: {
+          imagens: remaining,
+          imagemPrincipal: fallbackMain
+            ? fallbackMain.storageKey ?? fallbackMain.r2Key ?? fallbackMain.imagemKey ?? fallbackMain.key ?? fallbackMain.url
+            : null,
+          imagem: fallbackMain
+            ? fallbackMain.storageKey ?? fallbackMain.r2Key ?? fallbackMain.imagemKey ?? fallbackMain.key ?? fallbackMain.url
+            : null,
+        },
+      },
     );
   }
 }

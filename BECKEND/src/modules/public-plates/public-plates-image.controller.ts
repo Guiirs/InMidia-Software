@@ -38,7 +38,7 @@ import { getR2Client, getR2BucketName } from '@shared/infra/storage/r2-client';
 import { publicApiRateLimiter } from '@shared/infra/http/middlewares/rate-limit.middleware';
 import logger from '@shared/container/logger';
 import { getPlacaDocForImagePublic, type PlacaImageDoc } from './public-plates.service';
-import { getPlacaImageCandidates, resolvePlacaImageKey } from './placa-image-key.resolver';
+import { getPlacaImageCandidates, resolvePlacaImageReference } from './placa-image-key.resolver';
 import {
   getImageMetaFromCache,
   setImageMetaInCache,
@@ -198,6 +198,7 @@ function logImageResolutionFailure(input: {
   placaId: string;
   doc: PlacaImageDoc | null;
   keyResolvida?: string | null;
+  sourceField?: string | null;
   bucket: string;
   reason: string;
 }): void {
@@ -210,6 +211,7 @@ function logImageResolutionFailure(input: {
     nome: doc.nome ?? null,
     empresaId: doc.empresaId ? String(doc.empresaId) : null,
     tenantId: doc.tenantId ? String(doc.tenantId) : doc.empresaId ? String(doc.empresaId) : null,
+    campoUsado: input.sourceField ?? null,
     imageFields: getPlacaImageCandidates(doc).map((candidate) => ({
       field: candidate.field,
       value: redactImageValue(candidate.value),
@@ -335,14 +337,15 @@ export async function getPlacaImagem(
     return;
   }
 
-  const resolvedImage = resolvePlacaImageKey(doc as any);
-  if (!resolvedImage.rawValue) {
+  const resolvedImage = resolvePlacaImageReference(doc as any);
+  if (!resolvedImage.hasImage) {
     notFound(res, reqId, 'Placa sem imagem cadastrada.');
     logImageResolutionFailure({
       endpoint: req.originalUrl ?? req.path ?? '/api/v1/public/placas/:id/imagem',
       placaId: idParam,
       doc,
-      keyResolvida: null,
+      keyResolvida: resolvedImage.storageKey,
+      sourceField: resolvedImage.sourceField,
       bucket,
       reason: 'missing_image_reference',
     });
@@ -350,7 +353,7 @@ export async function getPlacaImagem(
     return;
   }
 
-  const r2Key = resolvedImage.key;
+  const r2Key = resolvedImage.storageKey;
   if (!r2Key) {
     notFound(res, reqId, 'Imagem não disponível.');
     logImageResolutionFailure({
@@ -358,6 +361,7 @@ export async function getPlacaImagem(
       placaId: idParam,
       doc,
       keyResolvida: null,
+      sourceField: resolvedImage.sourceField,
       bucket,
       reason: 'invalid_image_reference',
     });
@@ -388,6 +392,7 @@ export async function getPlacaImagem(
           placaId: idParam,
           doc,
           keyResolvida: r2Key,
+          sourceField: resolvedImage.sourceField,
           bucket,
           reason: 'r2_head_not_found',
         });
@@ -411,14 +416,20 @@ export async function getPlacaImagem(
     }
 
     // Não é 304 — faz GetObject com metadata já conhecida
-    await streamFromR2(req, res, reqId, idParam, fullMeta, bucket, t0, cacheStatus);
+    await streamFromR2(req, res, reqId, idParam, fullMeta, bucket, t0, cacheStatus, {
+      doc,
+      sourceField: resolvedImage.sourceField,
+    });
     return;
   }
 
   // ── 7. Sem conditional headers: GetObject direto ──────────────────────────
   // Obtemos metadata do GetObject response e cacheamos (evita HeadObject extra)
   await streamFromR2WithMetaCapture(
-    req, res, reqId, idParam, r2Key, updatedAt, bucket, t0, cacheStatus,
+    req, res, reqId, idParam, r2Key, updatedAt, bucket, t0, cacheStatus, {
+      doc,
+      sourceField: resolvedImage.sourceField,
+    },
   );
 }
 
@@ -432,6 +443,7 @@ async function streamFromR2(
   bucket: string,
   t0: number,
   cacheStatus: ImageProxyMetrics['cacheStatus'],
+  resolutionContext?: { doc: PlacaImageDoc | null; sourceField?: string | null },
 ): Promise<void> {
   const client = getR2Client()!;
   const tR2 = Date.now();
@@ -476,7 +488,12 @@ async function streamFromR2(
     emitMetrics({ placaId, cacheStatus, outcome: 200, conditional: false, r2LatencyMs: Date.now() - tR2, contentType: freshMeta.contentType, bytesSent });
     stream.pipe(res);
   } catch (err: any) {
-    handleR2Error(err, res, reqId, placaId, cacheStatus, t0, { bucket, r2Key: meta.r2Key });
+    handleR2Error(err, res, reqId, placaId, cacheStatus, t0, {
+      bucket,
+      r2Key: meta.r2Key,
+      doc: resolutionContext?.doc ?? null,
+      sourceField: resolutionContext?.sourceField ?? null,
+    });
   }
 }
 
@@ -494,6 +511,7 @@ async function streamFromR2WithMetaCapture(
   bucket: string,
   t0: number,
   cacheStatus: ImageProxyMetrics['cacheStatus'],
+  resolutionContext?: { doc: PlacaImageDoc | null; sourceField?: string | null },
 ): Promise<void> {
   const client = getR2Client()!;
   const tR2 = Date.now();
@@ -542,7 +560,12 @@ async function streamFromR2WithMetaCapture(
     emitMetrics({ placaId, cacheStatus, outcome: 200, conditional: false, r2LatencyMs: Date.now() - tR2, contentType, bytesSent: contentLength ?? null });
     stream.pipe(res);
   } catch (err: any) {
-    handleR2Error(err, res, reqId, placaId, cacheStatus, t0, { bucket, r2Key });
+    handleR2Error(err, res, reqId, placaId, cacheStatus, t0, {
+      bucket,
+      r2Key,
+      doc: resolutionContext?.doc ?? null,
+      sourceField: resolutionContext?.sourceField ?? null,
+    });
   }
 }
 
@@ -553,7 +576,7 @@ function handleR2Error(
   placaId: string,
   cacheStatus: ImageProxyMetrics['cacheStatus'],
   t0: number,
-  context?: { bucket: string; r2Key: string },
+  context?: { bucket: string; r2Key: string; doc?: PlacaImageDoc | null; sourceField?: string | null },
 ): void {
   const httpStatus: number = err?.$metadata?.httpStatusCode ?? 0;
   if (err?.name === 'NoSuchKey' || httpStatus === 404) {
@@ -562,8 +585,9 @@ function handleR2Error(
       logImageResolutionFailure({
         endpoint: '/api/v1/public/placas/:id/imagem',
         placaId,
-        doc: null,
+        doc: context.doc ?? null,
         keyResolvida: context.r2Key,
+        sourceField: context.sourceField ?? null,
         bucket: context.bucket,
         reason: 'r2_get_not_found',
       });

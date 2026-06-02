@@ -14,6 +14,8 @@ import { auditRequestContext } from '@modules/audit/audit.helpers';
 import { spatialService } from '@modules/spatial';
 import { eventBus } from '@modules/realtime/event-bus.service';
 import { OPERATIONAL_EVENT_TYPES } from '@modules/realtime/domain-events';
+import { buildProxyImageUrl } from '@modules/public-plates/public-plates.presenter';
+import { resolvePlacaImageReference } from '@modules/public-plates/placa-image-key.resolver';
 
 // Express 5: req.params[x] é string | string[] — o cast abaixo é seguro para route params
 type Params = Record<string, string>;
@@ -57,26 +59,19 @@ function emitOperationalEvent(input: {
 
 function withImageContract<T extends Record<string, any>>(placa: T): T {
   const imagens = Array.isArray(placa?.imagens) ? placa.imagens : [];
-  const mainImage = imagens.find((image: any) => image?.isMain)
-    ?? imagens.find((image: any) => image?.category === 'MAIN')
-    ?? null;
-  const mainImageUrl = placa?.mainImageUrl
-    ?? placa?.imagemPrincipal
-    ?? mainImage?.publicUrl
-    ?? mainImage?.url
-    ?? placa?.imagem
-    ?? placa?.foto
-    ?? placa?.imageUrl
-    ?? null;
+  const placaId = placa?._id?.toString?.() || placa?.id;
+  const imageReference = resolvePlacaImageReference({ ...placa, imagens });
+  const mainImageUrl = imageReference.hasImage && placaId ? buildProxyImageUrl(String(placaId)) : null;
 
   return {
     ...placa,
     imagemPrincipal: mainImageUrl,
     mainImageUrl,
-    imagem: placa?.imagem ?? mainImageUrl,
+    imagem: mainImageUrl,
+    hasImage: imageReference.hasImage,
     imagens,
     images: imagens,
-    imageStatus: mainImageUrl ? 'AVAILABLE' : 'MISSING',
+    imageStatus: imageReference.hasImage ? 'AVAILABLE' : 'MISSING',
   };
 }
 
@@ -179,7 +174,7 @@ export class PlacaController {
 
       res.status(201).json({
         success: true,
-        data: result.value
+        data: withImageContract(result.value as any)
       });
     } catch (error) {
       next(error);
@@ -303,7 +298,7 @@ export class PlacaController {
         metadata: { changedFields: Object.keys(req.body || {}) },
       });
 
-      const placa = result.value as any;
+      const placa = withImageContract(result.value as any);
       const regiao = placa.regiaoId;
       const regiaoNome = typeof regiao === 'object' && regiao?.nome ? regiao.nome : 'Sem região';
       const regiaoId = typeof regiao === 'object' && regiao?._id ? regiao._id : regiao;
@@ -456,7 +451,7 @@ export class PlacaController {
         return;
       }
 
-      const placa = result.value as any;
+      const placa = withImageContract(result.value as any);
       const regiao = placa.regiaoId;
       const regiaoNome = typeof regiao === 'object' && regiao?.nome ? regiao.nome : 'Sem região';
       const regiaoId = typeof regiao === 'object' && regiao?._id ? regiao._id : regiao;

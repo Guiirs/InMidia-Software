@@ -18,10 +18,10 @@ const DEFAULT_LIMIT = 24;
 const AVAILABILITY_FILTER_CANDIDATE_LIMIT = 500;
 
 const PLACA_PUBLIC_SELECT =
-  '_id empresaId numero_placa endereco nomeDaRua localizacao imagemPrincipal imagem imagens tipo tamanho statusComercial statusOperacional regiaoId latitude longitude updatedAt';
+  '_id empresaId numero_placa endereco nomeDaRua localizacao mainImageUrl imagemPrincipal imagem imagens foto imageUrl fotoUrl storageKey imagemKey r2Key tipo tamanho statusComercial statusOperacional regiaoId latitude longitude updatedAt';
 
 const PLACA_IMAGE_SELECT =
-  '_id empresaId statusOperacional imagemPrincipal imagem imagens updatedAt';
+  '_id empresaId numero_placa codigo statusOperacional mainImageUrl imagemPrincipal imagem imagens foto imageUrl fotoUrl storageKey imagemKey r2Key updatedAt';
 
 const REGIAO_POPULATE = {
   path: 'regiaoId',
@@ -258,10 +258,18 @@ export interface PlacaImageDoc {
   _id?: unknown;
   empresaId?: unknown;
   numero_placa?: string | null;
+  codigo?: string | null;
   nome?: string | null;
+  mainImageUrl?: string | null;
   imagemPrincipal?: string | null;
   imagem?: string | null;
   imagens?: Array<Record<string, unknown>> | null;
+  foto?: string | null;
+  imageUrl?: string | null;
+  fotoUrl?: string | null;
+  storageKey?: string | null;
+  imagemKey?: string | null;
+  r2Key?: string | null;
   updatedAt?: Date | string | null;
 }
 
