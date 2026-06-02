@@ -107,21 +107,26 @@ const CORS_ALLOW_METHODS = 'GET,POST,PUT,DELETE,PATCH,OPTIONS';
 const CORS_ALLOW_HEADERS = 'Content-Type,Authorization,x-api-key,x-correlation-id,x-request-id';
 const CORS_EXPOSE_HEADERS = 'X-Gateway-Module,X-Response-Time,X-Request-Id';
 const CORS_MAX_AGE = '86400';
+const PUBLIC_CORS_PREFIXES = ['/public/', '/api/v1/public/', '/api/public/'];
+
+function isPublicCorsPath(path: string): boolean {
+  return PUBLIC_CORS_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
 
 logger.info(`[CORS] origins=[${allowedOrigins.join(', ')}]`);
 
 app.use(function corsMiddleware(req: Request, res: Response, next: NextFunction): void {
-  // ── Public API layer (/public/*) ─────────────────────────────────────────────
+  // ── Public API layer (/public/*, /api/v1/public/*, /api/public/*) ───────────
   // External partner endpoints are API-key authenticated, not cookie-based.
   // credentials=false allows wildcard origin — valid per CORS spec.
   // Clients may be WordPress plugins, BI tools, or partner backends — any origin.
-  if (req.path.startsWith('/public/')) {
+  if (isPublicCorsPath(req.path)) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     if (req.method === 'OPTIONS') {
       res.setHeader('Access-Control-Allow-Methods', CORS_ALLOW_METHODS);
       res.setHeader('Access-Control-Allow-Headers', `${CORS_ALLOW_HEADERS},x-api-key`);
       res.setHeader('Access-Control-Max-Age', CORS_MAX_AGE);
-      logger.debug('[CORS] OPTIONS /public/* handled (wildcard)');
+      logger.debug(`[CORS] OPTIONS ${req.path} handled (wildcard)`);
       res.status(204).end();
       return;
     }

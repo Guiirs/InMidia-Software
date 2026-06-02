@@ -61,6 +61,29 @@ describe('Public plates integration', () => {
     expect(res.body.error.code).toBe('PUBLIC_API_KEY_MISSING');
   });
 
+  it('OPTIONS /api/v1/public/placas/:id/imagem retorna CORS wildcard para Elementor', async () => {
+    const res = await request(app)
+      .options('/api/v1/public/placas/69b42002f5c3a35343097a2c/imagem')
+      .set('Origin', 'https://sitequalquer.com')
+      .set('Access-Control-Request-Method', 'GET')
+      .set('Access-Control-Request-Headers', 'Content-Type');
+
+    expect(res.status).toBe(204);
+    expect(res.headers['access-control-allow-origin']).toBe('*');
+    expect(res.headers['access-control-allow-methods']).toContain('GET');
+    expect(res.headers['access-control-allow-headers']).toContain('Content-Type');
+    expect(res.headers['access-control-max-age']).toBe('86400');
+  });
+
+  it('GET /api/v1/public/placas/:id/imagem sempre expoe CORS wildcard', async () => {
+    const res = await request(app)
+      .get('/api/v1/public/placas/id-invalido/imagem')
+      .set('Origin', 'https://sitequalquer.com');
+
+    expect(res.headers['access-control-allow-origin']).toBe('*');
+    expect(res.headers['access-control-expose-headers']).toBe('X-Gateway-Module,X-Response-Time,X-Request-Id');
+  });
+
   it('GET /api/v1/public/placas retorna 200 com array de placas e sem campos sensiveis', async () => {
     process.env.PUBLIC_API_BASE_URL = PUBLIC_API_BASE_URL;
     const empresa = await createPublicEmpresa();

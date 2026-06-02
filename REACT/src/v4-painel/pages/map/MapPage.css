@@ -621,3 +621,117 @@
   font-size: var(--v4p-fs-xs);
   cursor: pointer;
 }
+
+/* Fase 10: acabamento visual sem alterar fluxo do mapa. */
+.v4p-map-hero,
+.v4p-map-stage,
+.v4p-map-filters {
+  border-color: var(--v4p-border);
+  border-radius: var(--v4p-r-lg);
+}
+
+.v4p-map-hero h1 {
+  font-size: var(--v4p-page-title-fs);
+}
+
+.v4p-map-hero__metrics article,
+.v4p-map-empty,
+.v4p-map-region-chip {
+  border-radius: var(--v4p-r-md);
+}
+
+.v4p-map-stage {
+  box-shadow: var(--v4p-shadow-card);
+}
+
+.v4p-map-stage__top button,
+.v4p-map-filters input,
+.v4p-map-filters select,
+.v4p-map-filters button,
+.v4p-map-stage__btn-secondary,
+.v4p-map-stage__btn-manage,
+.v4p-map-hero__manage-btn,
+.v4p-map-empty__manage,
+.v4p-map-focus-banner__close {
+  border-radius: var(--v4p-r-sm);
+}
+
+.v4p-map-stage__btn-manage,
+.v4p-map-hero__manage-btn,
+.v4p-map-empty__manage {
+  color: var(--v4p-accent);
+}
+
+.v4p-map-status-chip,
+.v4p-map-status-chip strong,
+.v4p-map-region-chip__ops em {
+  border-radius: var(--v4p-r-full);
+}
+
+.v4p-map-status-chip {
+  min-height: var(--v4p-control-h-sm);
+  border-color: var(--v4p-border);
+  font-size: var(--v4p-fs-xs);
+}
+
+.v4p-map-status-chip:hover {
+  border-color: var(--v4p-border-strong);
+  background: var(--v4p-interaction-hover);
+  color: var(--v4p-text-2);
+}
+
+.v4p-map-stage__btn-secondary:hover,
+.v4p-map-stage__top button:hover,
+.v4p-map-filters button:hover {
+  border-color: var(--v4p-border-strong);
+  color: var(--v4p-text-1);
+}
+
+.v4p-map-region-chip__clear:hover {
+  color: var(--v4p-danger);
+}
+
+@media (max-width: 1024px) and (min-width: 781px) {
+  .v4p-map-workspace {
+    grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  }
+
+  .v4p-map-regions {
+    order: initial;
+  }
+}
+
+@media (max-width: 768px) {
+  .v4p-map-hero {
+    gap: var(--v4p-density-gap-sm);
+  }
+
+  .v4p-map-hero__metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .v4p-map-stage__top,
+  .v4p-map-stage__top-actions,
+  .v4p-map-focus-banner {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .v4p-map-stage__top-actions > *,
+  .v4p-map-focus-banner__close {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 390px) {
+  .v4p-map-hero__metrics,
+  .v4p-map-status-chips {
+    grid-template-columns: 1fr;
+  }
+
+  .v4p-map-region-chip {
+    width: 100%;
+  }
+}

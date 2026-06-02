@@ -2,11 +2,11 @@ import { memo } from 'react';
 
 const RAIL_ITEMS = [
   { value: 'Todos',      label: 'Todas',      color: null,      distKey: null           },
-  { value: 'Ocupado',    label: 'Ocupadas',   color: '#10b981', distKey: 'occupied'     },
-  { value: 'Disponivel', label: 'Disponíveis',color: '#06b6d4', distKey: 'available'    },
-  { value: 'Reservado',  label: 'Reservadas', color: '#8b5cf6', distKey: 'reserved'     },
-  { value: 'Manutencao', label: 'Manutenção', color: '#f59e0b', distKey: 'maintenance'  },
-  { value: 'Critico',    label: 'Críticas',   color: '#ef4444', distKey: 'critical'     },
+  { value: 'Ocupado',    label: 'Ocupadas',   color: 'var(--v4p-success)', distKey: 'occupied'     },
+  { value: 'Disponivel', label: 'Disponíveis',color: 'var(--v4p-accent)',  distKey: 'available'    },
+  { value: 'Reservado',  label: 'Reservadas', color: 'var(--v4p-info)',    distKey: 'reserved'     },
+  { value: 'Manutencao', label: 'Manutenção', color: 'var(--v4p-warning)', distKey: 'maintenance'  },
+  { value: 'Critico',    label: 'Críticas',   color: 'var(--v4p-danger)',  distKey: 'critical'     },
 ];
 
 function resolveCount(distKey, distribution, total) {

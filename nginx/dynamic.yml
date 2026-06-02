@@ -7,7 +7,6 @@ http:
         - web
       middlewares:
         - rate-limit
-        - cors-headers
         - security-headers
 
     metrics-router:

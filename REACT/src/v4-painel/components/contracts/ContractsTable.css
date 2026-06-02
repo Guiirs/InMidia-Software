@@ -3,6 +3,7 @@
   border: 1px solid var(--v4p-border);
   border-radius: var(--v4p-r-lg);
   background: var(--v4p-bg-card);
+  box-shadow: var(--v4p-shadow-card);
 }
 
 .v4p-contracts-table table {
@@ -13,7 +14,7 @@
 }
 
 .v4p-contracts-table thead {
-  background: rgba(0, 0, 0, 0.20);
+  background: var(--v4p-bg-card-hover);
 }
 
 .v4p-contracts-table th,
@@ -70,7 +71,17 @@
 }
 
 .v4p-contracts-table tbody tr:hover {
-  background: var(--v4p-bg-card-hover);
+  background: var(--v4p-interaction-hover);
+}
+
+@media (max-width: 768px) {
+  .v4p-contracts-table {
+    border-radius: var(--v4p-r-md);
+  }
+
+  .v4p-contracts-table table {
+    min-width: 960px;
+  }
 }
 
 .v4p-contracts-table tbody tr:last-child td {
