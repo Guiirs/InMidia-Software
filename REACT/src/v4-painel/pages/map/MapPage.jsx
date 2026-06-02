@@ -12,6 +12,14 @@ import './MapPage.css';
 const DEFAULT_FILTERS = { regionId: 'all', status: 'all', search: '' };
 const EMPTY_LIST = [];
 const EMPTY_SUMMARY = {};
+const STATUS_FILTERS = [
+  { id: 'all', label: 'Todos' },
+  { id: 'available', label: 'Disponiveis' },
+  { id: 'occupied', label: 'Ocupadas' },
+  { id: 'reserved', label: 'Reservadas' },
+  { id: 'maintenance', label: 'Manutencao' },
+  { id: 'critical', label: 'Criticas' },
+];
 
 function toMapPoints(boards) {
   return boards.map((board) => {
@@ -247,6 +255,25 @@ function RegionActiveChip({ region, onClear }) {
   );
 }
 
+function StatusFilterChips({ activeStatus, counts, onChange }) {
+  return (
+    <div className="v4p-map-status-chips" role="group" aria-label="Filtro visual por status">
+      {STATUS_FILTERS.map((status) => (
+        <button
+          key={status.id}
+          type="button"
+          className={`v4p-map-status-chip v4p-map-status-chip--${status.id}${activeStatus === status.id ? ' v4p-map-status-chip--active' : ''}`}
+          onClick={() => onChange(status.id)}
+          aria-pressed={activeStatus === status.id}
+        >
+          <span>{status.label}</span>
+          <strong>{counts[status.id] ?? 0}</strong>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function MapPage({ focusBoard, onClearFocus }) {
   const navigate = useNavigate();
   const boardsResource  = useSyncResource('inventory.boards');
@@ -326,6 +353,34 @@ function MapPage({ focusBoard, onClearFocus }) {
     }
     return true;
   }), [boards, filters]);
+
+  const statusFilterCounts = useMemo(() => {
+    const scopedBoards = boards.filter((board) => {
+      if (filters.regionId !== 'all') {
+        if (filters.regionId === 'no-region') {
+          if (!isBoardWithoutRegion(board)) return false;
+        } else if (getBoardRegionId(board) !== filters.regionId) {
+          return false;
+        }
+      }
+
+      if (filters.search.trim()) {
+        const q = filters.search.trim().toLowerCase();
+        return board.codigo.toLowerCase().includes(q)
+          || board.nome.toLowerCase().includes(q)
+          || board.localizacao.toLowerCase().includes(q);
+      }
+
+      return true;
+    });
+
+    return scopedBoards.reduce((acc, board) => {
+      const statusId = board.status ?? 'available';
+      acc.all += 1;
+      acc[statusId] = (acc[statusId] ?? 0) + 1;
+      return acc;
+    }, { all: 0, available: 0, occupied: 0, reserved: 0, maintenance: 0, critical: 0 });
+  }, [boards, filters.regionId, filters.search]);
 
   const mapPoints = useMemo(() => toMapPoints(filteredBoards), [filteredBoards]);
 
@@ -435,6 +490,11 @@ function MapPage({ focusBoard, onClearFocus }) {
         <button type="button" onClick={() => { setFilters(DEFAULT_FILTERS); setSelectedRegionId(null); }}>
           Limpar filtros
         </button>
+        <StatusFilterChips
+          activeStatus={filters.status}
+          counts={statusFilterCounts}
+          onChange={(statusId) => setFilters((prev) => ({ ...prev, status: statusId }))}
+        />
       </section>
 
       {!hasData && status === 'success' ? (

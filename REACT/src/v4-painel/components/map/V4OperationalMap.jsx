@@ -1,7 +1,10 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import { GeoJSON, MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { V4EmptyState } from '../ui/index.js';
 import SafeImage from '../media/SafeImage.jsx';
 import { mapBus } from '../../modules/map/mapBus.js';
@@ -36,6 +39,7 @@ const COMMERCIAL_STATUS_LABELS = {
 const DEFAULT_PIN_COLOR = '#8390a6';
 const BRAZIL_CENTER = [-15.793, -47.882];
 const BRAZIL_ZOOM   = 5;
+const CLUSTER_THRESHOLD = 50;
 
 function toFiniteCoordinate(value) {
   if (value === null || value === undefined || value === '') return null;
@@ -151,6 +155,78 @@ function MapStatusLegend({ compact }) {
   );
 }
 
+function MarkerLayer({ children, clustered }) {
+  if (!clustered) return <>{children}</>;
+
+  return (
+    <MarkerClusterGroup
+      chunkedLoading
+      showCoverageOnHover={false}
+      maxClusterRadius={48}
+      spiderfyOnMaxZoom
+      disableClusteringAtZoom={17}
+      iconCreateFunction={(cluster) => {
+        const count = cluster.getChildCount();
+        const size = count >= 1000 ? 'xl' : count >= 100 ? 'lg' : 'md';
+        return L.divIcon({
+          html: `<span class="v4-geomap-cluster v4-geomap-cluster--${size}">${count}</span>`,
+          className: 'v4-geomap-cluster-icon',
+          iconSize: [44, 44],
+        });
+      }}
+    >
+      {children}
+    </MarkerClusterGroup>
+  );
+}
+
+function FullscreenControl({ targetRef, compact }) {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [unsupported, setUnsupported] = useState(false);
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === targetRef.current);
+    };
+
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, [targetRef]);
+
+  const toggleFullscreen = async () => {
+    const target = targetRef.current;
+    if (!target || !document.fullscreenEnabled || !target.requestFullscreen) {
+      setUnsupported(true);
+      return;
+    }
+
+    try {
+      if (document.fullscreenElement === target) {
+        await document.exitFullscreen?.();
+      } else {
+        await target.requestFullscreen();
+      }
+      setUnsupported(false);
+    } catch {
+      setUnsupported(true);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      className={`v4-geomap-fullscreen${compact ? ' v4-geomap-fullscreen--compact' : ''}${unsupported ? ' v4-geomap-fullscreen--unsupported' : ''}`}
+      onClick={toggleFullscreen}
+      aria-label={isFullscreen ? 'Sair da tela cheia do mapa' : 'Abrir mapa em tela cheia'}
+      title={unsupported ? 'Tela cheia indisponivel neste navegador' : isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
+    >
+      <span className="material-symbols-rounded" aria-hidden="true">
+        {unsupported ? 'fullscreen_exit' : isFullscreen ? 'close_fullscreen' : 'open_in_full'}
+      </span>
+    </button>
+  );
+}
+
 function BoardPopupContent({ point }) {
   const m = point.metadata ?? {};
   const clientName     = m.activeContract?.clientName ?? m.cliente_nome ?? null;
@@ -227,6 +303,32 @@ function BoardPopupContent({ point }) {
 }
 
 function MissingBoardsPanel({ missingPoints, onClose }) {
+  const [query, setQuery] = useState('');
+
+  const filteredGroups = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const filtered = missingPoints.filter((point) => {
+      if (!q) return true;
+      return [point.title, point.subtitle, point.address, point.region]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(q));
+    });
+
+    return filtered.reduce((groups, point) => {
+      const region = point.region || 'Sem regiao';
+      if (!groups[region]) groups[region] = [];
+      groups[region].push(point);
+      return groups;
+    }, {});
+  }, [missingPoints, query]);
+
+  const filteredTotal = Object.values(filteredGroups).reduce((sum, group) => sum + group.length, 0);
+
+  const copyAddress = async (address) => {
+    if (!address || !navigator.clipboard?.writeText) return;
+    await navigator.clipboard.writeText(address);
+  };
+
   return (
     <div className="v4-geomap-missing" role="dialog" aria-modal="true" aria-label="Placas sem coordenadas">
       <div className="v4-geomap-missing__header">
@@ -243,18 +345,42 @@ function MissingBoardsPanel({ missingPoints, onClose }) {
           <span className="material-symbols-rounded">close</span>
         </button>
       </div>
+      <div className="v4-geomap-missing__tools">
+        <input
+          type="search"
+          value={query}
+          placeholder="Buscar na lista"
+          aria-label="Buscar placas sem coordenadas"
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <span>{filteredTotal} de {missingPoints.length}</span>
+      </div>
       <ul className="v4-geomap-missing__list">
-        {missingPoints.map((point) => (
-          <li key={point.id} className="v4-geomap-missing__item">
-            <strong className="v4-geomap-missing__code">{point.title}</strong>
-            {point.address && (
-              <span className="v4-geomap-missing__addr">{point.address}</span>
-            )}
-            {point.region && (
-              <span className="v4-geomap-missing__region">{point.region}</span>
-            )}
+        {Object.entries(filteredGroups).map(([region, group]) => (
+          <li key={region} className="v4-geomap-missing__group">
+            <span className="v4-geomap-missing__group-title">{region} ({group.length})</span>
+            <ul>
+              {group.map((point) => (
+                <li key={point.id} className="v4-geomap-missing__item">
+                  <strong className="v4-geomap-missing__code">{point.title}</strong>
+                  {point.address && (
+                    <span className="v4-geomap-missing__addr">{point.address}</span>
+                  )}
+                  <div className="v4-geomap-missing__actions">
+                    {point.address && (
+                      <button type="button" onClick={() => copyAddress(point.address)}>
+                        Copiar endereco
+                      </button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
           </li>
         ))}
+        {filteredTotal === 0 && (
+          <li className="v4-geomap-missing__empty">Nenhuma placa encontrada.</li>
+        )}
       </ul>
     </div>
   );
@@ -354,6 +480,7 @@ function V4OperationalMap({
   const missingCount = missingPoints.length;
   const mapHeight = height ?? (compact ? 280 : 480);
   const hasMapGeometry = validPoints.length > 0 || validBoundaries.length > 0;
+  const clustered = validPoints.length > CLUSTER_THRESHOLD;
 
   if (loading) {
     return (
@@ -410,8 +537,9 @@ function V4OperationalMap({
   return (
     <div
       ref={mapContainerRef}
-      className={`v4-geomap${compact ? ' v4-geomap--compact' : ''}`}
+      className={`v4-geomap${compact ? ' v4-geomap--compact' : ''}${clustered ? ' v4-geomap--clustered' : ''}`}
       style={{ height: mapHeight }}
+      data-clustered={clustered ? 'true' : 'false'}
     >
       <MapContainer
         center={BRAZIL_CENTER}
@@ -452,6 +580,7 @@ function V4OperationalMap({
             />
           );
         })}
+        <MarkerLayer clustered={clustered}>
         {validPoints.map((point) => {
           const selected = selectedPointId === point.id;
           const isInSelectedRegion = selectedRegionId
@@ -487,9 +616,18 @@ function V4OperationalMap({
             </Marker>
           );
         })}
+        </MarkerLayer>
       </MapContainer>
 
       <MapStatusLegend compact={compact} />
+      <FullscreenControl targetRef={mapContainerRef} compact={compact} />
+
+      {clustered && (
+        <div className="v4-geomap__cluster-notice" role="status">
+          <span className="material-symbols-rounded" aria-hidden="true">hub</span>
+          Clustering ativo: {validPoints.length} pontos
+        </div>
+      )}
 
       {missingCount > 0 && (
         <button

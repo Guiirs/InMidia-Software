@@ -67,6 +67,111 @@
   margin-top: -1px;
 }
 
+.v4-geomap-cluster-icon {
+  background: transparent;
+  border: none;
+}
+
+.v4-geomap-cluster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(34, 211, 238, 0.92);
+  border: 2px solid rgba(255, 255, 255, 0.84);
+  color: #06111f;
+  font-size: 12px;
+  font-weight: 800;
+  font-family: var(--v4p-mono, monospace);
+  box-shadow:
+    0 0 0 7px rgba(34, 211, 238, 0.22),
+    0 8px 22px rgba(0, 0, 0, 0.42);
+}
+
+.v4-geomap-cluster--lg {
+  width: 46px;
+  height: 46px;
+  background: rgba(227, 180, 86, 0.94);
+  box-shadow:
+    0 0 0 8px rgba(227, 180, 86, 0.22),
+    0 8px 24px rgba(0, 0, 0, 0.44);
+}
+
+.v4-geomap-cluster--xl {
+  width: 52px;
+  height: 52px;
+  background: rgba(239, 68, 68, 0.94);
+  color: #fff;
+  box-shadow:
+    0 0 0 9px rgba(239, 68, 68, 0.20),
+    0 10px 28px rgba(0, 0, 0, 0.48);
+}
+
+.v4-geomap-fullscreen {
+  position: absolute;
+  z-index: 1000;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 8px;
+  background: rgba(8, 13, 23, 0.88);
+  color: var(--v4p-text-2, #d4dcea);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.34);
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background 120ms, color 120ms, border-color 120ms;
+}
+
+.v4-geomap-fullscreen:hover {
+  background: rgba(20, 27, 41, 0.98);
+  color: #fff;
+  border-color: rgba(148, 163, 184, 0.28);
+}
+
+.v4-geomap-fullscreen .material-symbols-rounded {
+  font-size: 18px;
+}
+
+.v4-geomap-fullscreen--compact {
+  width: 30px;
+  height: 30px;
+}
+
+.v4-geomap-fullscreen--unsupported {
+  color: var(--v4p-warning, #e3b456);
+}
+
+.v4-geomap__cluster-notice {
+  position: absolute;
+  z-index: 1000;
+  top: 50px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  border-radius: 999px;
+  background: rgba(8, 13, 23, 0.88);
+  color: rgba(212, 220, 234, 0.86);
+  font-size: 10px;
+  font-family: var(--v4p-font, sans-serif);
+  white-space: nowrap;
+  backdrop-filter: blur(6px);
+}
+
+.v4-geomap__cluster-notice .material-symbols-rounded {
+  font-size: 13px;
+  color: var(--v4p-accent, #22d3ee);
+}
+
 /* ── Atribuição ──────────────────────────────────────────────── */
 
 .v4-geomap__map .leaflet-control-attribution {
@@ -453,6 +558,51 @@
   flex: 1;
 }
 
+.v4-geomap-missing__tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+.v4-geomap-missing__tools input {
+  min-width: 0;
+  height: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--v4p-text-2, #d4dcea);
+  font-family: var(--v4p-font, sans-serif);
+  font-size: 10px;
+  padding: 0 8px;
+}
+
+.v4-geomap-missing__tools span {
+  color: var(--v4p-text-4, #8390a6);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.v4-geomap-missing__group {
+  list-style: none;
+}
+
+.v4-geomap-missing__group-title {
+  display: block;
+  padding: 6px 12px 4px;
+  color: var(--v4p-accent, #22d3ee);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.v4-geomap-missing__group ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 .v4-geomap-missing__item {
   display: flex;
   flex-direction: column;
@@ -484,6 +634,31 @@
 .v4-geomap-missing__region {
   color: var(--v4p-text-4, #8390a6);
   font-size: 10px;
+}
+
+.v4-geomap-missing__actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.v4-geomap-missing__actions button {
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--v4p-text-3, #b0bdd0);
+  font-size: 9px;
+  font-family: var(--v4p-font, sans-serif);
+  cursor: pointer;
+}
+
+.v4-geomap-missing__empty {
+  padding: 12px;
+  color: var(--v4p-text-4, #8390a6);
+  font-size: 10px;
+  text-align: center;
 }
 
 /* ── Estados: loading / error / empty ───────────────────────── */
@@ -530,6 +705,31 @@
 /* ── Responsividade ──────────────────────────────────────────── */
 
 @media (max-width: 600px) {
+  .v4-geomap {
+    min-height: 340px;
+  }
+
+  .v4-geomap-popup {
+    max-width: min(230px, calc(100vw - 72px));
+  }
+
+  .v4-geomap-popup__value,
+  .v4-geomap-popup__sub {
+    white-space: normal;
+  }
+
+  .v4-geomap-fullscreen {
+    top: 6px;
+    right: 6px;
+  }
+
+  .v4-geomap__cluster-notice {
+    top: 42px;
+    right: 6px;
+    max-width: calc(100vw - 18px);
+    font-size: 9px;
+  }
+
   .v4-geomap__notice {
     bottom: 6px;
     right: 6px;
@@ -543,10 +743,13 @@
     padding: 5px 7px;
     gap: 4px;
     min-width: auto;
+    max-width: calc(100vw - 96px);
+    flex-direction: row;
+    flex-wrap: wrap;
   }
 
   .v4-geomap-legend__label {
-    font-size: 9px;
+    display: none;
   }
 
   .v4-geomap-missing {

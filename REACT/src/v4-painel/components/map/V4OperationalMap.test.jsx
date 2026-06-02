@@ -25,7 +25,13 @@ vi.mock('react-leaflet', () => ({
   useMap:        () => ({ setView: vi.fn(), flyTo: vi.fn(), fitBounds: vi.fn() }),
 }));
 
+vi.mock('react-leaflet-cluster', () => ({
+  default: ({ children }) => <div data-testid="marker-cluster-group">{children}</div>,
+}));
+
 vi.mock('leaflet/dist/leaflet.css', () => ({}));
+vi.mock('leaflet.markercluster/dist/MarkerCluster.css', () => ({}));
+vi.mock('leaflet.markercluster/dist/MarkerCluster.Default.css', () => ({}));
 
 vi.mock('../media/SafeImage.jsx', () => ({
   default: ({ alt, fallbackLabel }) => <span data-testid="safe-image">{alt || fallbackLabel}</span>,
@@ -60,6 +66,54 @@ function point(overrides = {}) {
     ...overrides,
   };
 }
+
+function points(count) {
+  return Array.from({ length: count }, (_, index) => point({
+    id: `p${index + 1}`,
+    title: `BR-${String(index + 1).padStart(3, '0')}`,
+    latitude: -23.55 + (index * 0.001),
+    longitude: -46.63 + (index * 0.001),
+  }));
+}
+
+describe('V4OperationalMap â€” clustering e fullscreen', () => {
+  it('renderiza markers diretos quando pontos <= 50', () => {
+    render(<V4OperationalMap points={points(50)} />);
+
+    expect(screen.queryByTestId('marker-cluster-group')).toBeNull();
+    expect(screen.getAllByTestId('marker')).toHaveLength(50);
+    expect(document.querySelector('[data-clustered="false"]')).not.toBeNull();
+  });
+
+  it('ativa clustering quando pontos > 50', () => {
+    render(<V4OperationalMap points={points(51)} />);
+
+    expect(screen.getByTestId('marker-cluster-group')).toBeInTheDocument();
+    expect(screen.getByText(/Clustering ativo: 51 pontos/)).toBeInTheDocument();
+    expect(document.querySelector('[data-clustered="true"]')).not.toBeNull();
+  });
+
+  it('mantem popup operacional em marker clusterizado', () => {
+    render(<V4OperationalMap points={points(51)} />);
+
+    expect(screen.getByTestId('marker-cluster-group')).toBeInTheDocument();
+    expect(screen.getByText('BR-001')).toBeInTheDocument();
+  });
+
+  it('renderiza botao de fullscreen', () => {
+    render(<V4OperationalMap points={[point()]} />);
+
+    expect(screen.getByLabelText('Abrir mapa em tela cheia')).toBeInTheDocument();
+  });
+
+  it('fullscreen fallback nao quebra sem suporte do browser', () => {
+    render(<V4OperationalMap points={[point()]} />);
+
+    const button = screen.getByLabelText('Abrir mapa em tela cheia');
+    expect(() => fireEvent.click(button)).not.toThrow();
+    expect(button).toHaveClass('v4-geomap-fullscreen--unsupported');
+  });
+});
 
 describe('V4OperationalMap — legenda de status', () => {
   it('renderiza legenda com todos os 5 status em modo normal', () => {
@@ -246,7 +300,18 @@ describe('V4OperationalMap — placas sem coordenadas', () => {
 
     expect(screen.getByText('BR-002')).toBeInTheDocument();
     expect(screen.getByText('Rua B')).toBeInTheDocument();
-    expect(screen.getByText('r2')).toBeInTheDocument();
+    expect(screen.getByText(/r2/)).toBeInTheDocument();
+  });
+
+  it('filtra busca dentro do painel de placas sem coords', () => {
+    render(<V4OperationalMap points={boardsWithAndWithout} />);
+
+    fireEvent.click(screen.getByTitle('Ver placas sem coordenadas'));
+    fireEvent.change(screen.getByLabelText('Buscar placas sem coordenadas'), { target: { value: 'BR-003' } });
+
+    expect(screen.getByText('BR-003')).toBeInTheDocument();
+    expect(screen.queryByText('BR-002')).toBeNull();
+    expect(screen.getByText('1 de 2')).toBeInTheDocument();
   });
 
   it('fecha painel ao clicar no botao fechar', () => {

@@ -8,6 +8,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 let resources;
 const MAP_PAGE_SOURCE = 'src/v4-painel/pages/map/MapPage.jsx';
+const MAP_PAGE_CSS = 'src/v4-painel/pages/map/MapPage.css';
 const OPERATIONAL_MAP_SOURCE = 'src/v4-painel/components/map/V4OperationalMap.jsx';
 
 vi.mock('../../../core/sync-core/hooks/useSyncResource.js', () => ({
@@ -283,6 +284,45 @@ describe('MapPage integration surface', () => {
     expect(titles).toContain('SEM-REGIAOID');
     expect(titles).toContain('REGIAO-VAZIA');
     expect(titles).not.toContain('FORMAL-VALIDA');
+  });
+
+  it('renderiza chips de filtro por status com contagens', async () => {
+    setMapData({
+      regions: [
+        { id: 'r1', name: 'Regiao 1', occupancyRate: 0.7, totalBoards: 4, availableBoards: 1 },
+      ],
+      boards: [
+        { id: 'b1', codigo: 'DISP-001', nome: 'Disp', lat: -23.1, lng: -46.1, status: 'available', regionId: 'r1', localizacao: 'A' },
+        { id: 'b2', codigo: 'OCUP-001', nome: 'Ocup', lat: -23.2, lng: -46.2, status: 'occupied', regionId: 'r1', localizacao: 'B' },
+        { id: 'b3', codigo: 'RES-001', nome: 'Res', lat: -23.3, lng: -46.3, status: 'reserved', regionId: 'r1', localizacao: 'C' },
+        { id: 'b4', codigo: 'CRIT-001', nome: 'Crit', lat: -23.4, lng: -46.4, status: 'critical', regionId: 'r1', localizacao: 'D' },
+      ],
+    });
+
+    const { default: MapPage } = await import('./MapPage.jsx');
+    render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+    const chips = screen.getByRole('group', { name: 'Filtro visual por status' });
+    expect(chips).toHaveTextContent('Todos');
+    expect(chips).toHaveTextContent('4');
+    expect(chips).toHaveTextContent('Disponiveis');
+    expect(chips).toHaveTextContent('Ocupadas');
+    expect(chips).toHaveTextContent('Reservadas');
+    expect(chips).toHaveTextContent('Manutencao');
+    expect(chips).toHaveTextContent('Criticas');
+
+    fireEvent.click(screen.getByRole('button', { name: /Criticas/i }));
+    expect(screen.getByTestId('operational-map')).toHaveAttribute('data-points', 'CRIT-001');
+  });
+
+  it('possui classes e breakpoint mobile para layout responsivo', () => {
+    const css = readFileSync(MAP_PAGE_CSS, 'utf8');
+
+    expect(css).toContain('@media (max-width: 780px)');
+    expect(css).toContain('.v4p-map-workspace');
+    expect(css).toContain('.v4p-map-regions');
+    expect(css).toContain('.v4p-map-opportunities');
+    expect(css).toContain('.v4p-map-status-chips');
   });
 
   it('sincroniza selecao entre sidebar, dropdown e mapa', async () => {

@@ -81,9 +81,9 @@ function InventoryMapSplit({
             {shouldCluster && (
               <span
                 className="inv-map-panel__badge inv-map-panel__badge--density"
-                title="Alta densidade de pontos — clustering recomendado em versão futura"
+                title={`Clustering ativo para ${validPointCount} pontos com coordenadas`}
               >
-                Alta densidade
+                Clustering ativo
               </span>
             )}
             {missingCoordsCount > 0 && (
