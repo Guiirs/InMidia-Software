@@ -498,6 +498,23 @@ describe('CDN headers', () => {
     await getPlacaImagem(req, res, jest.fn());
     expect(res._headers['content-type']).toBe('image/webp');
   });
+
+  it('inclui headers cross-origin para embed publico em WordPress', async () => {
+    const stream = makeReadableStream();
+    stream.pipe = jest.fn(() => stream) as any;
+    mockedGetR2Client.mockReturnValue({
+      send: jest.fn().mockResolvedValue({ Body: stream, ETag: ETAG, ContentType: 'image/png' }),
+    } as any);
+    const req = makeReq(PLACA_ID);
+    const res = makeRes();
+
+    await getPlacaImagem(req, res, jest.fn());
+
+    expect(res._headers['content-type']).toBe('image/png');
+    expect(res._headers['access-control-allow-origin']).toBe('*');
+    expect(res._headers['cross-origin-resource-policy']).toBe('cross-origin');
+    expect(res._headers['cache-control']).toContain('public');
+  });
 });
 
 // ── Testes de 404 e erros ─────────────────────────────────────────────────────

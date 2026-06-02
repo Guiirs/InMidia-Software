@@ -75,13 +75,15 @@ describe('Public plates integration', () => {
     expect(res.headers['access-control-max-age']).toBe('86400');
   });
 
-  it('GET /api/v1/public/placas/:id/imagem sempre expoe CORS wildcard', async () => {
+  it('GET /api/v1/public/placas/:id/imagem sempre expoe headers de midia cross-origin', async () => {
     const res = await request(app)
       .get('/api/v1/public/placas/id-invalido/imagem')
       .set('Origin', 'https://sitequalquer.com');
 
     expect(res.headers['access-control-allow-origin']).toBe('*');
     expect(res.headers['access-control-expose-headers']).toBe('X-Gateway-Module,X-Response-Time,X-Request-Id');
+    expect(res.headers['cross-origin-resource-policy']).toBe('cross-origin');
+    expect(res.headers['cache-control']).toContain('public');
   });
 
   it('GET /api/v1/public/placas retorna 200 com array de placas e sem campos sensiveis', async () => {

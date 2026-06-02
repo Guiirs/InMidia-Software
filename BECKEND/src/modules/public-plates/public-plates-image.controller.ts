@@ -55,8 +55,21 @@ const IMAGE_CACHE_CONTROL =
 const IMAGE_SURROGATE_CONTROL = 'max-age=604800';
 const IMAGE_VARY = 'Accept-Encoding';
 const PUBLIC_API_VERSION = 'v1';
+const PUBLIC_IMAGE_CORP = 'cross-origin';
+const PUBLIC_IMAGE_CORS_ORIGIN = '*';
 
 const BLOCKED_QUERY_PARAMS = ['path', 'key', 'file', 'url', 'src'];
+
+export function publicImageSecurityHeaders(
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  res.setHeader('Access-Control-Allow-Origin', PUBLIC_IMAGE_CORS_ORIGIN);
+  res.setHeader('Cross-Origin-Resource-Policy', PUBLIC_IMAGE_CORP);
+  res.setHeader('Cache-Control', IMAGE_CACHE_CONTROL);
+  next();
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -125,6 +138,8 @@ function setCdnHeaders(
   res: Response,
   meta: Pick<ImageMetaCache, 'etag' | 'lastModified' | 'contentType' | 'contentLength'>,
 ): void {
+  res.set('Access-Control-Allow-Origin', PUBLIC_IMAGE_CORS_ORIGIN);
+  res.set('Cross-Origin-Resource-Policy', PUBLIC_IMAGE_CORP);
   res.set('ETag', normalizeETag(meta.etag));
   res.set('Last-Modified', meta.lastModified);
   res.set('Cache-Control', IMAGE_CACHE_CONTROL);
@@ -138,6 +153,8 @@ function setCdnHeaders(
 }
 
 function send304(res: Response, meta: Pick<ImageMetaCache, 'etag' | 'lastModified'>): void {
+  res.set('Access-Control-Allow-Origin', PUBLIC_IMAGE_CORS_ORIGIN);
+  res.set('Cross-Origin-Resource-Policy', PUBLIC_IMAGE_CORP);
   res.set('ETag', normalizeETag(meta.etag));
   res.set('Last-Modified', meta.lastModified);
   res.set('Cache-Control', IMAGE_CACHE_CONTROL);
