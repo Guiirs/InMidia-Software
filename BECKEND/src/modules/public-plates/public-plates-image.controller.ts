@@ -42,6 +42,7 @@ import { getPlacaImageCandidates, resolvePlacaImageReference } from '@modules/me
 import {
   getImageMetaFromCache,
   setImageMetaInCache,
+  setImageNotFound,
   isImageCacheAvailable,
 } from './image-cache.service';
 import type { ImageMetaCache, ImageProxyMetrics } from './image-meta.types';
@@ -369,6 +370,17 @@ export async function getPlacaImagem(
     return;
   }
 
+  // [TEMP-DEBUG] Log de diagnóstico — remover após confirmar consistência listing/proxy.
+  logger.info('[ImageProxy][DIAG] resolução', {
+    placaId: idParam,
+    codigo: doc.numero_placa ?? doc.codigo ?? null,
+    imagemPrincipal: doc.imagemPrincipal ?? null,
+    imagem: typeof doc.imagem === 'string' ? doc.imagem : null,
+    storageKeyResolvida: r2Key,
+    sourceField: resolvedImage.sourceField ?? null,
+    tentativaR2: `${bucket}/${r2Key}`,
+  });
+
   const updatedAt =
     doc.updatedAt instanceof Date
       ? doc.updatedAt.toISOString()
@@ -387,6 +399,17 @@ export async function getPlacaImagem(
       const httpStatus: number = err?.$metadata?.httpStatusCode ?? 0;
       if (err?.name === 'NoSuchKey' || httpStatus === 404) {
         notFound(res, reqId, 'Imagem não encontrada no storage.');
+        void setImageNotFound(idParam);
+        logger.warn('[ImageProxy][DIAG] R2 HeadObject NoSuchKey', {
+          placaId: idParam,
+          bucket,
+          r2Key,
+          errorName: err?.name ?? null,
+          httpStatus,
+          codigo: doc.numero_placa ?? doc.codigo ?? null,
+          imagemPrincipal: doc.imagemPrincipal ?? null,
+          imagem: typeof doc.imagem === 'string' ? doc.imagem : null,
+        });
         logImageResolutionFailure({
           endpoint: req.originalUrl ?? req.path ?? '/api/v1/public/placas/:id/imagem',
           placaId: idParam,
@@ -581,6 +604,28 @@ function handleR2Error(
   const httpStatus: number = err?.$metadata?.httpStatusCode ?? 0;
   if (err?.name === 'NoSuchKey' || httpStatus === 404) {
     notFound(res, reqId, 'Imagem não encontrada no storage.');
+
+    // Marca no cache negativo — a listagem vai ignorar hasImage: true para esta placa
+    // até o arquivo ser de fato carregado no R2 (TTL 5 min, auto-recuperável).
+    void setImageNotFound(placaId);
+
+    // [TEMP-DEBUG] Log de diagnóstico detalhado do erro R2.
+    logger.warn('[ImageProxy][DIAG] R2 NoSuchKey', {
+      placaId,
+      bucket: context?.bucket ?? null,
+      r2Key: context?.r2Key ?? null,
+      errorName: err?.name ?? null,
+      httpStatus,
+      errorMessage: err?.message ?? null,
+      doc: context?.doc
+        ? {
+            codigo: (context.doc as any).numero_placa ?? (context.doc as any).codigo ?? null,
+            imagemPrincipal: (context.doc as any).imagemPrincipal ?? null,
+            imagem: typeof (context.doc as any).imagem === 'string' ? (context.doc as any).imagem : null,
+          }
+        : null,
+    });
+
     if (context) {
       logImageResolutionFailure({
         endpoint: '/api/v1/public/placas/:id/imagem',

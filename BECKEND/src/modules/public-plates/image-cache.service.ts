@@ -83,3 +83,70 @@ export async function invalidateImageMetaCache(placaId: string): Promise<void> {
 export function isImageCacheAvailable(): boolean {
   return cacheService.isAvailable();
 }
+
+// ── Negative cache ─────────────────────────────────────────────────────────────
+// Marca placas cujo arquivo não existe no R2. TTL curto para se auto-reparar
+// após upload real do arquivo.
+
+const NOT_FOUND_KEY_PREFIX = 'img:placa:nf:';
+const NOT_FOUND_TTL = 300; // 5 minutos
+
+function notFoundCacheKey(placaId: string): string {
+  return `${NOT_FOUND_KEY_PREFIX}${placaId}`;
+}
+
+/**
+ * Marca a imagem de uma placa como "não encontrada no storage".
+ * Chamado pelo proxy ao receber NoSuchKey do R2.
+ * Após upload real do arquivo a listagem se corrige quando o TTL expirar.
+ */
+export async function setImageNotFound(placaId: string): Promise<void> {
+  if (!redisManager.isConnected()) return;
+  try {
+    await cacheService.set(notFoundCacheKey(placaId), 1, NOT_FOUND_TTL);
+    logger.debug(`[ImageCache] NOT_FOUND placaId=${placaId} TTL=${NOT_FOUND_TTL}s`);
+  } catch {
+    // non-fatal
+  }
+}
+
+/**
+ * Retorna true se a imagem desta placa está marcada como não encontrada.
+ * Usado pela listagem para manter consistência com o proxy.
+ */
+async function isImageNotFound(placaId: string): Promise<boolean> {
+  if (!redisManager.isConnected()) return false;
+  try {
+    const val = await cacheService.get(notFoundCacheKey(placaId));
+    return val === 1 || val === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Batch check: retorna o Set de IDs de placas marcadas como not-found.
+ * Chamado pela listagem para sobrescrever hasImage antes de emitir a resposta.
+ */
+export async function batchIsImageNotFound(placaIds: string[]): Promise<Set<string>> {
+  if (!redisManager.isConnected() || placaIds.length === 0) return new Set();
+  try {
+    const results = await Promise.all(placaIds.map((id) => isImageNotFound(id)));
+    return new Set(placaIds.filter((_, i) => results[i]));
+  } catch {
+    return new Set();
+  }
+}
+
+/**
+ * Remove a marca de not-found (ex: após upload bem-sucedido de nova imagem).
+ */
+export async function clearImageNotFound(placaId: string): Promise<void> {
+  if (!redisManager.isConnected()) return;
+  try {
+    await cacheService.del(notFoundCacheKey(placaId));
+    logger.debug(`[ImageCache] NOT_FOUND cleared placaId=${placaId}`);
+  } catch {
+    // non-fatal
+  }
+}

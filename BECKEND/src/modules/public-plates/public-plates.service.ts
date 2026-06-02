@@ -4,6 +4,7 @@ import Regiao from '@modules/regioes/Regiao';
 import { commercialAvailabilityProjection, type CommercialAvailabilityResult } from '@modules/commercial-availability';
 import { recordProjectionMetric } from '@shared/infra/monitoring/projection-metrics';
 import { projectionCacheService, makeCacheKey, timeBucket, CACHE_TTL_MS } from '@shared/infra/cache';
+import { batchIsImageNotFound, isImageCacheAvailable } from './image-cache.service';
 import {
   toPublicPlaca,
   toPublicRegiao,
@@ -175,8 +176,35 @@ export async function listPlacas(
     : projectedData;
   const total = filters.disponibilidade ? projectedData.length : sortedDocs.length;
 
+  // Consistência listing/proxy: se o proxy registrou NoSuchKey para alguma placa,
+  // limpa hasImage na listagem para evitar imagemUrl inacessível.
+  let finalData = paginatedData;
+  if (isImageCacheAvailable()) {
+    const idsComImagem = paginatedData.filter((p) => p.hasImage && p.id).map((p) => p.id);
+    if (idsComImagem.length > 0) {
+      const notFoundIds = await batchIsImageNotFound(idsComImagem);
+      if (notFoundIds.size > 0) {
+        finalData = paginatedData.map((p) =>
+          notFoundIds.has(p.id)
+            ? {
+                ...p,
+                hasImage: false,
+                imagemUrl: null,
+                imagem: null,
+                imagemMeta: null,
+                jetImageUrl: null,
+                jet_image_url: null,
+                jetImage: null,
+                image: null,
+              }
+            : p,
+        );
+      }
+    }
+  }
+
   return {
-    data: paginatedData,
+    data: finalData,
     pagination: {
       page,
       limit,

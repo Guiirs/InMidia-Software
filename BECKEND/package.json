@@ -34,7 +34,12 @@
     "audit:multitenancy": "ts-node scripts/audit-multitenancy-queries.ts",
     "audit:multitenancy:report": "ts-node scripts/audit-multitenancy-queries.ts --report",
     "audit:multitenancy:json": "ts-node scripts/audit-multitenancy-queries.ts --json",
-    "audit:placa-images": "ts-node scripts/audit-placa-image-contract.ts --scan"
+    "audit:placa-images": "ts-node scripts/audit-placa-image-contract.ts --scan",
+    "reconcile:placa-images": "ts-node scripts/reconcile-placa-images.ts",
+    "reconcile:placa-images:fix": "ts-node scripts/reconcile-placa-images.ts --fix",
+    "audit:placa-images:r2": "ts-node scripts/reconcile-placa-images.ts --report",
+    "download:r2-bucket": "ts-node scripts/download-r2-bucket.ts",
+    "download:r2-latest-plate-images": "ts-node scripts/download-latest-r2-plate-images.ts"
   },
   "keywords": [],
   "author": "",
