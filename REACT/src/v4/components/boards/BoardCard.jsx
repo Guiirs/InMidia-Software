@@ -1,18 +1,18 @@
+import { useState } from 'react';
 import BoardOccupancyIndicator from './BoardOccupancyIndicator';
 import BoardStatusBadge from './BoardStatusBadge';
 
 const statusAlertMap = {
-  reservada: 'Reserva ativa para proximo ciclo.',
+  reservada:    'Reserva ativa para proximo ciclo.',
   indisponivel: 'Operacao bloqueada para comercializacao.',
-  vencendo: 'Contrato em janela critica de renovacao.',
-  pendente: 'Pendencia documental exige tratativa.'
+  vencendo:     'Contrato em janela critica de renovacao.',
+  pendente:     'Pendencia documental exige tratativa.'
 };
 
 function formatCurrency(value) {
   if (value == null || Number.isNaN(Number(value))) {
     return 'Nao informado';
   }
-
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
@@ -21,10 +21,7 @@ function formatCurrency(value) {
 }
 
 function getStatusAlertText(status, customAlert) {
-  if (customAlert) {
-    return customAlert;
-  }
-
+  if (customAlert) return customAlert;
   return statusAlertMap[status] || null;
 }
 
@@ -51,6 +48,10 @@ export default function BoardCard({ board, compact = false, className = '' }) {
     alert
   } = board;
 
+  const [imgBroken, setImgBroken] = useState(false);
+  const src = photoUrl || imageUrl || null;
+  const showImage = src && !imgBroken;
+
   const normalizedActions = actionLabels.length > 0 ? actionLabels : actions;
   const alertMessage = getStatusAlertText(status, alertText || alert);
 
@@ -64,7 +65,21 @@ export default function BoardCard({ board, compact = false, className = '' }) {
   return (
     <article className={rootClass}>
       <header className="v4-board-card__media">
-        <img className="v4-board-card__photo" src={photoUrl || imageUrl} alt={`Imagem da placa ${code}`} loading="lazy" />
+        {showImage ? (
+          <img
+            className="v4-board-card__photo"
+            src={src}
+            alt={`Imagem da placa ${code ?? ''}`}
+            loading="lazy"
+            onError={() => setImgBroken(true)}
+          />
+        ) : (
+          <div
+            className="v4-board-card__photo v4-board-card__photo--fallback"
+            role="img"
+            aria-label="Sem imagem cadastrada"
+          />
+        )}
         <div className="v4-board-card__media-overlay" />
         <div className="v4-board-card__status-wrap">
           <BoardStatusBadge status={status} />
@@ -74,13 +89,13 @@ export default function BoardCard({ board, compact = false, className = '' }) {
       <div className="v4-board-card__body">
         <div className="v4-board-card__identity">
           <p className="v4-board-card__eyebrow">Placa operacional</p>
-          <h3 className="v4-board-card__title">{name}</h3>
-          <p className="v4-board-card__code">Codigo {code}</p>
+          <h3 className="v4-board-card__title">{name || 'Sem nome'}</h3>
+          <p className="v4-board-card__code">Codigo {code || '—'}</p>
         </div>
 
         <div className="v4-board-card__location-block">
-          <p className="v4-board-card__location">{location}</p>
-          <p className="v4-board-card__geo">{city} | {region}</p>
+          <p className="v4-board-card__location">{location || 'Localização não informada'}</p>
+          <p className="v4-board-card__geo">{city || '—'} | {region || '—'}</p>
         </div>
 
         {!compact && (

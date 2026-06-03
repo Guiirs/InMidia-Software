@@ -2,6 +2,7 @@ import { memo, useEffect, useMemo, useState } from 'react';
 import V4OperationalMap    from '../map/V4OperationalMap.jsx';
 import TerritoryMiniContext from './TerritoryMiniContext.jsx';
 import { mapBus }           from '../../modules/map/mapBus.js';
+import { resolveSafePlateImageUrl } from './normalizePlateCardData.js';
 
 function toMapPoint(board) {
   const lat = board.latitude  ?? board.lat  ?? board.coords?.lat  ?? null;
@@ -15,7 +16,7 @@ function toMapPoint(board) {
     status:       board.status ?? 'available',
     region:       board.regiao ?? board.regionName ?? board.siglaRegiao ?? null,
     address:      board.localizacao ?? null,
-    mainImageUrl: board.mainImageUrl ?? board.imagemPrincipal ?? board.imageUrl ?? null,
+    mainImageUrl: resolveSafePlateImageUrl(board),
   };
 }
 

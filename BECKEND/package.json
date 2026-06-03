@@ -38,6 +38,8 @@
     "reconcile:placa-images": "ts-node scripts/reconcile-placa-images.ts",
     "reconcile:placa-images:fix": "ts-node scripts/reconcile-placa-images.ts --fix",
     "audit:placa-images:r2": "ts-node scripts/reconcile-placa-images.ts --report",
+    "repair:placa-image": "ts-node -r tsconfig-paths/register scripts/repair-placa-image.ts",
+    "repair:placa-image:fix": "ts-node -r tsconfig-paths/register scripts/repair-placa-image.ts --fix",
     "download:r2-bucket": "ts-node scripts/download-r2-bucket.ts",
     "download:r2-latest-plate-images": "ts-node scripts/download-latest-r2-plate-images.ts"
   },

@@ -127,6 +127,7 @@ function resolveRawMainImage(placa) {
     ?? placa.imagem
     ?? placa.foto
     ?? placa.imageUrl
+    ?? placa.imagemUrl
     ?? placa.fotoUrl
     ?? placa.urlImagem
     ?? null;

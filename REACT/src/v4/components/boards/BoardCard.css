@@ -52,6 +52,15 @@
   transform: scale(1.05);
 }
 
+.v4-board-card__photo--fallback {
+  background: linear-gradient(135deg, rgba(20, 27, 41, 0.9), rgba(30, 41, 59, 0.95));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: none;
+  transition: none;
+}
+
 .v4-board-card__media-overlay {
   background: linear-gradient(180deg, rgba(9, 14, 22, 0.08) 0%, rgba(9, 14, 22, 0.76) 100%);
   inset: 0;

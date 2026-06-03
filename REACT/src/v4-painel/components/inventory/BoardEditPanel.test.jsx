@@ -127,6 +127,26 @@ describe('BoardEditPanel', () => {
     expect(screen.getByText('new.webp')).toBeInTheDocument();
   });
 
+  it('nao exibe imagem quando apenas imagemPrincipal esta presente, sem imageUrl', async () => {
+    render(
+      <BoardEditPanel
+        board={{
+          id: 'b-legacy',
+          codigo: 'SP-LEGACY',
+          endereco: 'Rua Z',
+          imagemPrincipal: 'https://cdn/legacy.jpg',
+          status: 'available',
+        }}
+        onSave={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByAltText('Imagem da placa SP-LEGACY')).toBeNull();
+    });
+  });
+
   it('define e remove imagem da galeria', async () => {
     setMediaAsMain.mockResolvedValueOnce({ id: 'img-2', publicUrl: 'https://cdn/2.jpg', isMain: true });
     deleteMedia.mockResolvedValueOnce({ id: 'img-2', status: 'DELETED' });

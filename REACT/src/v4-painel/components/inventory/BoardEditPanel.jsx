@@ -2,6 +2,7 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { listRegions } from '../../../services/regionService.js';
 import { normalizeBoardCoordinates } from '../../integration/adapters/boardCoordinates.js';
+import { resolveSafePlateImageUrl } from './normalizePlateCardData.js';
 import PlateImageManager from '../media/PlateImageManager.jsx';
 import './BoardEditPanel.css';
 
@@ -67,7 +68,20 @@ function BoardEditPanel({ board, onSave, onClose, saving = false, onImageChange 
   useEffect(() => {
     if (!board) return;
     const coords = normalizeBoardCoordinates(board);
-    const imageUrl = board.imageUrl ?? board.imagemPrincipal ?? board.imagem ?? '';
+    const imageUrl = resolveSafePlateImageUrl(board) ?? '';
+
+    if (import.meta.env.DEV) {
+      console.debug('[PLATE_EDIT_DATA]', {
+        id:           board.id,
+        codigo:       board.codigo,
+        imageUrl:     board.imageUrl,
+        mainImageUrl: board.mainImageUrl,
+        mediaMainUrl: board.media?.mainUrl,
+        hasImage:     Boolean(imageUrl),
+        keys:         Object.keys(board),
+      });
+    }
+
     setForm({
       id: board.id,
       _source: board._source,
@@ -145,7 +159,7 @@ function BoardEditPanel({ board, onSave, onClose, saving = false, onImageChange 
   };
 
   const applyImageBoard = (nextBoard) => {
-    const imageUrl = nextBoard.imageUrl ?? nextBoard.imagemPrincipal ?? nextBoard.imagem ?? '';
+    const imageUrl = resolveSafePlateImageUrl(nextBoard) ?? '';
     setForm((prev) => prev ? ({
       ...prev,
       imageUrl,

@@ -14,6 +14,7 @@ import {
   V4StatCard,
 } from '../../components/ui/index.js';
 import DashboardProvider, { useDashboard } from '../../providers/DashboardProvider.jsx';
+import { resolveSafePlateImageUrl } from '../../components/inventory/normalizePlateCardData.js';
 import { useRealtime } from '../../providers/RealtimeProvider.jsx';
 import { ROLE_RANK } from '../../foundation/navigation.js';
 import './DashboardPage.css';
@@ -70,9 +71,9 @@ function toMapPoints(boards) {
     status: board.status ?? 'available',
     region: board.regiao ?? board.regiaoId,
     address: board.localizacao,
-    mainImageUrl: board.mainImageUrl ?? board.imagemPrincipal ?? board.imageUrl ?? null,
+    mainImageUrl: resolveSafePlateImageUrl(board),
     images: board.images ?? board.imagens ?? [],
-    imageStatus: board.imageStatus ?? (board.mainImageUrl || board.imagemPrincipal || board.imageUrl ? 'AVAILABLE' : 'MISSING'),
+    imageStatus: board.imageStatus ?? (resolveSafePlateImageUrl(board) ? 'AVAILABLE' : 'MISSING'),
     metadata: null,
   }));
 }

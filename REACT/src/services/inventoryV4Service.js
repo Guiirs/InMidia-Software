@@ -31,6 +31,7 @@ function boardToCanonical(raw) {
     ?? raw.imagem
     ?? raw.foto
     ?? raw.imageUrl
+    ?? raw.imagemUrl
     ?? null;
   const imageStatus = imagemPrincipal ? 'AVAILABLE' : 'MISSING';
 

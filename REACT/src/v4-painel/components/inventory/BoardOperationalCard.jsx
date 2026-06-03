@@ -8,6 +8,7 @@ import PlateHealthRow      from './PlateHealthRow.jsx';
 import PlateTerritoryChip  from './PlateTerritoryChip.jsx';
 import PlateAlertDot       from './PlateAlertDot.jsx';
 import { mapBus }          from '../../modules/map/mapBus.js';
+import { normalizePlateCardData } from './normalizePlateCardData.js';
 import './BoardOperationalCard.css';
 
 function formatVencimento(dateStr) {
@@ -59,30 +60,52 @@ const STATUS_CONFIG = {
     primaryAction:   { label: 'Ver detalhes',     icon: 'open_in_new'  },
     secondaryAction: { label: 'Ver no mapa',      icon: 'map'          },
   },
+  unknown: {
+    color: 'rgba(100,116,139,0.35)',
+    barClass: 'v4p-board-card__status-bar--idle',
+    revenueColor: 'var(--v4p-text-4)',
+    primaryAction:   { label: 'Ver detalhes',     icon: 'open_in_new'  },
+    secondaryAction: { label: 'Ver no mapa',      icon: 'map'          },
+  },
 };
 
 const DEFAULT_CONFIG = STATUS_CONFIG.available;
 
 function BoardOperationalCard({ board, onSelect, onEdit, onDelete }) {
-  const stateMeta     = getStateMeta(board.estado);
-  const priorityMeta  = getPriorityMeta(board.prioridade);
-  const vencFormatted = formatVencimento(board.vencimento);
-  const statusCfg     = STATUS_CONFIG[board.status] ?? DEFAULT_CONFIG;
+  const card = normalizePlateCardData(board ?? {});
 
+  if (import.meta.env.DEV) {
+    console.debug('[PLATE_CARD_DATA]', {
+      id:           card.id,
+      codigo:       card.codigo,
+      imageUrl:     card.imageUrl,
+      mainImageUrl: board?.mainImageUrl,
+      mediaMainUrl: board?.media?.mainUrl,
+      hasImage:     card.hasImage,
+      keys:         Object.keys(board ?? {}),
+    });
+  }
+
+  const stateMeta     = getStateMeta(card.estado);
+  const priorityMeta  = getPriorityMeta(card.prioridade);
+  const vencFormatted = formatVencimento(card.vencimento);
+  const statusCfg     = STATUS_CONFIG[card.status] ?? DEFAULT_CONFIG;
+
+  // charCodeAt is safe: card.id is always a non-empty string after normalization
   const fallbackStyle = {
-    background: `linear-gradient(${board.id.charCodeAt(0) * 37 % 360}deg, ${stateMeta.colorSoft}, rgba(0,0,0,0.32))`,
+    background: `linear-gradient(${card.id.charCodeAt(0) * 37 % 360}deg, ${stateMeta.colorSoft}, rgba(0,0,0,0.32))`,
   };
 
   function emitHover() {
     mapBus.emit('map:board:hover', {
-      boardId: board.id,
-      lat: board.latitude ?? board.lat,
-      lng: board.longitude ?? board.lng,
+      boardId: card.id,
+      lat: card.lat,
+      lng: card.lng,
     });
   }
 
   function emitLeave() {
-    mapBus.emit('map:board:leave', { boardId: board.id });
+    mapBus.emit('map:board:leave', { boardId: card.id });
   }
 
   return (
@@ -105,7 +128,8 @@ function BoardOperationalCard({ board, onSelect, onEdit, onDelete }) {
       {/* Zone 1 — image / preview */}
       <div className="v4p-board-card__img-wrap">
         <PlateImagePreview
-          board={board}
+          imageUrl={card.imageUrl}
+          codigo={card.codigo}
           className="v4p-board-card__img"
           fallbackClassName="v4p-board-card__img-fallback"
           fallbackStyle={fallbackStyle}
@@ -114,14 +138,14 @@ function BoardOperationalCard({ board, onSelect, onEdit, onDelete }) {
             fontSize: 15, fontWeight: 800, color: 'rgba(255,255,255,0.55)',
             fontFamily: 'var(--v4p-mono, monospace)', letterSpacing: '0.05em',
           }}>
-            {board.codigo}
+            {card.codigo}
           </span>
         </PlateImagePreview>
         <div className="v4p-board-card__img-overlay" />
 
         {/* Zone 2 — status overlay */}
         <div className="v4p-board-card__status-overlay">
-          <BoardStatusBadge status={board.status} size="sm" />
+          <BoardStatusBadge status={card.status} size="sm" />
         </div>
 
         {onDelete && (
@@ -137,8 +161,8 @@ function BoardOperationalCard({ board, onSelect, onEdit, onDelete }) {
         )}
 
         <div className="v4p-board-card__img-footer">
-          <span className="v4p-board-card__code">{board.codigo}</span>
-          {board.prioridade !== 'normal' && (
+          <span className="v4p-board-card__code">{card.codigo}</span>
+          {card.prioridade !== 'normal' && (
             <span className="v4p-chip v4p-chip--sm" style={{
               '--v4p-pill-color':  priorityMeta.color,
               '--v4p-pill-border': `color-mix(in srgb, ${priorityMeta.color} 34%, transparent)`,
@@ -156,47 +180,49 @@ function BoardOperationalCard({ board, onSelect, onEdit, onDelete }) {
 
         {/* Zone 2 — territory / alert */}
         <div className="v4p-board-card__meta">
-          <PlateTerritoryChip board={board} />
+          <PlateTerritoryChip board={card} />
           <span className="v4p-chip v4p-chip--sm v4p-chip--neutral" style={{ fontSize: 11 }}>
-            {board.categoria}
+            {card.categoria}
           </span>
-          <PlateAlertDot board={board} />
+          <PlateAlertDot board={card} />
         </div>
 
         {/* Zone 3 + 4 — identity / location */}
         <div>
-          <div className="v4p-board-card__name" title={board.nome}>{board.nome}</div>
-          <div className="v4p-board-card__loc"  title={board.localizacao}>{board.localizacao}</div>
+          <div className="v4p-board-card__name" title={card.nome}>{card.nome}</div>
+          <div className="v4p-board-card__loc"  title={card.localizacao}>{card.localizacao}</div>
         </div>
 
         {/* Zone 5 — current context */}
         <div className="v4p-board-card__client">
           <span className="material-symbols-rounded" style={{ fontSize: 12, color: 'var(--v4p-text-4)', flexShrink: 0 }}>
-            {board.cliente ? 'person' : 'person_off'}
+            {card.cliente ? 'person' : 'person_off'}
           </span>
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {board.cliente ?? 'Sem cliente ativo'}
+            {card.cliente ?? 'Sem cliente ativo'}
           </span>
         </div>
 
-        {board.campanha && (
+        {card.campanha && (
           <div className="v4p-board-card__campaign">
             <span className="material-symbols-rounded" style={{ fontSize: 11, flexShrink: 0 }}>campaign</span>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{board.campanha}</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{card.campanha}</span>
           </div>
         )}
 
         {/* Zone 6 — timeline */}
-        <PlateTimeline board={board} />
+        <PlateTimeline board={card} />
 
         {/* Zone 7 — health / revenue */}
         <PlateHealthRow
-          board={board}
+          board={card}
           vencFormatted={vencFormatted}
           revenueColor={statusCfg.revenueColor}
         />
 
-        <p className="v4p-board-card__rec">{board.recomendacao}</p>
+        {card.recomendacao && (
+          <p className="v4p-board-card__rec">{card.recomendacao}</p>
+        )}
       </div>
 
       {/* Zone 8 — contextual actions */}
@@ -214,9 +240,9 @@ function BoardOperationalCard({ board, onSelect, onEdit, onDelete }) {
           className="v4p-board-card__action"
           onClick={() => {
             mapBus.emit('map:board:select', {
-              boardId: board.id,
-              lat: board.latitude ?? board.lat,
-              lng: board.longitude ?? board.lng,
+              boardId: card.id,
+              lat: card.lat,
+              lng: card.lng,
             });
             onEdit?.(board);
           }}

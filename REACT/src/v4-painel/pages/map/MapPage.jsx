@@ -9,6 +9,7 @@ import RegionSidebar from '../../components/map/RegionSidebar.jsx';
 import { OPERATIONAL_STATE } from '../../foundation/operationalStates.js';
 import { normalizeBoardCoordinates } from '../../integration/adapters/boardCoordinates.js';
 import { isBoardWithoutRegion } from '../../utils/regionUtils.js';
+import { resolveSafePlateImageUrl } from '../../components/inventory/normalizePlateCardData.js';
 import './MapPage.css';
 
 const DEFAULT_FILTERS = { regionId: 'all', status: 'all', search: '' };
@@ -36,9 +37,9 @@ function toMapPoints(boards) {
       status: board.status ?? 'available',
       region: getBoardRegionId(board),
       address: board.localizacao,
-      mainImageUrl: board.mainImageUrl ?? board.imagemPrincipal ?? board.imageUrl ?? null,
+      mainImageUrl: resolveSafePlateImageUrl(board),
       images: board.images ?? board.imagens ?? [],
-      imageStatus: board.imageStatus ?? (board.mainImageUrl || board.imagemPrincipal || board.imageUrl ? 'AVAILABLE' : 'MISSING'),
+      imageStatus: board.imageStatus ?? (resolveSafePlateImageUrl(board) ? 'AVAILABLE' : 'MISSING'),
       metadata: {
         coordinateSource:    coords.source,
         commercialStatus:    board.commercialStatus    ?? board.statusComercial   ?? null,

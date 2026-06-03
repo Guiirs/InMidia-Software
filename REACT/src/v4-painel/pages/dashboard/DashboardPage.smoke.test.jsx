@@ -170,6 +170,29 @@ describe('DashboardPage smoke por role', () => {
     expect(pageText).not.toContain('runtime debug');
   });
 
+  it('nao quebra quando featuredBoards contem apenas imagemPrincipal sem imageUrl', () => {
+    const base = dashboardContext();
+    testState.dashboard = {
+      ...base,
+      dashboard: {
+        ...base.dashboard,
+        featuredBoards: [
+          {
+            id: 'b-legacy',
+            codigo: 'SP-LEGACY',
+            nome: 'Placa Legada',
+            localizacao: 'Rua X',
+            status: 'available',
+            imagemPrincipal: 'https://cdn/legacy.jpg',
+          },
+        ],
+      },
+    };
+    renderDashboard('admin_empresa');
+
+    expect(document.querySelector('.v4p-dashboard-page')).not.toBeNull();
+  });
+
   it('nao renderiza shell legado ao montar a pagina isolada', () => {
     renderDashboard('admin_empresa');
 

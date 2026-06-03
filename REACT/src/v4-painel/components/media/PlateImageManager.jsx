@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { deleteMedia, getMediaByOwner, setMediaAsMain, uploadMedia } from '../../../services/mediaService.js';
 import SafeImage from './SafeImage.jsx';
+import { resolveSafePlateImageUrl } from '../inventory/normalizePlateCardData.js';
 
 const IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp';
 
@@ -25,13 +26,9 @@ function galleryFromBoard(board) {
     ?? rawImages.find((image) => image?.isMain)
     ?? rawImages.find((image) => image?.category === 'MAIN')
     ?? null;
-  const mainUrl = board?.mainImageUrl
-    ?? board?.imagemPrincipal
+  const mainUrl = resolveSafePlateImageUrl(board)
     ?? mainImage?.publicUrl
     ?? mainImage?.url
-    ?? board?.imagem
-    ?? board?.foto
-    ?? board?.imageUrl
     ?? '';
   const images = rawImages.map((image, index) => ({
     id: image.id ?? image._id ?? `image-${index}`,
@@ -55,8 +52,6 @@ function toBoardPatch(board, images) {
     ...board,
     mainImageUrl: main?.url ?? null,
     imageUrl: main?.url ?? null,
-    imagemPrincipal: main?.url ?? null,
-    imagem: main?.url ?? null,
     images,
     imagens: images,
     imageStatus: main?.url ? 'AVAILABLE' : 'MISSING',
