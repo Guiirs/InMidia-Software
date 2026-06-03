@@ -35,7 +35,7 @@ import { GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import type { Readable } from 'stream';
 import { PublicErrorPresenter } from '@modules/public-api/presenters/public-error.presenter';
 import { getR2Client, getR2BucketName } from '@shared/infra/storage/r2-client';
-import { publicApiRateLimiter } from '@shared/infra/http/middlewares/rate-limit.middleware';
+import { publicMediaRateLimiter } from '@shared/infra/http/middlewares/rate-limit.middleware';
 import logger from '@shared/container/logger';
 import { getPlacaDocForImagePublic, type PlacaImageDoc } from './public-plates.service';
 import { getPlacaImageCandidates, resolvePlacaImageReference } from '@modules/media/placa-image-reference.resolver';
@@ -47,7 +47,7 @@ import {
 } from './image-cache.service';
 import type { ImageMetaCache, ImageProxyMetrics } from './image-meta.types';
 
-export { publicApiRateLimiter as imageRateLimiter };
+export { publicMediaRateLimiter as imageRateLimiter };
 
 // ── Constantes ─────────────────────────────────────────────────────────────────
 

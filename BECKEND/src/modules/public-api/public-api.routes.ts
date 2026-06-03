@@ -2,9 +2,11 @@ import { Router, Request, Response, NextFunction } from 'express';
 import * as publicApiController from './public-api.controller';
 import { requirePublicApiScope } from './middlewares/public-api-auth.middleware';
 import { shortCache, availabilityCache, mediaCache } from './middlewares/public-cache.middleware';
-import { getPlacaById, getPlacas, requirePublicKey } from '@modules/public-plates/public-plates.controller';
+import { getPlacaById, getPlacas, getPlacasExport, requirePublicKey } from '@modules/public-plates/public-plates.controller';
 import { getPlacaImagem, imageRateLimiter, publicImageSecurityHeaders } from '@modules/public-plates/public-plates-image.controller';
 import { imageAccessMiddleware } from '@modules/public-plates/image-hotlink.middleware';
+import { publicExportRateLimiter } from '@shared/infra/http/middlewares/rate-limit.middleware';
+import { publicApiCacheSafetyMiddleware } from './middlewares/public-api-cache-safety.middleware';
 
 const router = Router();
 
@@ -31,6 +33,8 @@ router.get('/media/plates/:id/main', imageRateLimiter, imageAccessMiddleware, pu
 // Legacy compatibility routes kept for existing integrations.
 router.get('/placas/disponiveis', shortCache, requirePublicApiScope('inventory:read'), publicApiController.getAvailablePlacas);
 router.get('/placas', shortCache, requirePublicKey, getPlacas);
+// Export must be before /:id to avoid Express matching "export" as an ID param.
+router.get('/placas/export', publicApiCacheSafetyMiddleware, publicExportRateLimiter, requirePublicKey, getPlacasExport);
 // Proxy de imagem legado — delega ao mesmo handler do endpoint canônico.
 router.get('/placas/:id/imagem', imageRateLimiter, imageAccessMiddleware, publicImageSecurityHeaders, getPlacaImagem);
 router.get('/placas/:id', shortCache, requirePublicKey, getPlacaById);

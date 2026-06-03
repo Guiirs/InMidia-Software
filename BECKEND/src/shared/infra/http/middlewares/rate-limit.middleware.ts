@@ -234,33 +234,163 @@ export const uploadRateLimiter = rateLimit({
   },
 });
 
+// ─── Public API policy constants (exported for tests) ────────────────────────
+
+export const PUBLIC_DATA_WINDOW_MS   = 15 * 60 * 1000;
+export const PUBLIC_DATA_MAX         = 100;
+export const PUBLIC_MEDIA_WINDOW_MS  = 15 * 60 * 1000;
+export const PUBLIC_MEDIA_MAX        = 5000;
+export const PUBLIC_EXPORT_WINDOW_MS = 15 * 60 * 1000;
+export const PUBLIC_EXPORT_MAX       = 300;
+
 /**
- * Public API: 100 req/15min por prefixo de API key.
- * Chave derivada do prefixo (tudo antes do último underscore) para que uma
- * rotação de secret não quebre o bucket de rate-limit existente.
- * Fallback para IP quando o header x-api-key estiver ausente.
+ * skip para publicApiRateLimiter (relativo ao mount point em app.use).
+ *   /api/v1/public → req.path = /media/...         → skip
+ *   /api/public    → req.path = /placas/x/imagem   → skip (endsWith /imagem)
+ */
+export function publicDataSkip(req: Request): boolean {
+  if (process.env.NODE_ENV === 'test') return true;
+  const p = req.path;
+  return p.startsWith('/media/') || p.endsWith('/imagem');
+}
+
+export function publicDataKeyGenerator(req: Request): string {
+  const raw = (req.header('x-api-key') || req.header('authorization')?.replace(/^Bearer\s+/i, '') || '').trim();
+  const idx = raw.lastIndexOf('_');
+  const prefix = idx > 0 ? raw.slice(0, idx) : raw;
+  return prefix ? `pub:${prefix}` : `ip:${ipKeyGenerator(req.ip ?? '::1')}`;
+}
+
+export function publicMediaKeyGenerator(req: Request): string {
+  const raw = (req.header('x-api-key') || req.header('authorization')?.replace(/^Bearer\s+/i, '') || '').trim();
+  const idx = raw.lastIndexOf('_');
+  const prefix = idx > 0 ? raw.slice(0, idx) : raw;
+  return prefix ? `pub_media:${prefix}` : `ip_media:${ipKeyGenerator(req.ip ?? '::1')}`;
+}
+
+export function publicExportKeyGenerator(req: Request): string {
+  const raw = (req.header('x-api-key') || req.header('authorization')?.replace(/^Bearer\s+/i, '') || '').trim();
+  const idx = raw.lastIndexOf('_');
+  const prefix = idx > 0 ? raw.slice(0, idx) : raw;
+  return prefix ? `pub_export:${prefix}` : `ip_export:${ipKeyGenerator(req.ip ?? '::1')}`;
+}
+
+/**
+ * Public Data API: 100 req/15min por prefixo de API key.
+ * Aplica-se apenas a rotas JSON (listagens, filtros, consultas).
+ * Rotas de mídia são excluídas via publicDataSkip — elas têm publicMediaRateLimiter.
  */
 export const publicApiRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  skip: () => process.env.NODE_ENV === 'test',
-  keyGenerator: (req: Request): string => {
-    const raw = (req.header('x-api-key') || req.header('authorization')?.replace(/^Bearer\s+/i, '') || '').trim();
-    const idx = raw.lastIndexOf('_');
-    const prefix = idx > 0 ? raw.slice(0, idx) : raw;
-    return prefix ? `pub:${prefix}` : `ip:${ipKeyGenerator(req.ip ?? '::1')}`;
-  },
+  windowMs: PUBLIC_DATA_WINDOW_MS,
+  max: PUBLIC_DATA_MAX,
+  skip: publicDataSkip,
+  keyGenerator: publicDataKeyGenerator,
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
     const raw = req.header('x-api-key') || '';
     const prefix = raw.slice(0, raw.lastIndexOf('_')) || 'unknown';
-    logger.warn(`[RateLimit] PublicAPI — prefix=${prefix} IP=${req.ip} excedeu 100/15min`);
+    logger.warn('[RateLimit] PublicData — limite atingido', {
+      route: req.path,
+      method: req.method,
+      ip: req.ip,
+      origin: req.header('origin') || '-',
+      userAgent: req.header('user-agent') || '-',
+      limiter: 'public-data',
+      limit: PUBLIC_DATA_MAX,
+      windowMs: PUBLIC_DATA_WINDOW_MS,
+      prefix,
+    });
     res.status(429).json({
       success: false,
       error: {
         code: 'PUBLIC_API_RATE_LIMITED',
         message: 'Limite de requisições atingido. Aguarde 15 minutos.',
+      },
+      meta: {
+        requestId: req.header('x-request-id') || 'rate-limited',
+        version: 'v1',
+        timestamp: new Date().toISOString(),
+      },
+    });
+  },
+});
+
+/**
+ * Public Export API: 300 req/15min por prefixo de API key (ou IP).
+ * Aplica-se ao endpoint de exportação bulk de placas:
+ *   /api/v1/public/placas/export
+ *   /api/public/placas/export
+ *
+ * Mais generoso que dados paginados (100) porque o WordPress/JetEngine
+ * pode re-fazer a chamada em cada renderização de página.
+ * Keyspace separado (pub_export: / ip_export:) para isolamento total.
+ */
+export const publicExportRateLimiter = rateLimit({
+  windowMs: PUBLIC_EXPORT_WINDOW_MS,
+  max: PUBLIC_EXPORT_MAX,
+  skip: () => process.env.NODE_ENV === 'test',
+  keyGenerator: publicExportKeyGenerator,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    logger.warn('[RateLimit] PublicExport — limite atingido', {
+      route: req.path,
+      method: req.method,
+      ip: req.ip,
+      origin: req.header('origin') || '-',
+      userAgent: req.header('user-agent') || '-',
+      limiter: 'public-export',
+      limit: PUBLIC_EXPORT_MAX,
+      windowMs: PUBLIC_EXPORT_WINDOW_MS,
+    });
+    res.status(429).json({
+      success: false,
+      error: {
+        code: 'PUBLIC_EXPORT_RATE_LIMITED',
+        message: 'Limite de exportações atingido. Aguarde 15 minutos.',
+      },
+      meta: {
+        requestId: req.header('x-request-id') || 'rate-limited',
+        version: 'v1',
+        timestamp: new Date().toISOString(),
+      },
+    });
+  },
+});
+
+/**
+ * Public Media API: 5000 req/15min por prefixo de API key (ou IP).
+ * Aplica-se a todas as rotas de imagem/asset público:
+ *   /api/v1/public/media/*
+ *   /api/public/placas/:id/imagem
+ *
+ * Limite alto porque uma página com 37 placas gera 37 requisições simultâneas.
+ * Keyspace separado (pub_media: / ip_media:) para não interferir no bucket de dados.
+ */
+export const publicMediaRateLimiter = rateLimit({
+  windowMs: PUBLIC_MEDIA_WINDOW_MS,
+  max: PUBLIC_MEDIA_MAX,
+  skip: () => process.env.NODE_ENV === 'test',
+  keyGenerator: publicMediaKeyGenerator,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    logger.warn('[RateLimit] PublicMedia — limite atingido', {
+      route: req.path,
+      method: req.method,
+      ip: req.ip,
+      origin: req.header('origin') || '-',
+      userAgent: req.header('user-agent') || '-',
+      limiter: 'public-media',
+      limit: PUBLIC_MEDIA_MAX,
+      windowMs: PUBLIC_MEDIA_WINDOW_MS,
+    });
+    res.status(429).json({
+      success: false,
+      error: {
+        code: 'PUBLIC_MEDIA_RATE_LIMITED',
+        message: 'Limite de requisições de mídia atingido. Aguarde 15 minutos.',
       },
       meta: {
         requestId: req.header('x-request-id') || 'rate-limited',

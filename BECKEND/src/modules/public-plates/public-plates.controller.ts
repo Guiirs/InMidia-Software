@@ -9,6 +9,10 @@ import * as service from './public-plates.service';
 // calling res.vary() here is a defence-in-depth fallback.
 const CACHE_CONTROL = 'private, max-age=60';
 
+// Export endpoint: conteúdo público mas isolado por API key via Vary.
+// stale-while-revalidate=300 permite que CDN sirva cache obsoleto enquanto revalida.
+const EXPORT_CACHE_CONTROL = 'public, max-age=60, stale-while-revalidate=300';
+
 export interface PublicPlatesRequest extends Request {
   publicApi?: PublicApiAuthContext;
 }
@@ -172,6 +176,44 @@ export async function getPlacaById(
     res.status(500).json(
       PublicErrorPresenter.error(
         { code: 'PUBLIC_API_INTERNAL_ERROR', message: 'Erro ao buscar placa.', status: 500 },
+        requestId(req),
+      ),
+    );
+  }
+}
+
+/** GET /api/public/placas/export (e /api/v1/public/placas/export) */
+export async function getPlacasExport(
+  req: PublicPlatesRequest,
+  res: Response,
+  _next: NextFunction,
+): Promise<void> {
+  try {
+    res.set('Cache-Control', EXPORT_CACHE_CONTROL);
+    res.vary('x-api-key');
+
+    const filters: service.PlacasFilter = {
+      cidade: strParam(req.query.cidade),
+      regiao: strParam(req.query.regiao),
+      categoria: strParam(req.query.categoria),
+      disponibilidade: strParam(req.query.disponibilidade),
+    };
+
+    const result = await service.listAllPlacas(empresaId(req), filters);
+
+    res.status(200).json({
+      success: true,
+      data: result.data,
+      meta: {
+        ...result.meta,
+        requestId: requestId(req),
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch {
+    res.status(500).json(
+      PublicErrorPresenter.error(
+        { code: 'PUBLIC_API_INTERNAL_ERROR', message: 'Erro ao exportar placas.', status: 500 },
         requestId(req),
       ),
     );

@@ -17,6 +17,7 @@ import {
 const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 24;
 const AVAILABILITY_FILTER_CANDIDATE_LIMIT = 500;
+const EXPORT_DEFAULT_MAX = 1000;
 
 const PLACA_PUBLIC_SELECT =
   '_id empresaId numero_placa endereco nomeDaRua localizacao mainImageUrl imagemPrincipal imagem imagens foto imageUrl fotoUrl storageKey imagemKey r2Key tipo tamanho statusComercial statusOperacional regiaoId latitude longitude updatedAt';
@@ -50,6 +51,11 @@ export interface PlacasListResult {
     pages: number;
   };
   meta?: { cacheHit: boolean; source: string };
+}
+
+export interface PlacasExportResult {
+  data: PublicPlacaPayload[];
+  meta: { total: number; cacheHit: boolean; source: string; exportedAt: string };
 }
 
 type NaturalSortablePlaca = Pick<PublicPlacaPayload, 'codigo' | 'slug'> & {
@@ -212,6 +218,92 @@ export async function listPlacas(
       pages: Math.ceil(total / limit),
     },
     meta: { cacheHit: false, source: 'projection' },
+  };
+}
+
+/**
+ * Retorna todas as placas públicas sem paginação, para consumo bulk (WordPress/JetEngine).
+ *
+ * Aplica os mesmos filtros de listPlacas, a mesma ordenação natural e o mesmo presenter.
+ * O máximo de itens é controlado por PUBLIC_EXPORT_MAX_ITEMS (default: 1000).
+ * Não expõe campos privados — usa toPublicPlaca() identicamente ao endpoint paginado.
+ */
+export async function listAllPlacas(
+  empresaId: string,
+  filters: PlacasFilter,
+): Promise<PlacasExportResult> {
+  const maxItems = (() => {
+    const env = parseInt(process.env.PUBLIC_EXPORT_MAX_ITEMS ?? '', 10);
+    return Number.isFinite(env) && env > 0 ? env : EXPORT_DEFAULT_MAX;
+  })();
+
+  const query: Record<string, unknown> = {
+    empresaId,
+    statusOperacional: { $ne: 'ARCHIVED' },
+  };
+
+  const regiaoIds = await resolveRegiaoIds(empresaId, filters.regiao, filters.cidade);
+  if (regiaoIds !== null) {
+    if (regiaoIds.length === 0) {
+      return { data: [], meta: { total: 0, cacheHit: false, source: 'projection', exportedAt: new Date().toISOString() } };
+    }
+    query.regiaoId = { $in: regiaoIds };
+  }
+
+  if (filters.categoria) {
+    query.tipo = { $regex: new RegExp(filters.categoria, 'i') };
+  }
+
+  const docs = await Placa.find(query)
+    .select(PLACA_PUBLIC_SELECT)
+    .populate(REGIAO_POPULATE)
+    .lean();
+
+  const sortedDocs = [...docs].sort((left: any, right: any) =>
+    comparePublicPlacasNaturally(
+      { codigo: left.numero_placa, slug: toSlug(left.numero_placa ?? ''), nome: left.numero_placa },
+      { codigo: right.numero_placa, slug: toSlug(right.numero_placa ?? ''), nome: right.numero_placa },
+    ),
+  );
+
+  const cappedDocs = sortedDocs.slice(0, maxItems);
+
+  const commercialStatuses = await commercialAvailabilityProjection.resolveManyPlateCommercialStatuses({
+    empresaId,
+    placaIds: cappedDocs.map((doc: any) => String(doc._id)),
+  });
+
+  let projected = cappedDocs
+    .map((doc: any) =>
+      toPublicPlaca({
+        ...doc,
+        commercialStatus: publicCommercialStatus(commercialStatuses.get(String(doc._id))!),
+      }),
+    )
+    .filter((placa) => {
+      if (!filters.disponibilidade) return true;
+      const expected = normalizeDisponibilidade(filters.disponibilidade);
+      return !expected || placa.disponibilidade === expected;
+    });
+
+  // Consistência listing/proxy: limpa hasImage quando proxy registrou NoSuchKey.
+  if (isImageCacheAvailable()) {
+    const idsComImagem = projected.filter((p) => p.hasImage && p.id).map((p) => p.id);
+    if (idsComImagem.length > 0) {
+      const notFoundIds = await batchIsImageNotFound(idsComImagem);
+      if (notFoundIds.size > 0) {
+        projected = projected.map((p) =>
+          notFoundIds.has(p.id)
+            ? { ...p, hasImage: false, imagemUrl: null, imagem: null, imagemMeta: null, jetImageUrl: null, jet_image_url: null, jetImage: null, image: null }
+            : p,
+        );
+      }
+    }
+  }
+
+  return {
+    data: projected,
+    meta: { total: projected.length, cacheHit: false, source: 'projection', exportedAt: new Date().toISOString() },
   };
 }
 

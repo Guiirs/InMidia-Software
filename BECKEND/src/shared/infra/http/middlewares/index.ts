@@ -20,4 +20,6 @@ export {
   sseRateLimiter,
   uploadRateLimiter,
   publicApiRateLimiter,
+  publicMediaRateLimiter,
+  publicExportRateLimiter,
 } from './rate-limit.middleware';

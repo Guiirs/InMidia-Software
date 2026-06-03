@@ -30,7 +30,7 @@ import { bootstrapGateway, getGatewayInfo } from '@gateway/index';
 import { blockAuthMiddleware } from '@security/block-auth/BlockAuthMiddleware';
 
 // Middlewares
-import { errorHandler, sanitize, globalRateLimiter, sseRateLimiter, uploadRateLimiter, publicApiRateLimiter } from './middlewares';
+import { errorHandler, sanitize, globalRateLimiter, sseRateLimiter, uploadRateLimiter, publicApiRateLimiter, publicMediaRateLimiter } from './middlewares';
 import { metricsMiddleware, getMetrics } from '@shared/infra/monitoring/metrics';
 import { renderSyncPrometheusMetrics } from '@modules/sync/sync.service';
 
@@ -264,8 +264,14 @@ app.use(helmet({
 // Global rate limiting (2000 req/min per IP) — internal API only
 app.use('/api', globalRateLimiter);
 
-// Public integration API — 100 req/15min per API key prefix.
-// Separate limiter: more restrictive than internal, keyed by API key not IP.
+// Public media (images/assets) — 5000 req/15min, applied FIRST.
+// Must precede publicApiRateLimiter so that plate image requests (37+ simultaneous
+// on a JetEngine page) are not counted against the data API quota.
+app.use('/api/v1/public/media', publicMediaRateLimiter);
+
+// Public integration API (JSON data) — 100 req/15min per API key prefix.
+// publicApiRateLimiter.skip() excludes /media/* and /**/imagem paths so that
+// image routes already covered above do not double-count here.
 app.use('/public', publicApiRateLimiter);
 app.use('/api/v1/public', publicApiRateLimiter);
 app.use('/api/public', publicApiRateLimiter);
