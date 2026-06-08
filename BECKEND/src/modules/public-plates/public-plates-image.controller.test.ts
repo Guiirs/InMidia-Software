@@ -23,13 +23,25 @@ import { getPlacaImagem } from './public-plates-image.controller';
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
-jest.mock('./public-plates.service', () => ({
-  getPlacaDocForImagePublic: jest.fn(),
+// The controller resolves the image key exclusively from plateMediaService.resolvePlateMainImage.
+// No legacy getPlacaDocForImagePublic — that function no longer exists.
+jest.mock('@modules/media/plate-media.service', () => ({
+  plateMediaService: {
+    resolvePlateMainImage: jest.fn(),
+  },
+}));
+
+jest.mock('@modules/placas/Placa', () => ({
+  __esModule: true,
+  default: {
+    findOne: jest.fn(),
+  },
 }));
 
 jest.mock('./image-cache.service', () => ({
   getImageMetaFromCache: jest.fn(),
   setImageMetaInCache: jest.fn(),
+  setImageNotFound: jest.fn().mockResolvedValue(undefined),
   isImageCacheAvailable: jest.fn(),
 }));
 
@@ -38,31 +50,28 @@ jest.mock('@shared/infra/storage/r2-client', () => ({
   getR2BucketName: jest.fn(),
 }));
 
-jest.mock('@shared/infra/storage/r2-key.helper', () => ({
-  extractR2Key: jest.fn(),
-}));
-
 jest.mock('@shared/container/logger', () => ({
   __esModule: true,
   default: { info: jest.fn(), warn: jest.fn(), debug: jest.fn(), error: jest.fn() },
 }));
 
-import * as service from './public-plates.service';
+import { plateMediaService } from '@modules/media/plate-media.service';
+import Placa from '@modules/placas/Placa';
 import * as imageCache from './image-cache.service';
 import * as r2ClientModule from '@shared/infra/storage/r2-client';
-import * as r2KeyHelper from '@shared/infra/storage/r2-key.helper';
 
-const mockedGetDoc = service.getPlacaDocForImagePublic as jest.MockedFunction<typeof service.getPlacaDocForImagePublic>;
+const mockedResolve = plateMediaService.resolvePlateMainImage as jest.MockedFunction<typeof plateMediaService.resolvePlateMainImage>;
+const mockedPlacaFindOne = Placa.findOne as jest.Mock;
 const mockedCacheGet = imageCache.getImageMetaFromCache as jest.MockedFunction<typeof imageCache.getImageMetaFromCache>;
 const mockedCacheSet = imageCache.setImageMetaInCache as jest.MockedFunction<typeof imageCache.setImageMetaInCache>;
 const mockedCacheAvail = imageCache.isImageCacheAvailable as jest.MockedFunction<typeof imageCache.isImageCacheAvailable>;
 const mockedGetR2Client = r2ClientModule.getR2Client as jest.MockedFunction<typeof r2ClientModule.getR2Client>;
 const mockedGetBucket = r2ClientModule.getR2BucketName as jest.MockedFunction<typeof r2ClientModule.getR2BucketName>;
-const mockedExtractKey = r2KeyHelper.extractR2Key as jest.MockedFunction<typeof r2KeyHelper.extractR2Key>;
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const PLACA_ID = '69d7d2a69b9a603e468392e3';
+const EMPRESA_ID = '69d7d2a69b9a603e468392e4';
 const R2_KEY = 'inmidia-uploads-sistema/cau-37.jpg';
 const ETAG = '"abc123def456abc123def456abc12345"';
 const LAST_MODIFIED = 'Thu, 01 Jan 2026 12:00:00 GMT';
@@ -78,9 +87,12 @@ const BASE_CACHED_META = {
   updatedAt: UPDATED_AT,
 };
 
-const BASE_DOC = {
-  imagemPrincipal: R2_KEY,
-  updatedAt: new Date(UPDATED_AT),
+const BASE_RESOLUTION = {
+  hasImage: true,
+  activeKey: R2_KEY,
+  version: UPDATED_AT,
+  mimeType: null as null,
+  source: 'plate-media' as const,
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -149,8 +161,12 @@ function mockR2GetObject(overrides: {
 beforeEach(() => {
   jest.clearAllMocks();
   mockedGetBucket.mockReturnValue('inmidia-uploads-sistema');
-  mockedExtractKey.mockReturnValue(R2_KEY);
-  mockedGetDoc.mockResolvedValue(BASE_DOC);
+  mockedResolve.mockResolvedValue(BASE_RESOLUTION);
+  mockedPlacaFindOne.mockReturnValue({
+    select: jest.fn().mockReturnValue({
+      lean: jest.fn().mockResolvedValue({ _id: PLACA_ID, empresaId: EMPRESA_ID, statusOperacional: 'DISPONIVEL' }),
+    }),
+  });
   mockedCacheAvail.mockReturnValue(true);
   mockedCacheGet.mockResolvedValue(null); // cache miss por padrão
   mockedCacheSet.mockResolvedValue(undefined);
@@ -164,7 +180,7 @@ describe('autenticação', () => {
     const req = makeReq(PLACA_ID);
     const res = makeRes();
     await getPlacaImagem(req, res, jest.fn());
-    expect(mockedGetDoc).toHaveBeenCalled();
+    expect(mockedResolve).toHaveBeenCalled();
   });
 
   it('não lê req.publicApi em nenhum path', async () => {
@@ -191,24 +207,22 @@ describe('segurança — query params bloqueados', () => {
     const req = makeReq(PLACA_ID, {}, { width: '800' });
     const res = makeRes();
     await getPlacaImagem(req, res, jest.fn());
-    expect(mockedGetDoc).toHaveBeenCalled();
+    expect(mockedResolve).toHaveBeenCalled();
   });
 });
 
 describe('segurança — traversal e extensão inválida', () => {
-  it('referencia invalida → 404 (traversal bloqueado)', async () => {
-    mockedExtractKey.mockReturnValue(null);
-    mockedGetDoc.mockResolvedValue({ imagemPrincipal: '../secrets/evil.jpg' });
-    mockedCacheGet.mockResolvedValue(null);
+  it('sem PlateMedia → 404 (nenhum fallback legado)', async () => {
+    // Path traversal is impossible since key comes from PlateMedia.activeKey, not user input.
+    mockedResolve.mockResolvedValue({ hasImage: false, activeKey: null, version: '', mimeType: null, source: 'none' });
     const req = makeReq(PLACA_ID);
     const res = makeRes();
     await getPlacaImagem(req, res, jest.fn());
     expect(res._status).toBe(404);
   });
 
-  it('payload de erro não contém r2.dev', async () => {
-    mockedExtractKey.mockReturnValue(null);
-    mockedGetDoc.mockResolvedValue({ imagemPrincipal: 'https://pub-xyz.r2.dev/arquivo.exe' });
+  it('payload de erro não contém URLs internas', async () => {
+    mockedResolve.mockResolvedValue({ hasImage: false, activeKey: null, version: '', mimeType: null, source: 'none' });
     const req = makeReq(PLACA_ID);
     const res = makeRes();
     await getPlacaImagem(req, res, jest.fn());
@@ -285,12 +299,12 @@ describe('ETag e cache condicional', () => {
     expect(res._headers['cache-control']).toContain('public');
   });
 
-  it('304 não chama MongoDB (Redis hit)', async () => {
+  it('304 não chama PlateMedia (Redis hit)', async () => {
     mockedCacheGet.mockResolvedValue(BASE_CACHED_META);
     const req = makeReq(PLACA_ID, { 'if-none-match': ETAG });
     const res = makeRes();
     await getPlacaImagem(req, res, jest.fn());
-    expect(mockedGetDoc).not.toHaveBeenCalled();
+    expect(mockedResolve).not.toHaveBeenCalled();
   });
 });
 
@@ -345,7 +359,7 @@ describe('Last-Modified e cache condicional', () => {
 // ── Testes de Redis cache ─────────────────────────────────────────────────────
 
 describe('Redis cache', () => {
-  it('cache hit: não chama MongoDB', async () => {
+  it('cache hit: não chama PlateMedia', async () => {
     mockedCacheGet.mockResolvedValue(BASE_CACHED_META);
     const stream = makeReadableStream();
     stream.pipe = jest.fn(() => stream) as any;
@@ -356,28 +370,20 @@ describe('Redis cache', () => {
     const req = makeReq(PLACA_ID);
     const res = makeRes();
     await getPlacaImagem(req, res, jest.fn());
-    expect(mockedGetDoc).not.toHaveBeenCalled();
+    expect(mockedResolve).not.toHaveBeenCalled();
   });
 
-  it('cache miss: chama MongoDB e depois R2', async () => {
+  it('cache miss: chama PlateMedia para resolver activeKey', async () => {
     mockedCacheGet.mockResolvedValue(null);
     const req = makeReq(PLACA_ID);
     const res = makeRes();
     await getPlacaImagem(req, res, jest.fn());
-    expect(mockedGetDoc).toHaveBeenCalledWith(PLACA_ID);
+    expect(mockedResolve).toHaveBeenCalledWith(PLACA_ID, EMPRESA_ID);
   });
 
-  it('usa imagens[].url quando segue o contrato do painel interno', async () => {
-    const galleryKey = 'empresas/empresa-1/plates/placa-1/main/img-1.webp';
-    mockedExtractKey.mockImplementation((value: string) => (
-      value.includes('img-1.webp') ? galleryKey : null
-    ));
-    mockedGetDoc.mockResolvedValue({
-      imagemPrincipal: null,
-      imagem: null,
-      imagens: [{ url: 'https://pub-storage.r2.dev/empresas/empresa-1/plates/placa-1/main/img-1.webp', isMain: true }],
-      updatedAt: new Date(UPDATED_AT),
-    });
+  it('activeKey de PlateMedia usado diretamente como R2 key', async () => {
+    const canonicalKey = 'empresas/empresa-1/plates/placa-1/main/img-1.webp';
+    mockedResolve.mockResolvedValue({ hasImage: true, activeKey: canonicalKey, version: '111', mimeType: null, source: 'plate-media' });
     mockedCacheGet.mockResolvedValue(null);
 
     const stream = makeReadableStream();
@@ -394,15 +400,12 @@ describe('Redis cache', () => {
     const res = makeRes();
     await getPlacaImagem(req, res, jest.fn());
 
-    expect(send.mock.calls[0][0].input.Key).toBe(galleryKey);
+    expect(send.mock.calls[0][0].input.Key).toBe(canonicalKey);
   });
 
-  it('URL completa salva resolve para a key sem expor bucket', async () => {
-    mockedExtractKey.mockReturnValue('empresas/empresa-1/plates/placa-1/main/img-2.jpg');
-    mockedGetDoc.mockResolvedValue({
-      imagemPrincipal: 'https://pub-storage.r2.dev/empresas/empresa-1/plates/placa-1/main/img-2.jpg',
-      updatedAt: new Date(UPDATED_AT),
-    });
+  it('activeKey nunca expõe bucket ou URL pública no response', async () => {
+    const canonicalKey = 'empresas/empresa-1/plates/placa-1/main/img-2.jpg';
+    mockedResolve.mockResolvedValue({ hasImage: true, activeKey: canonicalKey, version: '222', mimeType: null, source: 'plate-media' });
     mockedCacheGet.mockResolvedValue(null);
 
     const stream = makeReadableStream();
@@ -419,14 +422,13 @@ describe('Redis cache', () => {
     const res = makeRes();
     await getPlacaImagem(req, res, jest.fn());
 
-    expect(send.mock.calls[0][0].input.Key).toBe('empresas/empresa-1/plates/placa-1/main/img-2.jpg');
+    expect(send.mock.calls[0][0].input.Key).toBe(canonicalKey);
     expect(JSON.stringify(res._body)).not.toContain('pub-storage.r2.dev');
   });
 
   it('placas diferentes usam keys diferentes no endpoint publico', async () => {
     const firstId = '69d7d2a69b9a603e468392e3';
     const secondId = '69d7d2a69b9a603e468392e4';
-    mockedExtractKey.mockImplementation((value: string) => value);
     mockedCacheGet.mockResolvedValue(null);
 
     const stream = makeReadableStream();
@@ -438,9 +440,9 @@ describe('Redis cache', () => {
       ContentType: 'image/jpeg',
     });
     mockedGetR2Client.mockReturnValue({ send } as any);
-    mockedGetDoc
-      .mockResolvedValueOnce({ imagemPrincipal: 'empresas/e1/plates/p1/main/a.jpg', updatedAt: new Date(UPDATED_AT) })
-      .mockResolvedValueOnce({ imagemPrincipal: 'empresas/e1/plates/p2/main/b.jpg', updatedAt: new Date(UPDATED_AT) });
+    mockedResolve
+      .mockResolvedValueOnce({ hasImage: true, activeKey: 'empresas/e1/plates/p1/main/a.jpg', version: '1', mimeType: null, source: 'plate-media' })
+      .mockResolvedValueOnce({ hasImage: true, activeKey: 'empresas/e1/plates/p2/main/b.jpg', version: '2', mimeType: null, source: 'plate-media' });
 
     await getPlacaImagem(makeReq(firstId), makeRes(), jest.fn());
     await getPlacaImagem(makeReq(secondId), makeRes(), jest.fn());
@@ -472,13 +474,12 @@ describe('Redis cache', () => {
     );
   });
 
-  it('Redis indisponível: fallback para MongoDB + R2', async () => {
+  it('Redis indisponível: fallback para PlateMedia + R2', async () => {
     mockedCacheAvail.mockReturnValue(false);
     const req = makeReq(PLACA_ID);
     const res = makeRes();
     await getPlacaImagem(req, res, jest.fn());
-    // MongoDB deve ter sido chamado mesmo sem Redis
-    expect(mockedGetDoc).toHaveBeenCalled();
+    expect(mockedResolve).toHaveBeenCalled();
   });
 
   it('Redis indisponível: resposta normal (sem erro)', async () => {
@@ -603,16 +604,16 @@ describe('CDN headers', () => {
 // ── Testes de 404 e erros ─────────────────────────────────────────────────────
 
 describe('erros', () => {
-  it('placa inexistente → 404', async () => {
-    mockedGetDoc.mockResolvedValue(null);
+  it('placa sem PlateMedia → 404', async () => {
+    mockedResolve.mockResolvedValue({ hasImage: false, activeKey: null, version: '', mimeType: null, source: 'none' });
     const req = makeReq(PLACA_ID);
     const res = makeRes();
     await getPlacaImagem(req, res, jest.fn());
     expect(res._status).toBe(404);
   });
 
-  it('placa sem imagem → 404', async () => {
-    mockedGetDoc.mockResolvedValue({ imagemPrincipal: null, imagem: null, imagens: [] });
+  it('PlateMedia sem activeKey → 404 (sem fallback legado)', async () => {
+    mockedResolve.mockResolvedValue({ hasImage: false, activeKey: null, version: '', mimeType: null, source: 'none' });
     const req = makeReq(PLACA_ID);
     const res = makeRes();
     await getPlacaImagem(req, res, jest.fn());
@@ -657,14 +658,16 @@ describe('erros', () => {
     expect(res._status).toBe(503);
   });
 
-  it('erros nunca expõem stack trace', async () => {
-    mockedGetDoc.mockRejectedValue(new Error('db connection failed with password: secret'));
+  it('erros internos nunca expõem dados sensíveis (PlateMedia falha → 404 limpo)', async () => {
+    // resolvePlateMainImage silently catches DB errors — returns hasImage:false.
+    // The response body must never contain stack traces or internal details.
+    mockedResolve.mockResolvedValue({ hasImage: false, activeKey: null, version: '', mimeType: null, source: 'none' });
     const req = makeReq(PLACA_ID);
     const res = makeRes();
     await getPlacaImagem(req, res, jest.fn());
-    expect(JSON.stringify(res._body)).not.toContain('db connection');
-    expect(JSON.stringify(res._body)).not.toContain('secret');
+    expect(res._status).toBe(404);
     expect(JSON.stringify(res._body)).not.toContain('stack');
+    expect(JSON.stringify(res._body)).not.toContain('password');
   });
 });
 
@@ -747,8 +750,8 @@ describe('endpoint canônico — /api/v1/public/media/plates/:id/main', () => {
   });
 
   it('JSON público não vaza key, bucket, R2 ou campos internos nos erros', async () => {
-    mockedGetDoc.mockResolvedValue({ imagemPrincipal: 'https://pub-xyz.r2.dev/inmidia/secret.jpg' });
-    mockedExtractKey.mockReturnValue(null);
+    // Sem PlateMedia → 404. A key R2 nunca aparece no body.
+    mockedResolve.mockResolvedValue({ hasImage: false, activeKey: null, version: '', mimeType: null, source: 'none' });
     const req = makeReq(PLACA_ID);
     const res = makeRes();
     await getPlacaImagem(req, res, jest.fn());
@@ -758,5 +761,6 @@ describe('endpoint canônico — /api/v1/public/media/plates/:id/main', () => {
     expect(body).not.toContain('cloudflarestorage');
     expect(body).not.toContain('inmidia-uploads-sistema');
     expect(body).not.toContain('secret');
+    expect(body).not.toContain('activeKey');
   });
 });

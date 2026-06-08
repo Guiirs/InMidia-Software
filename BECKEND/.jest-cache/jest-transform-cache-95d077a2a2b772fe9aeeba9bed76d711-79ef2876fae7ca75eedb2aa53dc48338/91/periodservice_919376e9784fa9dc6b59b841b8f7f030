@@ -1,0 +1,29 @@
+895682f355560c8c5503c738feab7df7
+"use strict";
+/**
+ * Period Service - DEPRECATED
+ * Este arquivo foi refatorado e movido para src/shared/services/period/
+ * Mantido apenas para compatibilidade com imports antigos
+ */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const period_1 = __importDefault(require("../services/period"));
+__exportStar(require("../services/period"), exports);
+exports.default = period_1.default;
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiRzpcXElubWlkaWEgVjRcXEJFQ0tFTkRcXHNyY1xcc2hhcmVkXFxjb250YWluZXJcXHBlcmlvZC5zZXJ2aWNlLnRzIiwibWFwcGluZ3MiOiI7QUFBQTs7OztHQUlHOzs7Ozs7Ozs7Ozs7Ozs7Ozs7O0FBRUgsZ0VBQStDO0FBQy9DLHFEQUFtQztBQUNuQyxrQkFBZSxnQkFBYSxDQUFDIiwibmFtZXMiOltdLCJzb3VyY2VzIjpbIkc6XFxJbm1pZGlhIFY0XFxCRUNLRU5EXFxzcmNcXHNoYXJlZFxcY29udGFpbmVyXFxwZXJpb2Quc2VydmljZS50cyJdLCJzb3VyY2VzQ29udGVudCI6WyIvKipcclxuICogUGVyaW9kIFNlcnZpY2UgLSBERVBSRUNBVEVEXHJcbiAqIEVzdGUgYXJxdWl2byBmb2kgcmVmYXRvcmFkbyBlIG1vdmlkbyBwYXJhIHNyYy9zaGFyZWQvc2VydmljZXMvcGVyaW9kL1xyXG4gKiBNYW50aWRvIGFwZW5hcyBwYXJhIGNvbXBhdGliaWxpZGFkZSBjb20gaW1wb3J0cyBhbnRpZ29zXHJcbiAqL1xyXG5cclxuaW1wb3J0IFBlcmlvZFNlcnZpY2UgZnJvbSAnLi4vc2VydmljZXMvcGVyaW9kJztcclxuZXhwb3J0ICogZnJvbSAnLi4vc2VydmljZXMvcGVyaW9kJztcclxuZXhwb3J0IGRlZmF1bHQgUGVyaW9kU2VydmljZTtcclxuIl0sInZlcnNpb24iOjN9

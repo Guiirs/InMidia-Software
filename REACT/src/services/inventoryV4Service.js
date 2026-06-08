@@ -20,19 +20,12 @@ function boardToCanonical(raw) {
   const coords = normalizeBoardCoordinates(raw);
   const endereco = raw.endereco ?? raw.nomeDaRua ?? (typeof raw.localizacao === 'string' ? raw.localizacao : '');
   const rawImages = Array.isArray(raw.images) ? raw.images : Array.isArray(raw.imagens) ? raw.imagens : [];
-  const mainImage = raw.mainImage
-    ?? rawImages.find((image) => image?.isMain)
-    ?? rawImages.find((image) => image?.category === 'MAIN')
+  // Fonte canônica: imagemUrl/mainImageUrl com ?v=. Fallback em ordem de prioridade:
+  // 1. imagemUrl/mainImageUrl (presenter) 2. images[].isMain (canonical) 3. imagemPrincipal (legacy)
+  const mainFromImages = rawImages.find((img) => img.isMain)?.publicUrl
+    ?? rawImages.find((img) => img.isMain)?.url
     ?? null;
-  const imagemPrincipal = raw.mainImageUrl
-    ?? raw.imagemPrincipal
-    ?? mainImage?.publicUrl
-    ?? mainImage?.url
-    ?? raw.imagem
-    ?? raw.foto
-    ?? raw.imageUrl
-    ?? raw.imagemUrl
-    ?? null;
+  const imagemPrincipal = raw.imagemUrl ?? raw.mainImageUrl ?? mainFromImages ?? raw.imagemPrincipal ?? null;
   const imageStatus = imagemPrincipal ? 'AVAILABLE' : 'MISSING';
 
   return {
@@ -233,10 +226,7 @@ export async function createBoard(boardData = {}) {
   if (typeof boardData.tamanho === 'string') data.tamanho = boardData.tamanho;
   // Observações
   if (typeof boardData.notes === 'string') data.notes = boardData.notes;
-  // Imagem
-  if (typeof boardData.imageUrl === 'string' && !boardData.imageUrl.startsWith('blob:')) {
-    data.imagem = boardData.imageUrl;
-  }
+  // Imagem não é enviada na criação — usar uploadBoardImage() após criar a placa.
 
   const payload = await requestV4('post', '/inventory/boards', {
     operation: 'inventory.board.create',

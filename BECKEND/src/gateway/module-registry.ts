@@ -55,6 +55,7 @@ import mediaRoutes from '@modules/media/media.routes';
 import publicPlatesRoutes from '@modules/public-plates/public-plates.routes';
 import diagnosticsRoutes from '@modules/diagnostics/diagnostics.routes';
 import commercialProjectionRoutes from '@modules/commercial-projection/commercial-projection.routes';
+import organizationRoutes from '@modules/organization/organization.routes';
 
 const disabledRouter = Router();
 const whatsappRoutes: Router = FEATURES.whatsapp
@@ -483,6 +484,15 @@ export const modules: ModuleDefinition[] = [
     router: commercialProjectionRoutes,
     description: 'Commercial Projection V4.1: fonte canonica comercial por placa — status, contrato, cliente, valor',
     domain: 'sales',
+    version: '4.1.0',
+    enabled: true,
+  },
+  {
+    name: 'organization-v1',
+    basePath: '/api/v1/organization',
+    router: organizationRoutes,
+    description: 'Organization Domain V4.1: multi-tenant foundation — org, membros, convites e RBAC por tenant',
+    domain: 'core',
     version: '4.1.0',
     enabled: true,
   },

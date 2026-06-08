@@ -6,7 +6,7 @@ import Placa from '@modules/placas/Placa';
 import type { IMediaAsset, MediaCategory, MediaOwnerType } from '@database/schemas/mediaAsset.schema';
 import { mediaRepository, MediaRepository } from './media.repository';
 import { parseJsonLike, UploadMediaDTO, validateUploadFile } from './media.dto';
-import { resolvePlacaImageReference } from './placa-image-reference.resolver';
+import { plateMediaService } from './plate-media.service';
 
 type PublicMediaAsset = Omit<IMediaAsset, 'r2Key'> & {
   _id?: unknown;
@@ -239,34 +239,44 @@ export class MediaService {
     if (asset.isMain) {
       await Placa.updateOne(
         { _id: asset.ownerId, empresaId: asset.empresaId },
-        {
-          $set: {
-            imagemPrincipal: asset.r2Key,
-            imagem: asset.r2Key,
-            'imagens.$[img].isMain': true,
-          },
-        },
+        { $set: { 'imagens.$[img].isMain': true } },
         { arrayFilters: [{ 'img.id': String(asset._id) }] },
       );
+      // Fonte canônica única: PlateMedia.activeKey — nenhum campo legado é escrito.
+      await plateMediaService.setActivePlateImage(String(asset.ownerId), String(asset.empresaId), {
+        key: asset.r2Key,
+        mimeType: asset.mimeType ?? null,
+        size: asset.size ?? null,
+        source: 'upload',
+      });
     }
   }
 
   private async removePlateMedia(asset: any): Promise<void> {
     const plate = await Placa.findOne({ _id: asset.ownerId, empresaId: asset.empresaId }).lean();
     if (!plate) return;
-    const remaining = ((plate as any).imagens ?? []).filter((image: any) => String(image.id) !== String(asset._id) && String(image._id) !== String(asset._id));
+    const remaining = ((plate as any).imagens ?? []).filter(
+      (image: any) => String(image.id) !== String(asset._id) && String(image._id) !== String(asset._id),
+    );
     const fallbackMain = remaining.find((image: any) => image.isMain) ?? remaining[0] ?? null;
-    const fallbackReference = resolvePlacaImageReference({ mainImage: fallbackMain });
+    // Extrai a R2 key diretamente do sub-documento — sem resolver campos legados.
+    const fallbackKey: string | null = fallbackMain?.key ?? fallbackMain?.r2Key ?? null;
+
+    // Atualiza a galeria; nenhum campo legado de imagem principal é escrito.
     await Placa.updateOne(
       { _id: asset.ownerId, empresaId: asset.empresaId },
-      {
-        $set: {
-          imagens: remaining,
-          imagemPrincipal: fallbackReference.storageKey,
-          imagem: fallbackReference.storageKey,
-        },
-      },
+      { $set: { imagens: remaining } },
     );
+
+    // Atualiza PlateMedia com o fallback ou limpa se não restou imagem.
+    if (fallbackKey) {
+      await plateMediaService.setActivePlateImage(String(asset.ownerId), String(asset.empresaId), {
+        key: fallbackKey,
+        source: 'repair',
+      });
+    } else {
+      await plateMediaService.clearActivePlateImage(String(asset.ownerId), String(asset.empresaId));
+    }
   }
 }
 

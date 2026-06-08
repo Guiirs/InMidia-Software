@@ -1,0 +1,1 @@
+{"file":"G:\\Inmidia V4\\BECKEND\\src\\modules\\governance\\index.ts","mappings":";;;;;;;;;;;;;;;;AAAA,mEAAiD;AACjD,gEAA8C","names":[],"sources":["G:\\Inmidia V4\\BECKEND\\src\\modules\\governance\\index.ts"],"sourcesContent":["export * from './contracts/governance.contracts';\nexport * from './services/governance.service';\n"],"version":3}

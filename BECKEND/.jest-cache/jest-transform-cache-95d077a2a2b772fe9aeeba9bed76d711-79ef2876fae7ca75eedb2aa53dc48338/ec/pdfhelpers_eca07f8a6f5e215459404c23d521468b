@@ -1,0 +1,74 @@
+5621f9e5cc201ba1ed2cd40e7b282e6f
+"use strict";
+/**
+ * PDF Service - Funções Auxiliares
+ * Formatação de datas, valores e geração de ranges
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.formatDate = formatDate;
+exports.formatShortDate = formatShortDate;
+exports.formatMoney = formatMoney;
+exports.generateDateRange = generateDateRange;
+exports.hasEnoughSpace = hasEnoughSpace;
+exports.buildFullAddress = buildFullAddress;
+exports.buildContactInfo = buildContactInfo;
+/**
+ * Formata data para DD/MM/YYYY
+ */
+function formatDate(date) {
+    if (!date)
+        return 'N/A';
+    const d = new Date(date);
+    return d.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+}
+/**
+ * Formata data curta para DD/MM
+ */
+function formatShortDate(date) {
+    if (!date)
+        return '';
+    const d = new Date(date);
+    return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+/**
+ * Formata valor monetário para R$ X.XXX,XX
+ */
+function formatMoney(value) {
+    if (value === null || value === undefined)
+        return 'R$ 0,00';
+    return `R$ ${value.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
+}
+/**
+ * Gera array de datas entre início e fim (máximo 31 dias)
+ */
+function generateDateRange(dataInicio, dataFim) {
+    const dates = [];
+    const timezone = process.env.TIMEZONE_OFFSET || '-03:00';
+    const start = new Date(dataInicio + 'T00:00:00' + timezone);
+    const end = new Date(dataFim + 'T00:00:00' + timezone);
+    let current = new Date(start);
+    while (current <= end && dates.length < 31) {
+        dates.push(new Date(current));
+        current.setDate(current.getDate() + 1);
+    }
+    return dates;
+}
+/**
+ * Verifica se há espaço suficiente na página
+ */
+function hasEnoughSpace(currentY, requiredHeight, pageHeight, margin) {
+    return currentY + requiredHeight <= pageHeight - margin - 100;
+}
+/**
+ * Monta endereço completo a partir de partes
+ */
+function buildFullAddress(endereco, bairro, cidade) {
+    return [endereco, bairro, cidade].filter(Boolean).join(', ') || 'N/A';
+}
+/**
+ * Monta informações de contato (CNPJ + Telefone)
+ */
+function buildContactInfo(cnpj, telefone) {
+    return `${cnpj || 'N/A'}\n${telefone || ''}`;
+}
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiRzpcXElubWlkaWEgVjRcXEJFQ0tFTkRcXHNyY1xcc2hhcmVkXFxzZXJ2aWNlc1xccGRmXFxwZGYuaGVscGVycy50cyIsIm1hcHBpbmdzIjoiO0FBQUE7OztHQUdHOztBQUtILGdDQUlDO0FBS0QsMENBSUM7QUFLRCxrQ0FHQztBQUtELDhDQWFDO0FBS0Qsd0NBRUM7QUFLRCw0Q0FFQztBQUtELDRDQUVDO0FBL0REOztHQUVHO0FBQ0gsU0FBZ0IsVUFBVSxDQUFDLElBQVM7SUFDbEMsSUFBSSxDQUFDLElBQUk7UUFBRSxPQUFPLEtBQUssQ0FBQztJQUN4QixNQUFNLENBQUMsR0FBRyxJQUFJLElBQUksQ0FBQyxJQUFJLENBQUMsQ0FBQztJQUN6QixPQUFPLENBQUMsQ0FBQyxrQkFBa0IsQ0FBQyxPQUFPLEVBQUUsRUFBRSxRQUFRLEVBQUUsS0FBSyxFQUFFLENBQUMsQ0FBQztBQUM1RCxDQUFDO0FBRUQ7O0dBRUc7QUFDSCxTQUFnQixlQUFlLENBQUMsSUFBUztJQUN2QyxJQUFJLENBQUMsSUFBSTtRQUFFLE9BQU8sRUFBRSxDQUFDO0lBQ3JCLE1BQU0sQ0FBQyxHQUFHLElBQUksSUFBSSxDQUFDLElBQUksQ0FBQyxDQUFDO0lBQ3pCLE9BQU8sR0FBRyxNQUFNLENBQUMsQ0FBQyxDQUFDLFVBQVUsRUFBRSxDQUFDLENBQUMsUUFBUSxDQUFDLENBQUMsRUFBRSxHQUFHLENBQUMsSUFBSSxNQUFNLENBQUMsQ0FBQyxDQUFDLFdBQVcsRUFBRSxHQUFHLENBQUMsQ0FBQyxDQUFDLFFBQVEsQ0FBQyxDQUFDLEVBQUUsR0FBRyxDQUFDLEVBQUUsQ0FBQztBQUN0RyxDQUFDO0FBRUQ7O0dBRUc7QUFDSCxTQUFnQixXQUFXLENBQUMsS0FBZ0M7SUFDMUQsSUFBSSxLQUFLLEtBQUssSUFBSSxJQUFJLEtBQUssS0FBSyxTQUFTO1FBQUUsT0FBTyxTQUFTLENBQUM7SUFDNUQsT0FBTyxNQUFNLEtBQUssQ0FBQyxPQUFPLENBQUMsQ0FBQyxDQUFDLENBQUMsT0FBTyxDQUFDLEdBQUcsRUFBRSxHQUFHLENBQUMsQ0FBQyxPQUFPLENBQUMsdUJBQXVCLEVBQUUsR0FBRyxDQUFDLEVBQUUsQ0FBQztBQUMxRixDQUFDO0FBRUQ7O0dBRUc7QUFDSCxTQUFnQixpQkFBaUIsQ0FBQyxVQUFrQixFQUFFLE9BQWU7SUFDbkUsTUFBTSxLQUFLLEdBQVcsRUFBRSxDQUFDO0lBQ3pCLE1BQU0sUUFBUSxHQUFHLE9BQU8sQ0FBQyxHQUFHLENBQUMsZUFBZSxJQUFJLFFBQVEsQ0FBQztJQUN6RCxNQUFNLEtBQUssR0FBRyxJQUFJLElBQUksQ0FBQyxVQUFVLEdBQUcsV0FBVyxHQUFHLFFBQVEsQ0FBQyxDQUFDO0lBQzVELE1BQU0sR0FBRyxHQUFHLElBQUksSUFBSSxDQUFDLE9BQU8sR0FBRyxXQUFXLEdBQUcsUUFBUSxDQUFDLENBQUM7SUFFdkQsSUFBSSxPQUFPLEdBQUcsSUFBSSxJQUFJLENBQUMsS0FBSyxDQUFDLENBQUM7SUFDOUIsT0FBTyxPQUFPLElBQUksR0FBRyxJQUFJLEtBQUssQ0FBQyxNQUFNLEdBQUcsRUFBRSxFQUFFLENBQUM7UUFDM0MsS0FBSyxDQUFDLElBQUksQ0FBQyxJQUFJLElBQUksQ0FBQyxPQUFPLENBQUMsQ0FBQyxDQUFDO1FBQzlCLE9BQU8sQ0FBQyxPQUFPLENBQUMsT0FBTyxDQUFDLE9BQU8sRUFBRSxHQUFHLENBQUMsQ0FBQyxDQUFDO0lBQ3pDLENBQUM7SUFFRCxPQUFPLEtBQUssQ0FBQztBQUNmLENBQUM7QUFFRDs7R0FFRztBQUNILFNBQWdCLGNBQWMsQ0FBQyxRQUFnQixFQUFFLGNBQXNCLEVBQUUsVUFBa0IsRUFBRSxNQUFjO0lBQ3pHLE9BQU8sUUFBUSxHQUFHLGNBQWMsSUFBSSxVQUFVLEdBQUcsTUFBTSxHQUFHLEdBQUcsQ0FBQztBQUNoRSxDQUFDO0FBRUQ7O0dBRUc7QUFDSCxTQUFnQixnQkFBZ0IsQ0FBQyxRQUFpQixFQUFFLE1BQWUsRUFBRSxNQUFlO0lBQ2xGLE9BQU8sQ0FBQyxRQUFRLEVBQUUsTUFBTSxFQUFFLE1BQU0sQ0FBQyxDQUFDLE1BQU0sQ0FBQyxPQUFPLENBQUMsQ0FBQyxJQUFJLENBQUMsSUFBSSxDQUFDLElBQUksS0FBSyxDQUFDO0FBQ3hFLENBQUM7QUFFRDs7R0FFRztBQUNILFNBQWdCLGdCQUFnQixDQUFDLElBQWEsRUFBRSxRQUFpQjtJQUMvRCxPQUFPLEdBQUcsSUFBSSxJQUFJLEtBQUssS0FBSyxRQUFRLElBQUksRUFBRSxFQUFFLENBQUM7QUFDL0MsQ0FBQyIsIm5hbWVzIjpbXSwic291cmNlcyI6WyJHOlxcSW5taWRpYSBWNFxcQkVDS0VORFxcc3JjXFxzaGFyZWRcXHNlcnZpY2VzXFxwZGZcXHBkZi5oZWxwZXJzLnRzIl0sInNvdXJjZXNDb250ZW50IjpbIi8qKlxyXG4gKiBQREYgU2VydmljZSAtIEZ1bsOnw7VlcyBBdXhpbGlhcmVzXHJcbiAqIEZvcm1hdGHDp8OjbyBkZSBkYXRhcywgdmFsb3JlcyBlIGdlcmHDp8OjbyBkZSByYW5nZXNcclxuICovXHJcblxyXG4vKipcclxuICogRm9ybWF0YSBkYXRhIHBhcmEgREQvTU0vWVlZWVxyXG4gKi9cclxuZXhwb3J0IGZ1bmN0aW9uIGZvcm1hdERhdGUoZGF0ZTogYW55KTogc3RyaW5nIHtcclxuICBpZiAoIWRhdGUpIHJldHVybiAnTi9BJztcclxuICBjb25zdCBkID0gbmV3IERhdGUoZGF0ZSk7XHJcbiAgcmV0dXJuIGQudG9Mb2NhbGVEYXRlU3RyaW5nKCdwdC1CUicsIHsgdGltZVpvbmU6ICdVVEMnIH0pO1xyXG59XHJcblxyXG4vKipcclxuICogRm9ybWF0YSBkYXRhIGN1cnRhIHBhcmEgREQvTU1cclxuICovXHJcbmV4cG9ydCBmdW5jdGlvbiBmb3JtYXRTaG9ydERhdGUoZGF0ZTogYW55KTogc3RyaW5nIHtcclxuICBpZiAoIWRhdGUpIHJldHVybiAnJztcclxuICBjb25zdCBkID0gbmV3IERhdGUoZGF0ZSk7XHJcbiAgcmV0dXJuIGAke1N0cmluZyhkLmdldFVUQ0RhdGUoKSkucGFkU3RhcnQoMiwgJzAnKX0vJHtTdHJpbmcoZC5nZXRVVENNb250aCgpICsgMSkucGFkU3RhcnQoMiwgJzAnKX1gO1xyXG59XHJcblxyXG4vKipcclxuICogRm9ybWF0YSB2YWxvciBtb25ldMOhcmlvIHBhcmEgUiQgWC5YWFgsWFhcclxuICovXHJcbmV4cG9ydCBmdW5jdGlvbiBmb3JtYXRNb25leSh2YWx1ZTogbnVtYmVyIHwgbnVsbCB8IHVuZGVmaW5lZCk6IHN0cmluZyB7XHJcbiAgaWYgKHZhbHVlID09PSBudWxsIHx8IHZhbHVlID09PSB1bmRlZmluZWQpIHJldHVybiAnUiQgMCwwMCc7XHJcbiAgcmV0dXJuIGBSJCAke3ZhbHVlLnRvRml4ZWQoMikucmVwbGFjZSgnLicsICcsJykucmVwbGFjZSgvXFxCKD89KFxcZHszfSkrKD8hXFxkKSkvZywgJy4nKX1gO1xyXG59XHJcblxyXG4vKipcclxuICogR2VyYSBhcnJheSBkZSBkYXRhcyBlbnRyZSBpbsOtY2lvIGUgZmltIChtw6F4aW1vIDMxIGRpYXMpXHJcbiAqL1xyXG5leHBvcnQgZnVuY3Rpb24gZ2VuZXJhdGVEYXRlUmFuZ2UoZGF0YUluaWNpbzogc3RyaW5nLCBkYXRhRmltOiBzdHJpbmcpOiBEYXRlW10ge1xyXG4gIGNvbnN0IGRhdGVzOiBEYXRlW10gPSBbXTtcclxuICBjb25zdCB0aW1lem9uZSA9IHByb2Nlc3MuZW52LlRJTUVaT05FX09GRlNFVCB8fCAnLTAzOjAwJztcclxuICBjb25zdCBzdGFydCA9IG5ldyBEYXRlKGRhdGFJbmljaW8gKyAnVDAwOjAwOjAwJyArIHRpbWV6b25lKTtcclxuICBjb25zdCBlbmQgPSBuZXcgRGF0ZShkYXRhRmltICsgJ1QwMDowMDowMCcgKyB0aW1lem9uZSk7XHJcbiAgXHJcbiAgbGV0IGN1cnJlbnQgPSBuZXcgRGF0ZShzdGFydCk7XHJcbiAgd2hpbGUgKGN1cnJlbnQgPD0gZW5kICYmIGRhdGVzLmxlbmd0aCA8IDMxKSB7XHJcbiAgICBkYXRlcy5wdXNoKG5ldyBEYXRlKGN1cnJlbnQpKTtcclxuICAgIGN1cnJlbnQuc2V0RGF0ZShjdXJyZW50LmdldERhdGUoKSArIDEpO1xyXG4gIH1cclxuICBcclxuICByZXR1cm4gZGF0ZXM7XHJcbn1cclxuXHJcbi8qKlxyXG4gKiBWZXJpZmljYSBzZSBow6EgZXNwYcOnbyBzdWZpY2llbnRlIG5hIHDDoWdpbmFcclxuICovXHJcbmV4cG9ydCBmdW5jdGlvbiBoYXNFbm91Z2hTcGFjZShjdXJyZW50WTogbnVtYmVyLCByZXF1aXJlZEhlaWdodDogbnVtYmVyLCBwYWdlSGVpZ2h0OiBudW1iZXIsIG1hcmdpbjogbnVtYmVyKTogYm9vbGVhbiB7XHJcbiAgcmV0dXJuIGN1cnJlbnRZICsgcmVxdWlyZWRIZWlnaHQgPD0gcGFnZUhlaWdodCAtIG1hcmdpbiAtIDEwMDtcclxufVxyXG5cclxuLyoqXHJcbiAqIE1vbnRhIGVuZGVyZcOnbyBjb21wbGV0byBhIHBhcnRpciBkZSBwYXJ0ZXNcclxuICovXHJcbmV4cG9ydCBmdW5jdGlvbiBidWlsZEZ1bGxBZGRyZXNzKGVuZGVyZWNvPzogc3RyaW5nLCBiYWlycm8/OiBzdHJpbmcsIGNpZGFkZT86IHN0cmluZyk6IHN0cmluZyB7XHJcbiAgcmV0dXJuIFtlbmRlcmVjbywgYmFpcnJvLCBjaWRhZGVdLmZpbHRlcihCb29sZWFuKS5qb2luKCcsICcpIHx8ICdOL0EnO1xyXG59XHJcblxyXG4vKipcclxuICogTW9udGEgaW5mb3JtYcOnw7VlcyBkZSBjb250YXRvIChDTlBKICsgVGVsZWZvbmUpXHJcbiAqL1xyXG5leHBvcnQgZnVuY3Rpb24gYnVpbGRDb250YWN0SW5mbyhjbnBqPzogc3RyaW5nLCB0ZWxlZm9uZT86IHN0cmluZyk6IHN0cmluZyB7XHJcbiAgcmV0dXJuIGAke2NucGogfHwgJ04vQSd9XFxuJHt0ZWxlZm9uZSB8fCAnJ31gO1xyXG59XHJcbiJdLCJ2ZXJzaW9uIjozfQ==

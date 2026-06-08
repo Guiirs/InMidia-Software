@@ -11,6 +11,7 @@ import SessionWarningModal from './components/SessionWarningModal/SessionWarning
 import Spinner from './components/Spinner/Spinner';
 
 import { useAuth } from './context/AuthContext';
+import { useTenant } from './context/TenantContext';
 
 // Páginas públicas — estáticas
 import MainLayout from './layouts/MainLayout/MainLayout';
@@ -22,6 +23,10 @@ import LandingPage from './pages/Landing/LandingPage';
 
 // V4 — shell principal do sistema (estático, não lazy — é o caminho crítico)
 import V4PainelEntry from './v4-painel/V4PainelEntry.jsx';
+
+// Páginas de organização (lazy — ciclo atual)
+const MembersPage     = lazy(() => import('./pages/Organizacao/MembersPage'));
+const InvitationsPage = lazy(() => import('./pages/Organizacao/InvitationsPage'));
 
 // Páginas do shell legado (lazy — não são o caminho principal)
 const NotFoundPage             = lazy(() => import('./pages/NotFound/NotFoundPage'));
@@ -80,6 +85,32 @@ function SmartRootRedirect() {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return <FullPageSpinner />;
   return <Navigate to={isAuthenticated ? '/dashboard' : '/landing'} replace />;
+}
+
+/** Placeholder de gestão de organização — ativo no próximo ciclo. */
+function OrgManagementPlaceholder({ title }) {
+  return (
+    <div style={{ padding: '2rem', maxWidth: 480 }}>
+      <h2 style={{ marginBottom: '0.5rem' }}>{title}</h2>
+      <p style={{ color: 'var(--text-muted, #6b7280)' }}>
+        Gestão de membros será ativada no próximo ciclo.
+      </p>
+    </div>
+  );
+}
+
+/** Rota de membros: só OWNER pode gerenciar membros. */
+function OrgRoute({ children }) {
+  const { canManageOrganization } = useTenant();
+  if (!canManageOrganization) return <Navigate to="/dashboard" replace />;
+  return children;
+}
+
+/** Rota de convites: ADMIN e OWNER podem convidar. */
+function OrgInviteRoute({ children }) {
+  const { canInviteMembers } = useTenant();
+  if (!canInviteMembers) return <Navigate to="/dashboard" replace />;
+  return children;
 }
 
 /** Rota legada: só acessível quando VITE_ENABLE_LEGACY_PANEL=true. */
@@ -188,6 +219,28 @@ function App() {
             <Route path="/legacy/relatorios"        element={<LegacyRoute><RequirePermission routeKey="relatorios"><LegacyRelatoriosPage /></RequirePermission></LegacyRoute>} />
 
           </Route> {/* Fim do Grupo B (MainLayout) */}
+
+          {/* ── GRUPO C: Rotas de organização ── */}
+          <Route
+            path="/organizacao/membros"
+            element={
+              <OrgRoute>
+                <Suspense fallback={<FullPageSpinner />}>
+                  <MembersPage />
+                </Suspense>
+              </OrgRoute>
+            }
+          />
+          <Route
+            path="/organizacao/convites"
+            element={
+              <OrgInviteRoute>
+                <Suspense fallback={<FullPageSpinner />}>
+                  <InvitationsPage />
+                </Suspense>
+              </OrgInviteRoute>
+            }
+          />
 
         </Route> {/* Fim do ProtectedRoute */}
 

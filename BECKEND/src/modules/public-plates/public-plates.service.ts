@@ -5,10 +5,12 @@ import { commercialAvailabilityProjection, type CommercialAvailabilityResult } f
 import { recordProjectionMetric } from '@shared/infra/monitoring/projection-metrics';
 import { projectionCacheService, makeCacheKey, timeBucket, CACHE_TTL_MS } from '@shared/infra/cache';
 import { batchIsImageNotFound, isImageCacheAvailable } from './image-cache.service';
+import { plateMediaService } from '@modules/media/plate-media.service';
 import {
   toPublicPlaca,
   toPublicRegiao,
   toSlug,
+  type PlateMediaResolved,
   type PublicDisponibilidadePayload,
   type PublicPlacaPayload,
   type PublicRegiaoPayload,
@@ -19,11 +21,10 @@ const DEFAULT_LIMIT = 24;
 const AVAILABILITY_FILTER_CANDIDATE_LIMIT = 500;
 const EXPORT_DEFAULT_MAX = 1000;
 
+// Seleciona apenas campos de identidade, localização e status — sem campos de imagem
+// legados, pois a resolução de imagem agora é feita exclusivamente via PlateMedia.
 const PLACA_PUBLIC_SELECT =
-  '_id empresaId numero_placa endereco nomeDaRua localizacao mainImageUrl imagemPrincipal imagem imagens foto imageUrl fotoUrl storageKey imagemKey r2Key tipo tamanho statusComercial statusOperacional regiaoId latitude longitude updatedAt';
-
-const PLACA_IMAGE_SELECT =
-  '_id empresaId numero_placa codigo statusOperacional mainImageUrl imagemPrincipal imagem imagens foto imageUrl fotoUrl storageKey imagemKey r2Key updatedAt';
+  '_id empresaId numero_placa endereco nomeDaRua localizacao tipo tamanho statusComercial statusOperacional regiaoId latitude longitude updatedAt';
 
 const REGIAO_POPULATE = {
   path: 'regiaoId',
@@ -119,6 +120,12 @@ async function resolveRegiaoIds(empresaId: string, regiaoNome?: string, cidade?:
   return regioes.map((r: any) => r._id.toString());
 }
 
+/** Constrói um PlateMediaResolved a partir de um documento IPlateMedia (ou null). */
+function toPlateMediaResolved(pm: { activeKey?: string | null; version?: string } | null | undefined): PlateMediaResolved | null {
+  if (!pm || !pm.activeKey) return null;
+  return { activeKey: pm.activeKey, version: pm.version ?? '' };
+}
+
 export async function listPlacas(
   empresaId: string,
   filters: PlacasFilter,
@@ -161,16 +168,25 @@ export async function listPlacas(
     ? sortedDocs.slice(0, AVAILABILITY_FILTER_CANDIDATE_LIMIT)
     : sortedDocs.slice(skip, skip + limit);
 
-  const commercialStatuses = await commercialAvailabilityProjection.resolveManyPlateCommercialStatuses({
-    empresaId,
-    placaIds: docsToProject.map((doc: any) => String(doc._id)),
-  });
+  const plateIds = docsToProject.map((doc: any) => String(doc._id));
+
+  // Resolve commercial statuses e PlateMedia em paralelo para minimizar latência.
+  const [commercialStatuses, plateMediaMap] = await Promise.all([
+    commercialAvailabilityProjection.resolveManyPlateCommercialStatuses({
+      empresaId,
+      placaIds: plateIds,
+    }),
+    plateMediaService.batchResolvePlateMedia(plateIds, empresaId),
+  ]);
 
   const projectedData = docsToProject
-    .map((doc: any) => toPublicPlaca({
-      ...doc,
-      commercialStatus: publicCommercialStatus(commercialStatuses.get(String(doc._id))!),
-    }))
+    .map((doc: any) => {
+      const pm = plateMediaMap.get(String(doc._id));
+      return toPublicPlaca(
+        { ...doc, commercialStatus: publicCommercialStatus(commercialStatuses.get(String(doc._id))!) },
+        toPlateMediaResolved(pm),
+      );
+    })
     .filter((placa) => {
       if (!filters.disponibilidade) return true;
       const expected = normalizeDisponibilidade(filters.disponibilidade);
@@ -223,10 +239,6 @@ export async function listPlacas(
 
 /**
  * Retorna todas as placas públicas sem paginação, para consumo bulk (WordPress/JetEngine).
- *
- * Aplica os mesmos filtros de listPlacas, a mesma ordenação natural e o mesmo presenter.
- * O máximo de itens é controlado por PUBLIC_EXPORT_MAX_ITEMS (default: 1000).
- * Não expõe campos privados — usa toPublicPlaca() identicamente ao endpoint paginado.
  */
 export async function listAllPlacas(
   empresaId: string,
@@ -267,19 +279,24 @@ export async function listAllPlacas(
   );
 
   const cappedDocs = sortedDocs.slice(0, maxItems);
+  const plateIds = cappedDocs.map((doc: any) => String(doc._id));
 
-  const commercialStatuses = await commercialAvailabilityProjection.resolveManyPlateCommercialStatuses({
-    empresaId,
-    placaIds: cappedDocs.map((doc: any) => String(doc._id)),
-  });
+  const [commercialStatuses, plateMediaMap] = await Promise.all([
+    commercialAvailabilityProjection.resolveManyPlateCommercialStatuses({
+      empresaId,
+      placaIds: plateIds,
+    }),
+    plateMediaService.batchResolvePlateMedia(plateIds, empresaId),
+  ]);
 
   let projected = cappedDocs
-    .map((doc: any) =>
-      toPublicPlaca({
-        ...doc,
-        commercialStatus: publicCommercialStatus(commercialStatuses.get(String(doc._id))!),
-      }),
-    )
+    .map((doc: any) => {
+      const pm = plateMediaMap.get(String(doc._id));
+      return toPublicPlaca(
+        { ...doc, commercialStatus: publicCommercialStatus(commercialStatuses.get(String(doc._id))!) },
+        toPlateMediaResolved(pm),
+      );
+    })
     .filter((placa) => {
       if (!filters.disponibilidade) return true;
       const expected = normalizeDisponibilidade(filters.disponibilidade);
@@ -311,7 +328,6 @@ export async function getPlacaBySlug(
   empresaId: string,
   slug: string,
 ): Promise<PublicPlacaPayload | null> {
-  // Fast path: slug is usually just numero_placa uppercased
   const upper = slug.toUpperCase();
   let doc = await Placa.findOne({ empresaId, numero_placa: upper })
     .select(PLACA_PUBLIC_SELECT)
@@ -319,7 +335,6 @@ export async function getPlacaBySlug(
     .lean();
 
   if (!doc) {
-    // Fallback: case-insensitive search then slug-match
     const candidates = await Placa.find({ empresaId, statusOperacional: { $ne: 'ARCHIVED' } })
       .select('_id numero_placa')
       .lean();
@@ -334,11 +349,16 @@ export async function getPlacaBySlug(
 
   if (!doc) return null;
 
-  const commercialStatus = await commercialAvailabilityProjection.resolvePlateCommercialStatus({
-    empresaId,
-    placaId: String((doc as any)._id),
-  });
-  return toPublicPlaca({ ...doc, commercialStatus: publicCommercialStatus(commercialStatus) });
+  const id = String((doc as any)._id);
+  const [commercialStatus, plateMedia] = await Promise.all([
+    commercialAvailabilityProjection.resolvePlateCommercialStatus({ empresaId, placaId: id }),
+    plateMediaService.resolvePlateMainImage(id, empresaId),
+  ]);
+
+  return toPublicPlaca(
+    { ...doc, commercialStatus: publicCommercialStatus(commercialStatus) },
+    plateMedia.hasImage ? { activeKey: plateMedia.activeKey, version: plateMedia.version } : null,
+  );
 }
 
 export async function getPlacaByIdOrSlug(
@@ -355,11 +375,15 @@ export async function getPlacaByIdOrSlug(
       .lean();
 
     if (doc) {
-      const commercialStatus = await commercialAvailabilityProjection.resolvePlateCommercialStatus({
-        empresaId,
-        placaId: String((doc as any)._id),
-      });
-      return toPublicPlaca({ ...doc, commercialStatus: publicCommercialStatus(commercialStatus) });
+      const id = String((doc as any)._id);
+      const [commercialStatus, plateMedia] = await Promise.all([
+        commercialAvailabilityProjection.resolvePlateCommercialStatus({ empresaId, placaId: id }),
+        plateMediaService.resolvePlateMainImage(id, empresaId),
+      ]);
+      return toPublicPlaca(
+        { ...doc, commercialStatus: publicCommercialStatus(commercialStatus) },
+        plateMedia.hasImage ? { activeKey: plateMedia.activeKey, version: plateMedia.version } : null,
+      );
     }
   }
 
@@ -374,101 +398,9 @@ export async function listRegioes(empresaId: string): Promise<PublicRegiaoPayloa
   return docs.map(toPublicRegiao);
 }
 
-export interface PlacaImageDoc {
-  _id?: unknown;
-  empresaId?: unknown;
-  numero_placa?: string | null;
-  codigo?: string | null;
-  nome?: string | null;
-  mainImageUrl?: string | null;
-  imagemPrincipal?: string | null;
-  imagem?: string | null;
-  imagens?: Array<Record<string, unknown>> | null;
-  foto?: string | null;
-  imageUrl?: string | null;
-  fotoUrl?: string | null;
-  storageKey?: string | null;
-  imagemKey?: string | null;
-  r2Key?: string | null;
-  updatedAt?: Date | string | null;
-}
-
-/**
- * Busca campos de imagem de uma placa para o proxy público (sem API key).
- * Aceita MongoDB ObjectId ou numero_placa. Não faz full-scan (sem empresaId).
- * Valida apenas que a placa não está arquivada.
- */
-export async function getPlacaDocForImagePublic(
-  idOrSlug: string,
-): Promise<PlacaImageDoc | null> {
-  const trimmed = idOrSlug.trim();
-  if (!trimmed) return null;
-
-  const notArchived = { statusOperacional: { $ne: 'ARCHIVED' } };
-
-  if (Types.ObjectId.isValid(trimmed)) {
-    const doc = await Placa.findOne({ _id: trimmed, ...notArchived })
-      .select(PLACA_IMAGE_SELECT)
-      .lean();
-    return doc ? (doc as PlacaImageDoc) : null;
-  }
-
-  // Fallback por numero_placa — campo indexado, sem full-scan
-  const upper = trimmed.toUpperCase();
-  const doc = await Placa.findOne({ numero_placa: upper, ...notArchived })
-    .select(PLACA_IMAGE_SELECT)
-    .lean();
-  return doc ? (doc as PlacaImageDoc) : null;
-}
-
-/**
- * Busca campos de imagem de uma placa para o proxy autenticado (com API key / empresaId).
- * Valida tenant isolation: placa deve pertencer à empresa informada.
- */
-export async function getPlacaDocForImage(
-  empresaId: string,
-  idOrSlug: string,
-): Promise<PlacaImageDoc | null> {
-  const trimmed = idOrSlug.trim();
-  if (!trimmed) return null;
-
-  const baseFilter = {
-    empresaId,
-    statusOperacional: { $ne: 'ARCHIVED' },
-  };
-
-  if (Types.ObjectId.isValid(trimmed)) {
-    const doc = await Placa.findOne({ _id: trimmed, ...baseFilter })
-      .select(PLACA_IMAGE_SELECT)
-      .lean();
-    if (doc) return doc as PlacaImageDoc;
-  }
-
-  // Slug fallback: numero_placa uppercase ou slug match
-  const upper = trimmed.toUpperCase();
-  let doc = await Placa.findOne({ ...baseFilter, numero_placa: upper })
-    .select(PLACA_IMAGE_SELECT)
-    .lean();
-
-  if (!doc) {
-    const candidates = await Placa.find({ ...baseFilter })
-      .select('_id numero_placa')
-      .lean();
-    const match = candidates.find((c: any) => toSlug(c.numero_placa ?? '') === trimmed.toLowerCase());
-    if (match) {
-      doc = await Placa.findOne({ _id: (match as any)._id, ...baseFilter })
-        .select(PLACA_IMAGE_SELECT)
-        .lean();
-    }
-  }
-
-  return doc ? (doc as PlacaImageDoc) : null;
-}
-
 export async function getDisponibilidade(empresaId: string): Promise<PublicDisponibilidadePayload & { cacheHit?: boolean }> {
   const startedAt = Date.now();
 
-  // Check cache first (TTL: 60s)
   const cacheKey = makeCacheKey(empresaId, 'public_disponibilidade', String(timeBucket(CACHE_TTL_MS.PUBLIC_PLATES)));
   try {
     const cached = projectionCacheService.get<PublicDisponibilidadePayload & { cacheHit?: boolean }>(cacheKey);
@@ -492,29 +424,21 @@ export async function getDisponibilidade(empresaId: string): Promise<PublicDispo
     placaIds: docs.map((doc: any) => String(doc._id)),
   });
 
-  const counts = {
-    disponivel: 0,
-    reservado: 0,
-    ocupado: 0,
-    indisponivel: 0,
-  };
+  const counts = { disponivel: 0, reservado: 0, ocupado: 0, indisponivel: 0 };
 
   commercialStatuses.forEach((status) => {
+    // Resolve status sem imagem (plateMedia=null) — apenas o campo disponibilidade importa aqui.
     const publicStatus = toPublicPlaca({
       _id: 'status-only',
       numero_placa: 'status-only',
       commercialStatus: publicCommercialStatus(status),
-    }).disponibilidade;
+    }, null).disponibilidade;
     if (publicStatus === 'desconhecido') return;
     counts[publicStatus] += 1;
   });
 
-  const result: PublicDisponibilidadePayload = {
-    total: docs.length,
-    ...counts,
-  };
+  const result: PublicDisponibilidadePayload = { total: docs.length, ...counts };
 
-  // Store in cache
   try {
     projectionCacheService.set(cacheKey, result, CACHE_TTL_MS.PUBLIC_PLATES);
   } catch {

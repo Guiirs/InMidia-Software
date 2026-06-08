@@ -8,6 +8,7 @@ import L from 'leaflet';
 import { fetchPlacaLocations } from '../../services';
 import Spinner from '../../components/Spinner/Spinner';
 import { useToast } from '../../components/ToastNotification/ToastNotification';
+import { normalizeMapCoordinates } from '../../v4-painel/integration/adapters/boardCoordinates';
 import './Map.css';
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -36,13 +37,8 @@ const locationsQueryKey = ['placaLocations'];
 const getLocationId = (loc) => loc?.id || loc?._id;
 
 const parseLocationCoordinates = (loc) => {
-  if (!loc?.coordenadas || !loc.coordenadas.includes(',')) return null;
-
-  const [lat, lng] = loc.coordenadas.split(',').map(coord => parseFloat(coord.trim()));
-  if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
-  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
-
-  return [lat, lng];
+  const coords = normalizeMapCoordinates(loc);
+  return coords ? [coords.lat, coords.lng] : null;
 };
 
 const isValidMapLocation = (loc) => Boolean(getLocationId(loc) && parseLocationCoordinates(loc));

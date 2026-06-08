@@ -2,7 +2,6 @@ import { Request, Response, NextFunction } from 'express';
 import { inventoryEmitter } from '@modules/realtime/v4-emitter';
 import { defaultAuditService } from '@modules/audit/audit.service';
 import { auditRequestContext } from '@modules/audit/audit.helpers';
-import { resolvePlacaImageReference } from '@modules/media/placa-image-reference.resolver';
 import type { IAuthRequest } from '../../../types/express.d';
 import type { InventoryBoardsService } from '../services/inventory-boards.service';
 
@@ -99,11 +98,6 @@ export class InventoryBoardsController {
         changedFields: Object.keys(req.body ?? {}),
         action: 'inventory.v4.update',
       });
-      const requestImageReference = resolvePlacaImageReference(req.body ?? {});
-      if (requestImageReference.hasImage) {
-        const boardImageReference = resolvePlacaImageReference(board as any);
-        inventoryEmitter.boardImageUpdated(empresaId, board.id, { imageUrl: boardImageReference.storageKey ?? undefined });
-      }
       res.status(200).json({ success: true, data: board });
     } catch (error) {
       next(error);

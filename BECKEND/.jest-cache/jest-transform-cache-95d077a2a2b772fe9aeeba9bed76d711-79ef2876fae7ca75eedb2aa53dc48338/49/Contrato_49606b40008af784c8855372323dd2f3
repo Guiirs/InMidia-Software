@@ -1,0 +1,11 @@
+30c7e8138d2c12c01b69302610464dd9
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const mongoose_1 = __importDefault(require("mongoose"));
+const contrato_schema_1 = require("@database/schemas/contrato.schema");
+const Contrato = mongoose_1.default.models.Contrato || mongoose_1.default.model('Contrato', contrato_schema_1.contratoSchema);
+exports.default = Contrato;
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiRzpcXElubWlkaWEgVjRcXEJFQ0tFTkRcXHNyY1xcbW9kdWxlc1xcY29udHJhdG9zXFxDb250cmF0by50cyIsIm1hcHBpbmdzIjoiOzs7OztBQUFBLHdEQUEyQztBQUUzQyx1RUFBbUU7QUFFbkUsTUFBTSxRQUFRLEdBQXFCLGtCQUFRLENBQUMsTUFBTSxDQUFDLFFBQVEsSUFBSSxrQkFBUSxDQUFDLEtBQUssQ0FBWSxVQUFVLEVBQUUsZ0NBQWMsQ0FBQyxDQUFDO0FBRXJILGtCQUFlLFFBQVEsQ0FBQyIsIm5hbWVzIjpbXSwic291cmNlcyI6WyJHOlxcSW5taWRpYSBWNFxcQkVDS0VORFxcc3JjXFxtb2R1bGVzXFxjb250cmF0b3NcXENvbnRyYXRvLnRzIl0sInNvdXJjZXNDb250ZW50IjpbImltcG9ydCBtb25nb29zZSwgeyBNb2RlbCB9IGZyb20gJ21vbmdvb3NlJztcclxuaW1wb3J0IHsgSUNvbnRyYXRvIH0gZnJvbSAnLi4vLi4vdHlwZXMvbW9kZWxzLmQnO1xyXG5pbXBvcnQgeyBjb250cmF0b1NjaGVtYSB9IGZyb20gJ0BkYXRhYmFzZS9zY2hlbWFzL2NvbnRyYXRvLnNjaGVtYSc7XHJcblxyXG5jb25zdCBDb250cmF0bzogTW9kZWw8SUNvbnRyYXRvPiA9IG1vbmdvb3NlLm1vZGVscy5Db250cmF0byB8fCBtb25nb29zZS5tb2RlbDxJQ29udHJhdG8+KCdDb250cmF0bycsIGNvbnRyYXRvU2NoZW1hKTtcclxuXHJcbmV4cG9ydCBkZWZhdWx0IENvbnRyYXRvO1xyXG4iXSwidmVyc2lvbiI6M30=

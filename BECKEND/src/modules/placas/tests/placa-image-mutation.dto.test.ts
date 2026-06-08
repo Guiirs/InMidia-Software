@@ -9,21 +9,24 @@ describe('validateUpdatePlaca image mutation hardening', () => {
     expect(dto.imagemPrincipal).toBeUndefined();
   });
 
-  it('normaliza URL completa para storageKey canonica', () => {
+  it('imageUrl é stripped — atualizacoes de imagem vao pelo endpoint de upload', () => {
+    // FASE 10: imageUrl não é mais normalizado para imagem/imagemPrincipal.
+    // Atualizações de imagem devem usar o endpoint de upload dedicado.
     const dto = validateUpdatePlaca({
       imageUrl: 'https://pub-storage.r2.dev/empresas/e1/plates/p1/main/full.webp?x=1',
     }) as any;
 
-    expect(dto.imagem).toBe('empresas/e1/plates/p1/main/full.webp');
-    expect(dto.imagemPrincipal).toBe('empresas/e1/plates/p1/main/full.webp');
     expect(dto.imageUrl).toBeUndefined();
+    expect(dto.imagem).toBeUndefined();
+    expect(dto.imagemPrincipal).toBeUndefined();
   });
 
-  it('mantem intencao explicita de remocao', () => {
+  it('imagem: null preservado como sinal de remocao — imagemPrincipal nunca presente', () => {
+    // FASE 10: imagemPrincipal é sempre stripped (mesmo null); remoção sinalizada só via imagem: null.
     const dto = validateUpdatePlaca({ imagem: null }) as any;
 
     expect(dto.imagem).toBeNull();
-    expect(dto.imagemPrincipal).toBeNull();
+    expect(dto.imagemPrincipal).toBeUndefined();
   });
 
   it('ignora URL invalida e traversal para impedir imagemUrl falsa', () => {

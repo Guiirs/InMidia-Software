@@ -26,6 +26,9 @@ import {
   normalizeAuthIdentifier,
   resolveCanonicalEmpresaId,
 } from '../auth-tenant.utils';
+import { Types } from 'mongoose';
+import { ensureOrganizationForLegacyEmpresa } from '@modules/organization/services/legacy-migration.service';
+import type { EnsureOrgResult } from '@modules/organization/services/legacy-migration.service';
 
 type Params = Record<string, string>;
 
@@ -144,6 +147,7 @@ export class AuthController {
       token,
       empresaId: empresa._id.toString(),
       userId: user._id.toString(),
+      userRole: user.role,
       user: {
         id: user._id.toString(),
         username: user.username,
@@ -192,6 +196,43 @@ export class AuthController {
       }
 
       if (masterLogin) {
+        // ── Bootstrap multi-tenant no master login ──
+        let masterBootstrap: EnsureOrgResult | null = null;
+        if (config.enableOrganizationBootstrapOnLogin) {
+          try {
+            masterBootstrap = await ensureOrganizationForLegacyEmpresa({
+              empresaId: masterLogin.empresaId,
+              userId: masterLogin.userId,
+              userRole: masterLogin.userRole,
+            });
+          } catch (bootstrapError) {
+            Log.error('[AuthController] Bootstrap falhou no master login — continuando em modo legado', {
+              error: bootstrapError,
+              userId: masterLogin.userId,
+              empresaId: masterLogin.empresaId,
+            });
+          }
+        }
+
+        // Re-assina token com campos enriquecidos se bootstrap ocorreu
+        const masterTokenPayload = {
+          id: masterLogin.userId,
+          empresaId: masterLogin.empresaId,
+          role: masterLogin.userRole,
+          username: masterLogin.user.username,
+          email: masterLogin.user.email,
+          ...(masterBootstrap
+            ? {
+                organizationId: (masterBootstrap.organization._id as Types.ObjectId).toString(),
+                membershipId: (masterBootstrap.membership._id as Types.ObjectId).toString(),
+                membershipRole: masterBootstrap.membership.role,
+                tenantMode: 'organization' as const,
+              }
+            : { tenantMode: 'legacy' as const }),
+        };
+        const options: SignOptions = { expiresIn: config.accessTokenExpiresIn as any, jwtid: randomUUID() };
+        const enrichedMasterToken = jwt.sign(masterTokenPayload, config.jwtSecret, options);
+
         // Cria refresh token para o master
         const session = await sessionRepository.create({
           userId: masterLogin.userId,
@@ -201,7 +242,7 @@ export class AuthController {
           expiresInMs: config.refreshTokenExpiresMs,
         });
 
-        res.cookie(ACCESS_COOKIE, masterLogin.token, getAccessCookieOptions(req));
+        res.cookie(ACCESS_COOKIE, enrichedMasterToken, getAccessCookieOptions(req));
         res.cookie(REFRESH_COOKIE, session.rawToken, getRefreshCookieOptions(req));
 
         void defaultAuditService.recordAuditEvent({
@@ -212,7 +253,7 @@ export class AuthController {
           entityType: 'session',
           entityId: masterLogin.user.id,
           entityLabel: masterLogin.user.email,
-          metadata: { method: 'master' },
+          metadata: { method: 'master', tenantMode: masterTokenPayload.tenantMode },
           severity: 'info',
           ip,
           userAgent,
@@ -222,9 +263,24 @@ export class AuthController {
         res.status(200).json({
           success: true,
           data: {
-            // Mantém token no body para compatibilidade transitória com Bearer legado
-            token: masterLogin.token,
+            token: enrichedMasterToken,
             user: masterLogin.user,
+            ...(masterBootstrap
+              ? {
+                  organization: {
+                    id: (masterBootstrap.organization._id as Types.ObjectId).toString(),
+                    name: masterBootstrap.organization.name,
+                    slug: masterBootstrap.organization.slug,
+                    status: masterBootstrap.organization.status,
+                    plan: masterBootstrap.organization.plan,
+                  },
+                  membership: {
+                    id: (masterBootstrap.membership._id as Types.ObjectId).toString(),
+                    role: masterBootstrap.membership.role,
+                    status: masterBootstrap.membership.status,
+                  },
+                }
+              : {}),
           },
         });
         return;
@@ -259,6 +315,8 @@ export class AuthController {
           data: {
             token: data.token,   // Mantido para transição de clientes Bearer legados
             user: data.user,
+            ...(data.organization ? { organization: data.organization } : {}),
+            ...(data.membership ? { membership: data.membership } : {}),
           },
         });
         return;

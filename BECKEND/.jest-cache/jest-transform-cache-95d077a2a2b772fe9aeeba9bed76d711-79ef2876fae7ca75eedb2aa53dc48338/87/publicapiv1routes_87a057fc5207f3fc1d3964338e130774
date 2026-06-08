@@ -1,0 +1,56 @@
+828adc79881966344949ffa2357a665a
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const publicApiController = __importStar(require("./public-api.controller"));
+const public_api_auth_middleware_1 = require("./middlewares/public-api-auth.middleware");
+const public_cache_middleware_1 = require("./middlewares/public-cache.middleware");
+/**
+ * Canonical public integration API router.
+ * Mounted at /public/v1 — routes here have no /v1 prefix.
+ *
+ * The legacy router (public-api.routes.ts) at /api/v1/public still works
+ * for backward compatibility with existing integrations.
+ */
+const router = (0, express_1.Router)();
+router.get('/catalog', public_cache_middleware_1.shortCache, (0, public_api_auth_middleware_1.requirePublicApiScope)('catalog:read'), publicApiController.getCatalog);
+router.get('/inventory', public_cache_middleware_1.shortCache, (0, public_api_auth_middleware_1.requirePublicApiScope)('inventory:read'), publicApiController.getInventory);
+router.get('/inventory/:id', public_cache_middleware_1.shortCache, (0, public_api_auth_middleware_1.requirePublicApiScope)('inventory:read'), publicApiController.getInventoryItem);
+router.get('/availability', public_cache_middleware_1.availabilityCache, (0, public_api_auth_middleware_1.requirePublicApiScope)('inventory:availability'), publicApiController.getAvailability);
+router.get('/media/:id', public_cache_middleware_1.mediaCache, (0, public_api_auth_middleware_1.requirePublicApiScope)('media:read'), publicApiController.getMedia);
+router.get('/geo', public_cache_middleware_1.shortCache, (0, public_api_auth_middleware_1.requirePublicApiScope)('geo:read'), publicApiController.getGeo);
+exports.default = router;
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiRzpcXElubWlkaWEgVjRcXEJFQ0tFTkRcXHNyY1xcbW9kdWxlc1xccHVibGljLWFwaVxccHVibGljLWFwaS12MS5yb3V0ZXMudHMiLCJtYXBwaW5ncyI6Ijs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUFBQSxxQ0FBaUM7QUFDakMsNkVBQStEO0FBQy9ELHlGQUFpRjtBQUNqRixtRkFBa0c7QUFFbEc7Ozs7OztHQU1HO0FBQ0gsTUFBTSxNQUFNLEdBQUcsSUFBQSxnQkFBTSxHQUFFLENBQUM7QUFFeEIsTUFBTSxDQUFDLEdBQUcsQ0FBQyxVQUFVLEVBQVEsb0NBQVUsRUFBRSxJQUFBLGtEQUFxQixFQUFDLGNBQWMsQ0FBQyxFQUFjLG1CQUFtQixDQUFDLFVBQVUsQ0FBQyxDQUFDO0FBQzVILE1BQU0sQ0FBQyxHQUFHLENBQUMsWUFBWSxFQUFNLG9DQUFVLEVBQUUsSUFBQSxrREFBcUIsRUFBQyxnQkFBZ0IsQ0FBQyxFQUFhLG1CQUFtQixDQUFDLFlBQVksQ0FBQyxDQUFDO0FBQy9ILE1BQU0sQ0FBQyxHQUFHLENBQUMsZ0JBQWdCLEVBQUUsb0NBQVUsRUFBRSxJQUFBLGtEQUFxQixFQUFDLGdCQUFnQixDQUFDLEVBQWEsbUJBQW1CLENBQUMsZ0JBQWdCLENBQUMsQ0FBQztBQUNuSSxNQUFNLENBQUMsR0FBRyxDQUFDLGVBQWUsRUFBRywyQ0FBaUIsRUFBRSxJQUFBLGtEQUFxQixFQUFDLHdCQUF3QixDQUFDLEVBQUUsbUJBQW1CLENBQUMsZUFBZSxDQUFDLENBQUM7QUFDdEksTUFBTSxDQUFDLEdBQUcsQ0FBQyxZQUFZLEVBQU0sb0NBQVUsRUFBRSxJQUFBLGtEQUFxQixFQUFDLFlBQVksQ0FBQyxFQUFnQixtQkFBbUIsQ0FBQyxRQUFRLENBQUMsQ0FBQztBQUMxSCxNQUFNLENBQUMsR0FBRyxDQUFDLE1BQU0sRUFBWSxvQ0FBVSxFQUFFLElBQUEsa0RBQXFCLEVBQUMsVUFBVSxDQUFDLEVBQWtCLG1CQUFtQixDQUFDLE1BQU0sQ0FBQyxDQUFDO0FBRXhILGtCQUFlLE1BQU0sQ0FBQyIsIm5hbWVzIjpbXSwic291cmNlcyI6WyJHOlxcSW5taWRpYSBWNFxcQkVDS0VORFxcc3JjXFxtb2R1bGVzXFxwdWJsaWMtYXBpXFxwdWJsaWMtYXBpLXYxLnJvdXRlcy50cyJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgeyBSb3V0ZXIgfSBmcm9tICdleHByZXNzJztcbmltcG9ydCAqIGFzIHB1YmxpY0FwaUNvbnRyb2xsZXIgZnJvbSAnLi9wdWJsaWMtYXBpLmNvbnRyb2xsZXInO1xuaW1wb3J0IHsgcmVxdWlyZVB1YmxpY0FwaVNjb3BlIH0gZnJvbSAnLi9taWRkbGV3YXJlcy9wdWJsaWMtYXBpLWF1dGgubWlkZGxld2FyZSc7XG5pbXBvcnQgeyBzaG9ydENhY2hlLCBhdmFpbGFiaWxpdHlDYWNoZSwgbWVkaWFDYWNoZSB9IGZyb20gJy4vbWlkZGxld2FyZXMvcHVibGljLWNhY2hlLm1pZGRsZXdhcmUnO1xuXG4vKipcbiAqIENhbm9uaWNhbCBwdWJsaWMgaW50ZWdyYXRpb24gQVBJIHJvdXRlci5cbiAqIE1vdW50ZWQgYXQgL3B1YmxpYy92MSDigJQgcm91dGVzIGhlcmUgaGF2ZSBubyAvdjEgcHJlZml4LlxuICpcbiAqIFRoZSBsZWdhY3kgcm91dGVyIChwdWJsaWMtYXBpLnJvdXRlcy50cykgYXQgL2FwaS92MS9wdWJsaWMgc3RpbGwgd29ya3NcbiAqIGZvciBiYWNrd2FyZCBjb21wYXRpYmlsaXR5IHdpdGggZXhpc3RpbmcgaW50ZWdyYXRpb25zLlxuICovXG5jb25zdCByb3V0ZXIgPSBSb3V0ZXIoKTtcblxucm91dGVyLmdldCgnL2NhdGFsb2cnLCAgICAgICBzaG9ydENhY2hlLCByZXF1aXJlUHVibGljQXBpU2NvcGUoJ2NhdGFsb2c6cmVhZCcpLCAgICAgICAgICAgICBwdWJsaWNBcGlDb250cm9sbGVyLmdldENhdGFsb2cpO1xucm91dGVyLmdldCgnL2ludmVudG9yeScsICAgICBzaG9ydENhY2hlLCByZXF1aXJlUHVibGljQXBpU2NvcGUoJ2ludmVudG9yeTpyZWFkJyksICAgICAgICAgICAgcHVibGljQXBpQ29udHJvbGxlci5nZXRJbnZlbnRvcnkpO1xucm91dGVyLmdldCgnL2ludmVudG9yeS86aWQnLCBzaG9ydENhY2hlLCByZXF1aXJlUHVibGljQXBpU2NvcGUoJ2ludmVudG9yeTpyZWFkJyksICAgICAgICAgICAgcHVibGljQXBpQ29udHJvbGxlci5nZXRJbnZlbnRvcnlJdGVtKTtcbnJvdXRlci5nZXQoJy9hdmFpbGFiaWxpdHknLCAgYXZhaWxhYmlsaXR5Q2FjaGUsIHJlcXVpcmVQdWJsaWNBcGlTY29wZSgnaW52ZW50b3J5OmF2YWlsYWJpbGl0eScpLCBwdWJsaWNBcGlDb250cm9sbGVyLmdldEF2YWlsYWJpbGl0eSk7XG5yb3V0ZXIuZ2V0KCcvbWVkaWEvOmlkJywgICAgIG1lZGlhQ2FjaGUsIHJlcXVpcmVQdWJsaWNBcGlTY29wZSgnbWVkaWE6cmVhZCcpLCAgICAgICAgICAgICAgIHB1YmxpY0FwaUNvbnRyb2xsZXIuZ2V0TWVkaWEpO1xucm91dGVyLmdldCgnL2dlbycsICAgICAgICAgICBzaG9ydENhY2hlLCByZXF1aXJlUHVibGljQXBpU2NvcGUoJ2dlbzpyZWFkJyksICAgICAgICAgICAgICAgICBwdWJsaWNBcGlDb250cm9sbGVyLmdldEdlbyk7XG5cbmV4cG9ydCBkZWZhdWx0IHJvdXRlcjtcbiJdLCJ2ZXJzaW9uIjozfQ==

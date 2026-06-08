@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import { randomUUID } from 'crypto';
 import {
   Result,
+  Log,
   InvalidCredentialsError,
   NotFoundError,
   BusinessRuleViolationError,
@@ -37,6 +38,10 @@ import {
   normalizeAuthIdentifier,
   resolveCanonicalEmpresaId,
 } from '../auth-tenant.utils';
+import { Types } from 'mongoose';
+import { ensureOrganizationForLegacyEmpresa, EnsureOrgResult } from '@modules/organization/services/legacy-migration.service';
+import { Organization } from '@modules/organization/organization.schema';
+import { TenantMembership } from '@modules/organization/membership/tenant-membership.schema';
 
 const ACCESS_COOKIE = 'inmidia_access';
 const REFRESH_COOKIE = 'inmidia_refresh';
@@ -172,12 +177,38 @@ export class AuthService {
 
       const empresaId = empresaIdResult.value;
 
+      // ── Bootstrap multi-tenant (feature flag) ──────────────────────────────
+      let bootstrapResult: EnsureOrgResult | null = null;
+      if (config.enableOrganizationBootstrapOnLogin) {
+        try {
+          bootstrapResult = await ensureOrganizationForLegacyEmpresa({
+            empresaId,
+            userId: user._id.toString(),
+            userRole: user.role,
+          });
+        } catch (bootstrapError) {
+          Log.error('[AuthService] Bootstrap de organização falhou no login — continuando em modo legado', {
+            error: bootstrapError,
+            userId: user._id.toString(),
+            empresaId,
+          });
+        }
+      }
+
       const payload: JwtPayload = {
         id: user._id.toString(),
         empresaId,
         role: user.role,
         username: user.username,
         email: user.email,
+        ...(bootstrapResult
+          ? {
+              organizationId: (bootstrapResult.organization._id as Types.ObjectId).toString(),
+              membershipId: (bootstrapResult.membership._id as Types.ObjectId).toString(),
+              membershipRole: bootstrapResult.membership.role,
+              tenantMode: 'organization' as const,
+            }
+          : { tenantMode: 'legacy' as const }),
       };
 
       const accessToken = this.generateAccessToken(payload);
@@ -206,6 +237,22 @@ export class AuthService {
           empresaId,
           createdAt: user.createdAt,
         },
+        ...(bootstrapResult
+          ? {
+              organization: {
+                id: (bootstrapResult.organization._id as Types.ObjectId).toString(),
+                name: bootstrapResult.organization.name,
+                slug: bootstrapResult.organization.slug,
+                status: bootstrapResult.organization.status,
+                plan: bootstrapResult.organization.plan,
+              },
+              membership: {
+                id: (bootstrapResult.membership._id as Types.ObjectId).toString(),
+                role: bootstrapResult.membership.role,
+                status: bootstrapResult.membership.status,
+              },
+            }
+          : {}),
       });
     } catch (error) {
       if (isDomainError(error)) {
@@ -278,12 +325,44 @@ export class AuthService {
         );
       }
 
+      // ── Resolver org/membership no refresh (apenas leitura, não cria) ────────
+      let refreshOrgPayload: Partial<JwtPayload> = { tenantMode: 'legacy' };
+      if (config.enableOrganizationBootstrapOnLogin) {
+        try {
+          const org = await Organization.findOne({
+            legacyEmpresaId: new Types.ObjectId(empresaId),
+          }).lean();
+          if (org) {
+            const membership = await TenantMembership.findOne({
+              organizationId: (org._id as Types.ObjectId),
+              userId: new Types.ObjectId(user._id.toString()),
+              status: 'ACTIVE',
+            }).lean();
+            if (membership) {
+              refreshOrgPayload = {
+                organizationId: (org._id as Types.ObjectId).toString(),
+                membershipId: (membership._id as Types.ObjectId).toString(),
+                membershipRole: membership.role,
+                tenantMode: 'organization' as const,
+              };
+            }
+          }
+        } catch (resolveError) {
+          Log.error('[AuthService] Falha ao resolver org/membership no refresh — continuando em modo legado', {
+            error: resolveError,
+            userId: user._id.toString(),
+            empresaId,
+          });
+        }
+      }
+
       const payload: JwtPayload = {
         id: user._id.toString(),
         empresaId,
         role: user.role,
         username: user.username,
         email: user.email,
+        ...refreshOrgPayload,
       };
 
       const newAccessToken = this.generateAccessToken(payload);

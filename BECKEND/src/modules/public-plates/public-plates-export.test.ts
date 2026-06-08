@@ -29,13 +29,11 @@ jest.mock('./image-cache.service', () => ({
   batchIsImageNotFound: jest.fn(),
   isImageCacheAvailable: jest.fn(() => false),
 }));
-jest.mock('@modules/media/placa-image-reference.resolver', () => ({
-  resolvePlacaImageReference: jest.fn((raw: any) => ({
-    hasImage: !!(raw.mainImageUrl || raw.imagemPrincipal || raw.storageKey),
-    storageKey: raw.storageKey ?? raw.imagemPrincipal ?? null,
-    contentType: null,
-  })),
-  contentTypeFromStorageKey: jest.fn(() => null),
+jest.mock('@modules/media/plate-media.service', () => ({
+  plateMediaService: {
+    batchResolvePlateMedia: jest.fn().mockResolvedValue(new Map()),
+    resolvePlateMainImage: jest.fn().mockResolvedValue({ hasImage: false, activeKey: null, version: '', mimeType: null, source: 'none' }),
+  },
 }));
 jest.mock('@shared/container/logger', () => ({
   __esModule: true,
@@ -44,6 +42,7 @@ jest.mock('@shared/container/logger', () => ({
 
 import Placa from '@modules/placas/Placa';
 import { commercialAvailabilityProjection } from '@modules/commercial-availability';
+import { plateMediaService } from '@modules/media/plate-media.service';
 import { listPlacas, listAllPlacas } from './public-plates.service';
 import {
   publicExportKeyGenerator,
@@ -53,6 +52,11 @@ import {
 
 const mockedPlacaFind = Placa.find as jest.Mock;
 const mockedResolveMany = commercialAvailabilityProjection.resolveManyPlateCommercialStatuses as jest.Mock;
+const mockedBatchResolve = plateMediaService.batchResolvePlateMedia as jest.Mock;
+
+function makePlateMedia(id: string, key = 'uploads/img.jpg') {
+  return { plateId: id, activeKey: key, version: '1234', mimeType: null, status: 'active', history: [] };
+}
 
 // Helpers
 function makeDoc(overrides: Record<string, unknown> = {}) {
@@ -88,6 +92,7 @@ function leanChain(docs: unknown[]) {
 
 function setupFind(docs: unknown[]) {
   mockedPlacaFind.mockReturnValue(leanChain(docs));
+  mockedBatchResolve.mockResolvedValue(new Map()); // default: no PlateMedia (no image)
   mockedResolveMany.mockResolvedValue(
     new Map(
       (docs as any[]).map((d) => [d._id.toString(), { status: 'AVAILABLE', isCommerciallyAvailable: true }])
@@ -164,14 +169,16 @@ describe('listAllPlacas — sem paginação', () => {
 describe('listAllPlacas — usa presenter público', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('retorna imagemUrl como proxy URL quando hasImage=true', async () => {
+  it('retorna imagemUrl como proxy URL quando hasImage=true (PlateMedia presente)', async () => {
     process.env.PUBLIC_API_BASE_URL = 'https://api.inmidia.com.br';
-    const doc = makeDoc({ _id: 'abc123', mainImageUrl: 'uploads/img.jpg' });
+    const doc = makeDoc({ _id: 'abc123' });
     setupFind([doc]);
+    // PlateMedia is the canonical source — provide it via mock
+    mockedBatchResolve.mockResolvedValue(new Map([['abc123', makePlateMedia('abc123')]]));
     const result = await listAllPlacas(EMPRESAID, {});
     const placa = result.data[0]!;
     expect(placa.hasImage).toBe(true);
-    expect(placa.imagemUrl).toMatch(/\/api\/v1\/public\/media\/plates\/abc123\/main$/);
+    expect(placa.imagemUrl).toContain('/api/v1/public/media/plates/abc123/main');
     expect(placa.imagemUrl).not.toMatch(/r2\.cloudflare|s3\.amazonaws|storage/i);
     delete process.env.PUBLIC_API_BASE_URL;
   });
@@ -255,38 +262,42 @@ describe('listAllPlacas — aliases JetEngine/Elementor', () => {
   });
   afterEach(() => { delete process.env.PUBLIC_API_BASE_URL; });
 
-  it('retorna jetImageUrl como proxy URL quando hasImage=true', async () => {
-    const doc = makeDoc({ _id: 'jt1', mainImageUrl: 'img.jpg' });
+  it('retorna jetImageUrl como proxy URL quando hasImage=true (PlateMedia presente)', async () => {
+    const doc = makeDoc({ _id: 'jt1' });
     setupFind([doc]);
+    mockedBatchResolve.mockResolvedValue(new Map([['jt1', makePlateMedia('jt1')]]));
     const result = await listAllPlacas(EMPRESAID, {});
-    expect(result.data[0]!.jetImageUrl).toMatch(/\/api\/v1\/public\/media\/plates\/jt1\/main$/);
+    expect(result.data[0]!.jetImageUrl).toContain('/api/v1/public/media/plates/jt1/main');
   });
 
-  it('retorna jet_image_url como proxy URL quando hasImage=true', async () => {
-    const doc = makeDoc({ _id: 'jt2', mainImageUrl: 'img.jpg' });
+  it('retorna jet_image_url como proxy URL quando hasImage=true (PlateMedia presente)', async () => {
+    const doc = makeDoc({ _id: 'jt2' });
     setupFind([doc]);
+    mockedBatchResolve.mockResolvedValue(new Map([['jt2', makePlateMedia('jt2')]]));
     const result = await listAllPlacas(EMPRESAID, {});
-    expect(result.data[0]!.jet_image_url).toMatch(/\/api\/v1\/public\/media\/plates\/jt2\/main$/);
+    expect(result.data[0]!.jet_image_url).toContain('/api/v1/public/media/plates/jt2/main');
   });
 
-  it('retorna jetImage com url, alt e title quando hasImage=true', async () => {
-    const doc = makeDoc({ _id: 'jt3', mainImageUrl: 'img.jpg', numero_placa: 'ABC-01' });
+  it('retorna jetImage com url, alt e title quando hasImage=true (PlateMedia presente)', async () => {
+    const doc = makeDoc({ _id: 'jt3', numero_placa: 'ABC-01' });
     setupFind([doc]);
+    mockedBatchResolve.mockResolvedValue(new Map([['jt3', makePlateMedia('jt3')]]));
     const result = await listAllPlacas(EMPRESAID, {});
     const jetImage = result.data[0]!.jetImage;
     expect(jetImage).not.toBeNull();
-    expect(jetImage!.url).toMatch(/\/api\/v1\/public\/media\/plates\/jt3\/main$/);
+    expect(jetImage!.url).toContain('/api/v1/public/media/plates/jt3/main');
     expect(jetImage!.alt).toBeTruthy();
     expect(jetImage!.title).toBeTruthy();
   });
 
-  it('retorna image (Elementor) com url quando hasImage=true', async () => {
-    const doc = makeDoc({ _id: 'el1', mainImageUrl: 'img.jpg' });
+  it('retorna image (Elementor) com url quando hasImage=true (PlateMedia presente)', async () => {
+    const doc = makeDoc({ _id: 'el1' });
     setupFind([doc]);
+    mockedBatchResolve.mockResolvedValue(new Map([['el1', makePlateMedia('el1')]]));
     const result = await listAllPlacas(EMPRESAID, {});
     const image = result.data[0]!.image;
     expect(image).not.toBeNull();
-    expect(image!.url).toMatch(/\/api\/v1\/public\/media\/plates\/el1\/main$/);
+    expect(image!.url).toContain('/api/v1/public/media/plates/el1/main');
   });
 
   it('retorna jetImage null quando hasImage=false', async () => {

@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useConfirmation } from '../../context/ConfirmationContext';
+import { useTenant } from '../../context/TenantContext';
 import './Sidebar.css';
 
 const navClass = ({ isActive }) => `sidebar__nav-link ${isActive ? 'sidebar__nav-link--active' : ''}`;
@@ -10,6 +11,7 @@ const storageAvailable = () => typeof window !== 'undefined' && typeof window.lo
 
 function Sidebar() {
   const { canAccessRoute, logout } = useAuth();
+  const { canManageOrganization, canInviteMembers } = useTenant();
   const navigate = useNavigate();
   const location = useLocation();
   const showConfirmation = useConfirmation();
@@ -75,6 +77,15 @@ function Sidebar() {
           {canAccessRoute('audit') && <li><NavLink to="/audit" className={navClass} data-link><i className="fas fa-history" /> <span>Auditoria</span></NavLink></li>}
           {canAccessRoute('syncOps') && <li><NavLink to="/admin-sync" className={navClass} data-link><i className="fas fa-heartbeat" /> <span>Sync Ops</span></NavLink></li>}
           {canAccessRoute('biWeeks') && <li><NavLink to="/bi-weeks" className={navClass} data-link><i className="fas fa-calendar-alt" /> <span>Bi-Semanas</span></NavLink></li>}
+
+          {(canManageOrganization || canInviteMembers) && (
+            <>
+              {canManageOrganization && (
+                <li><NavLink to="/organizacao/membros" className={navClass} data-link><i className="fas fa-users" /> <span>Membros</span></NavLink></li>
+              )}
+              <li><NavLink to="/organizacao/convites" className={navClass} data-link><i className="fas fa-envelope-open-text" /> <span>Convites</span></NavLink></li>
+            </>
+          )}
         </ul>
       </nav>
 

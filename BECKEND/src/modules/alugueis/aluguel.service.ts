@@ -315,7 +315,7 @@ class AluguelService {
             // 2. Apaga o aluguel
             logger.debug(`[AluguelService] Apagando aluguel ${aluguelId} do DB.`);
             const deleteOptions = session ? { session } : {};
-            const deleteResult = await Aluguel.deleteOne({ _id: aluguelId }, deleteOptions);
+            const deleteResult = await Aluguel.deleteOne({ _id: aluguelId, empresaId: empresaId }, deleteOptions);
 
             if (deleteResult.deletedCount === 0) {
                 throw new AppError('Falha ao apagar o aluguel.', 500);

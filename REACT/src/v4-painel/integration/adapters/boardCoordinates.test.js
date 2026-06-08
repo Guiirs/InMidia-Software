@@ -1,11 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeBoardCoordinates } from './boardCoordinates.js';
+import { normalizeBoardCoordinates, normalizeMapCoordinates } from './boardCoordinates.js';
 
 describe('normalizeBoardCoordinates', () => {
   it('le latitude/longitude diretos', () => {
     expect(normalizeBoardCoordinates({ latitude: '-23.55', longitude: '-46.63' })).toEqual({
       latitude: -23.55,
       longitude: -46.63,
+      hasCoordinates: true,
+      source: 'latitude/longitude',
+    });
+  });
+
+  it('normalizeMapCoordinates retorna shape direto para marker', () => {
+    expect(normalizeMapCoordinates({ latitude: '-23.55', longitude: '-46.63' })).toEqual({
+      lat: -23.55,
+      lng: -46.63,
+    });
+  });
+
+  it('normaliza virgula decimal em latitude/longitude diretos', () => {
+    expect(normalizeBoardCoordinates({ latitude: '-23,55052', longitude: '-46,633308' })).toEqual({
+      latitude: -23.55052,
+      longitude: -46.633308,
       hasCoordinates: true,
       source: 'latitude/longitude',
     });
@@ -43,6 +59,30 @@ describe('normalizeBoardCoordinates', () => {
     });
   });
 
+  it('le coordenadas string "lat, lng" com espaco', () => {
+    expect(normalizeBoardCoordinates({ coordenadas: '-23.55052, -46.633308' })).toMatchObject({
+      latitude: -23.55052,
+      longitude: -46.633308,
+      source: 'coordenadas:string',
+    });
+  });
+
+  it('le coordinates array no topo em GeoJSON [lng, lat]', () => {
+    expect(normalizeBoardCoordinates({ coordinates: [-46.633308, -23.55052] })).toMatchObject({
+      latitude: -23.55052,
+      longitude: -46.633308,
+      source: 'coordinates:lng/lat',
+    });
+  });
+
+  it('le coordinates array no topo em [lat, lng]', () => {
+    expect(normalizeBoardCoordinates({ coordinates: [-23.55052, -46.633308] })).toMatchObject({
+      latitude: -23.55052,
+      longitude: -46.633308,
+      source: 'coordinates:lat/lng',
+    });
+  });
+
   it('le localizacao.coordinates no padrao GeoJSON [lng, lat]', () => {
     expect(normalizeBoardCoordinates({ localizacao: { coordinates: [-46.6333, -23.5505] } })).toMatchObject({
       latitude: -23.5505,
@@ -74,6 +114,10 @@ describe('normalizeBoardCoordinates', () => {
       hasCoordinates: false,
       source: null,
     });
+  });
+
+  it('normalizeMapCoordinates retorna null para coordenada invalida', () => {
+    expect(normalizeMapCoordinates({ latitude: 'abc', longitude: '-46.63' })).toBeNull();
   });
 
   it('nao corrige nem inverte arrays fora do padrao GeoJSON', () => {

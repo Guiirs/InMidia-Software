@@ -1,0 +1,29 @@
+50b342bfe36e8a4a7cdd4bc07c0e127d
+"use strict";
+/**
+ * Queue Service - DEPRECATED
+ * Este arquivo foi refatorado e movido para src/shared/services/queue/
+ * Mantido apenas para compatibilidade com imports antigos
+ */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const queue_1 = __importDefault(require("../services/queue"));
+__exportStar(require("../services/queue"), exports);
+exports.default = queue_1.default;
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiRzpcXElubWlkaWEgVjRcXEJFQ0tFTkRcXHNyY1xcc2hhcmVkXFxjb250YWluZXJcXHF1ZXVlLnNlcnZpY2UudHMiLCJtYXBwaW5ncyI6IjtBQUFBOzs7O0dBSUc7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUFFSCw4REFBNkM7QUFDN0Msb0RBQWtDO0FBQ2xDLGtCQUFlLGVBQVksQ0FBQyIsIm5hbWVzIjpbXSwic291cmNlcyI6WyJHOlxcSW5taWRpYSBWNFxcQkVDS0VORFxcc3JjXFxzaGFyZWRcXGNvbnRhaW5lclxccXVldWUuc2VydmljZS50cyJdLCJzb3VyY2VzQ29udGVudCI6WyIvKipcclxuICogUXVldWUgU2VydmljZSAtIERFUFJFQ0FURURcclxuICogRXN0ZSBhcnF1aXZvIGZvaSByZWZhdG9yYWRvIGUgbW92aWRvIHBhcmEgc3JjL3NoYXJlZC9zZXJ2aWNlcy9xdWV1ZS9cclxuICogTWFudGlkbyBhcGVuYXMgcGFyYSBjb21wYXRpYmlsaWRhZGUgY29tIGltcG9ydHMgYW50aWdvc1xyXG4gKi9cclxuXHJcbmltcG9ydCBRdWV1ZVNlcnZpY2UgZnJvbSAnLi4vc2VydmljZXMvcXVldWUnO1xyXG5leHBvcnQgKiBmcm9tICcuLi9zZXJ2aWNlcy9xdWV1ZSc7XHJcbmV4cG9ydCBkZWZhdWx0IFF1ZXVlU2VydmljZTtcclxuIl0sInZlcnNpb24iOjN9

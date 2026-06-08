@@ -1,0 +1,44 @@
+3ec31aae0bf130a5db6125e411fe2274
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.mediaCache = exports.availabilityCache = exports.shortCache = void 0;
+exports.publicCacheHeaders = publicCacheHeaders;
+const PUBLIC_API_VERSION = 'v1';
+/**
+ * Adds CDN-friendly cache headers to public API GET responses.
+ *
+ * s-maxage is intentionally longer than max-age: Cloudflare caches for longer
+ * while browsers revalidate sooner, reducing stale reads on the client side.
+ * Vary on x-api-key ensures each partner's responses are cached independently.
+ *
+ * Surrogate-Control: max-age is the Cloudflare-specific TTL override (takes
+ * priority over Cache-Control s-maxage on Cloudflare Enterprise; on free/pro
+ * s-maxage is used instead — both are set for compatibility).
+ *
+ * Not applied to POST/PUT/PATCH/DELETE — only cacheable methods.
+ */
+function publicCacheHeaders(maxAgeSeconds = 60, sMaxAgeSeconds = 300) {
+    return (req, res, next) => {
+        // Tag every public API response with the API version for client diagnostics.
+        res.setHeader('X-Public-Api-Version', PUBLIC_API_VERSION);
+        if (req.method === 'GET' || req.method === 'HEAD') {
+            res.setHeader('Cache-Control', `public, max-age=${maxAgeSeconds}, s-maxage=${sMaxAgeSeconds}, stale-while-revalidate=30`);
+            // Surrogate-Control: Cloudflare reads this for edge TTL; strip before sending to browser.
+            // On Cloudflare free/pro this header is forwarded as-is (not stripped) — harmless.
+            res.setHeader('Surrogate-Control', `max-age=${sMaxAgeSeconds}`);
+            // Cache is per API key — different partners must not receive each other's data.
+            res.vary('x-api-key');
+        }
+        else {
+            res.setHeader('Cache-Control', 'no-store');
+        }
+        next();
+    };
+}
+/** Short cache for high-frequency, low-volatility endpoints (inventory list, geo). */
+exports.shortCache = publicCacheHeaders(60, 300);
+/** Availability changes more frequently — shorter window. */
+exports.availabilityCache = publicCacheHeaders(30, 60);
+/** Media assets are stable — cache longer. */
+exports.mediaCache = publicCacheHeaders(300, 3600);
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiRzpcXElubWlkaWEgVjRcXEJFQ0tFTkRcXHNyY1xcbW9kdWxlc1xccHVibGljLWFwaVxcbWlkZGxld2FyZXNcXHB1YmxpYy1jYWNoZS5taWRkbGV3YXJlLnRzIiwibWFwcGluZ3MiOiI7OztBQWlCQSxnREFvQkM7QUFuQ0QsTUFBTSxrQkFBa0IsR0FBRyxJQUFJLENBQUM7QUFFaEM7Ozs7Ozs7Ozs7OztHQVlHO0FBQ0gsU0FBZ0Isa0JBQWtCLENBQUMsYUFBYSxHQUFHLEVBQUUsRUFBRSxjQUFjLEdBQUcsR0FBRztJQUN6RSxPQUFPLENBQUMsR0FBWSxFQUFFLEdBQWEsRUFBRSxJQUFrQixFQUFRLEVBQUU7UUFDL0QsNkVBQTZFO1FBQzdFLEdBQUcsQ0FBQyxTQUFTLENBQUMsc0JBQXNCLEVBQUUsa0JBQWtCLENBQUMsQ0FBQztRQUUxRCxJQUFJLEdBQUcsQ0FBQyxNQUFNLEtBQUssS0FBSyxJQUFJLEdBQUcsQ0FBQyxNQUFNLEtBQUssTUFBTSxFQUFFLENBQUM7WUFDbEQsR0FBRyxDQUFDLFNBQVMsQ0FDWCxlQUFlLEVBQ2YsbUJBQW1CLGFBQWEsY0FBYyxjQUFjLDZCQUE2QixDQUMxRixDQUFDO1lBQ0YsMEZBQTBGO1lBQzFGLG1GQUFtRjtZQUNuRixHQUFHLENBQUMsU0FBUyxDQUFDLG1CQUFtQixFQUFFLFdBQVcsY0FBYyxFQUFFLENBQUMsQ0FBQztZQUNoRSxnRkFBZ0Y7WUFDaEYsR0FBRyxDQUFDLElBQUksQ0FBQyxXQUFXLENBQUMsQ0FBQztRQUN4QixDQUFDO2FBQU0sQ0FBQztZQUNOLEdBQUcsQ0FBQyxTQUFTLENBQUMsZUFBZSxFQUFFLFVBQVUsQ0FBQyxDQUFDO1FBQzdDLENBQUM7UUFDRCxJQUFJLEVBQUUsQ0FBQztJQUNULENBQUMsQ0FBQztBQUNKLENBQUM7QUFFRCxzRkFBc0Y7QUFDekUsUUFBQSxVQUFVLEdBQUcsa0JBQWtCLENBQUMsRUFBRSxFQUFFLEdBQUcsQ0FBQyxDQUFDO0FBRXRELDZEQUE2RDtBQUNoRCxRQUFBLGlCQUFpQixHQUFHLGtCQUFrQixDQUFDLEVBQUUsRUFBRSxFQUFFLENBQUMsQ0FBQztBQUU1RCw4Q0FBOEM7QUFDakMsUUFBQSxVQUFVLEdBQUcsa0JBQWtCLENBQUMsR0FBRyxFQUFFLElBQUksQ0FBQyxDQUFDIiwibmFtZXMiOltdLCJzb3VyY2VzIjpbIkc6XFxJbm1pZGlhIFY0XFxCRUNLRU5EXFxzcmNcXG1vZHVsZXNcXHB1YmxpYy1hcGlcXG1pZGRsZXdhcmVzXFxwdWJsaWMtY2FjaGUubWlkZGxld2FyZS50cyJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgdHlwZSB7IFJlcXVlc3QsIFJlc3BvbnNlLCBOZXh0RnVuY3Rpb24gfSBmcm9tICdleHByZXNzJztcblxuY29uc3QgUFVCTElDX0FQSV9WRVJTSU9OID0gJ3YxJztcblxuLyoqXG4gKiBBZGRzIENETi1mcmllbmRseSBjYWNoZSBoZWFkZXJzIHRvIHB1YmxpYyBBUEkgR0VUIHJlc3BvbnNlcy5cbiAqXG4gKiBzLW1heGFnZSBpcyBpbnRlbnRpb25hbGx5IGxvbmdlciB0aGFuIG1heC1hZ2U6IENsb3VkZmxhcmUgY2FjaGVzIGZvciBsb25nZXJcbiAqIHdoaWxlIGJyb3dzZXJzIHJldmFsaWRhdGUgc29vbmVyLCByZWR1Y2luZyBzdGFsZSByZWFkcyBvbiB0aGUgY2xpZW50IHNpZGUuXG4gKiBWYXJ5IG9uIHgtYXBpLWtleSBlbnN1cmVzIGVhY2ggcGFydG5lcidzIHJlc3BvbnNlcyBhcmUgY2FjaGVkIGluZGVwZW5kZW50bHkuXG4gKlxuICogU3Vycm9nYXRlLUNvbnRyb2w6IG1heC1hZ2UgaXMgdGhlIENsb3VkZmxhcmUtc3BlY2lmaWMgVFRMIG92ZXJyaWRlICh0YWtlc1xuICogcHJpb3JpdHkgb3ZlciBDYWNoZS1Db250cm9sIHMtbWF4YWdlIG9uIENsb3VkZmxhcmUgRW50ZXJwcmlzZTsgb24gZnJlZS9wcm9cbiAqIHMtbWF4YWdlIGlzIHVzZWQgaW5zdGVhZCDigJQgYm90aCBhcmUgc2V0IGZvciBjb21wYXRpYmlsaXR5KS5cbiAqXG4gKiBOb3QgYXBwbGllZCB0byBQT1NUL1BVVC9QQVRDSC9ERUxFVEUg4oCUIG9ubHkgY2FjaGVhYmxlIG1ldGhvZHMuXG4gKi9cbmV4cG9ydCBmdW5jdGlvbiBwdWJsaWNDYWNoZUhlYWRlcnMobWF4QWdlU2Vjb25kcyA9IDYwLCBzTWF4QWdlU2Vjb25kcyA9IDMwMCkge1xuICByZXR1cm4gKHJlcTogUmVxdWVzdCwgcmVzOiBSZXNwb25zZSwgbmV4dDogTmV4dEZ1bmN0aW9uKTogdm9pZCA9PiB7XG4gICAgLy8gVGFnIGV2ZXJ5IHB1YmxpYyBBUEkgcmVzcG9uc2Ugd2l0aCB0aGUgQVBJIHZlcnNpb24gZm9yIGNsaWVudCBkaWFnbm9zdGljcy5cbiAgICByZXMuc2V0SGVhZGVyKCdYLVB1YmxpYy1BcGktVmVyc2lvbicsIFBVQkxJQ19BUElfVkVSU0lPTik7XG5cbiAgICBpZiAocmVxLm1ldGhvZCA9PT0gJ0dFVCcgfHwgcmVxLm1ldGhvZCA9PT0gJ0hFQUQnKSB7XG4gICAgICByZXMuc2V0SGVhZGVyKFxuICAgICAgICAnQ2FjaGUtQ29udHJvbCcsXG4gICAgICAgIGBwdWJsaWMsIG1heC1hZ2U9JHttYXhBZ2VTZWNvbmRzfSwgcy1tYXhhZ2U9JHtzTWF4QWdlU2Vjb25kc30sIHN0YWxlLXdoaWxlLXJldmFsaWRhdGU9MzBgLFxuICAgICAgKTtcbiAgICAgIC8vIFN1cnJvZ2F0ZS1Db250cm9sOiBDbG91ZGZsYXJlIHJlYWRzIHRoaXMgZm9yIGVkZ2UgVFRMOyBzdHJpcCBiZWZvcmUgc2VuZGluZyB0byBicm93c2VyLlxuICAgICAgLy8gT24gQ2xvdWRmbGFyZSBmcmVlL3BybyB0aGlzIGhlYWRlciBpcyBmb3J3YXJkZWQgYXMtaXMgKG5vdCBzdHJpcHBlZCkg4oCUIGhhcm1sZXNzLlxuICAgICAgcmVzLnNldEhlYWRlcignU3Vycm9nYXRlLUNvbnRyb2wnLCBgbWF4LWFnZT0ke3NNYXhBZ2VTZWNvbmRzfWApO1xuICAgICAgLy8gQ2FjaGUgaXMgcGVyIEFQSSBrZXkg4oCUIGRpZmZlcmVudCBwYXJ0bmVycyBtdXN0IG5vdCByZWNlaXZlIGVhY2ggb3RoZXIncyBkYXRhLlxuICAgICAgcmVzLnZhcnkoJ3gtYXBpLWtleScpO1xuICAgIH0gZWxzZSB7XG4gICAgICByZXMuc2V0SGVhZGVyKCdDYWNoZS1Db250cm9sJywgJ25vLXN0b3JlJyk7XG4gICAgfVxuICAgIG5leHQoKTtcbiAgfTtcbn1cblxuLyoqIFNob3J0IGNhY2hlIGZvciBoaWdoLWZyZXF1ZW5jeSwgbG93LXZvbGF0aWxpdHkgZW5kcG9pbnRzIChpbnZlbnRvcnkgbGlzdCwgZ2VvKS4gKi9cbmV4cG9ydCBjb25zdCBzaG9ydENhY2hlID0gcHVibGljQ2FjaGVIZWFkZXJzKDYwLCAzMDApO1xuXG4vKiogQXZhaWxhYmlsaXR5IGNoYW5nZXMgbW9yZSBmcmVxdWVudGx5IOKAlCBzaG9ydGVyIHdpbmRvdy4gKi9cbmV4cG9ydCBjb25zdCBhdmFpbGFiaWxpdHlDYWNoZSA9IHB1YmxpY0NhY2hlSGVhZGVycygzMCwgNjApO1xuXG4vKiogTWVkaWEgYXNzZXRzIGFyZSBzdGFibGUg4oCUIGNhY2hlIGxvbmdlci4gKi9cbmV4cG9ydCBjb25zdCBtZWRpYUNhY2hlID0gcHVibGljQ2FjaGVIZWFkZXJzKDMwMCwgMzYwMCk7XG4iXSwidmVyc2lvbiI6M30=

@@ -12,6 +12,7 @@ const { ReactQueryDevtools } = await import('@tanstack/react-query-devtools');
 const { ThemeProvider } = await import('@mui/material/styles');
 const { default: CssBaseline } = await import('@mui/material/CssBaseline');
 const { AuthProvider } = await import('./context/AuthContext');
+const { TenantProvider } = await import('./context/TenantContext');
 const { SyncCoreProvider } = await import('./core/sync-core/SyncCoreProvider.jsx');
 const { ConfirmationProvider } = await import('./context/ConfirmationContext');
 const { lightTheme } = await import('./design/index.js');
@@ -32,11 +33,13 @@ root.render(
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AuthProvider>
+            <TenantProvider>
             <SyncCoreProvider>
               <ConfirmationProvider>
                 <App />
               </ConfirmationProvider>
             </SyncCoreProvider>
+            </TenantProvider>
           </AuthProvider>
         </BrowserRouter>
         <ReactQueryDevtools initialIsOpen={false} />

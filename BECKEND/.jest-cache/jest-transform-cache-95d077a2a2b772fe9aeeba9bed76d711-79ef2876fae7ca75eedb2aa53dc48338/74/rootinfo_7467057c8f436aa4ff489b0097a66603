@@ -1,0 +1,12 @@
+182d948d66e89e0d2abc54fb87630288
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.rootInfoHandler = rootInfoHandler;
+function rootInfoHandler(_req, res) {
+    res.status(200).json({
+        service: 'InMidia API',
+        status: 'online',
+        version: 'v4',
+    });
+}
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiRzpcXElubWlkaWEgVjRcXEJFQ0tFTkRcXHNyY1xcc2hhcmVkXFxpbmZyYVxcaHR0cFxccm9vdC1pbmZvLnRzIiwibWFwcGluZ3MiOiI7O0FBRUEsMENBTUM7QUFORCxTQUFnQixlQUFlLENBQUMsSUFBYSxFQUFFLEdBQWE7SUFDMUQsR0FBRyxDQUFDLE1BQU0sQ0FBQyxHQUFHLENBQUMsQ0FBQyxJQUFJLENBQUM7UUFDbkIsT0FBTyxFQUFFLGFBQWE7UUFDdEIsTUFBTSxFQUFFLFFBQVE7UUFDaEIsT0FBTyxFQUFFLElBQUk7S0FDZCxDQUFDLENBQUM7QUFDTCxDQUFDIiwibmFtZXMiOltdLCJzb3VyY2VzIjpbIkc6XFxJbm1pZGlhIFY0XFxCRUNLRU5EXFxzcmNcXHNoYXJlZFxcaW5mcmFcXGh0dHBcXHJvb3QtaW5mby50cyJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgeyBSZXF1ZXN0LCBSZXNwb25zZSB9IGZyb20gJ2V4cHJlc3MnO1xuXG5leHBvcnQgZnVuY3Rpb24gcm9vdEluZm9IYW5kbGVyKF9yZXE6IFJlcXVlc3QsIHJlczogUmVzcG9uc2UpOiB2b2lkIHtcbiAgcmVzLnN0YXR1cygyMDApLmpzb24oe1xuICAgIHNlcnZpY2U6ICdJbk1pZGlhIEFQSScsXG4gICAgc3RhdHVzOiAnb25saW5lJyxcbiAgICB2ZXJzaW9uOiAndjQnLFxuICB9KTtcbn1cbiJdLCJ2ZXJzaW9uIjozfQ==

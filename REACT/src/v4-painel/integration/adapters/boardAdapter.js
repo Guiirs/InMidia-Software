@@ -115,21 +115,11 @@ function rawGalleryImages(input) {
 }
 
 function resolveRawMainImage(placa) {
-  const images = rawGalleryImages(placa);
-  const mainImage = placa.mainImage
-    ?? images.find((image) => image?.isMain)
-    ?? images.find((image) => image?.category === 'MAIN')
-    ?? null;
-  return placa.mainImageUrl
-    ?? placa.imagemPrincipal
-    ?? mainImage?.publicUrl
-    ?? mainImage?.url
-    ?? placa.imagem
-    ?? placa.foto
-    ?? placa.imageUrl
+  // Fonte canônica: imageUrl / mainImageUrl / imagemUrl — vêm do presenter com ?v=.
+  // Campos legados (imagemPrincipal, imagem, foto, fotoUrl, urlImagem) não são consumidos.
+  return placa.imageUrl
+    ?? placa.mainImageUrl
     ?? placa.imagemUrl
-    ?? placa.fotoUrl
-    ?? placa.urlImagem
     ?? null;
 }
 
@@ -173,7 +163,6 @@ export function normalizeBoard(placa, fallback = null) {
   const longitude   = coords.longitude ?? fallbackCoords?.longitude ?? null;
   const hasCoordinates = latitude != null && longitude != null;
   const rawImages = rawGalleryImages(placa);
-  const imagemPrincipal = resolveRawMainImage(placa);
   const mainImageUrl = normalizeImageUrl(placa, fallback);
   const imagens = rawImages.map((image, index) => {
     const rawUrl = image.url ?? image.imageUrl ?? image.src ?? '';
@@ -187,7 +176,7 @@ export function normalizeBoard(placa, fallback = null) {
       mimeType: image.mimeType ?? image.mimetype ?? null,
       size: image.size ?? null,
       category: image.category ?? 'OTHER',
-      isMain: Boolean(image.isMain || image.category === 'MAIN' || rawUrl === imagemPrincipal || image.url === imagemPrincipal),
+      isMain: Boolean(image.isMain || image.category === 'MAIN'),
       source: image.source ?? 'UPLOAD',
       uploadedBy: image.uploadedBy ?? null,
       uploadedAt: image.uploadedAt ?? null,
@@ -259,16 +248,15 @@ export function normalizeBoard(placa, fallback = null) {
     recomendacao:     deriveRecomendacao(status, diasOcioso),
     visibilidade:     fallback?.visibilidade ?? 'Não informado',
 
-    /* ─ Mídia ───────────────────────────────────────────────── */
-    imageUrl:         mainImageUrl,
+    /* ─ Mídia — fonte canônica: imageUrl com ?v= ─────────────── */
+    imageUrl:      mainImageUrl,
     mainImageUrl,
-    imagemPrincipal,
-    imagem:           placa.imagem ?? imagemPrincipal,
-    images:           imagens.length ? imagens : (fallback?.images ?? fallback?.imagens ?? []),
-    imagens:          imagens.length ? imagens : (fallback?.imagens ?? []),
-    imageStatus:      mainImageUrl ? 'AVAILABLE' : 'MISSING',
-    thumbnailUrl:     fallback?.thumbnailUrl ?? null,
-    imageAlt:         fallback?.imageAlt ?? `Placa ${codigo}`,
+    imagemPrincipal: mainImageUrl,
+    images:      imagens.length ? imagens : (fallback?.images ?? fallback?.imagens ?? []),
+    imagens:     imagens.length ? imagens : (fallback?.imagens ?? []),
+    imageStatus: mainImageUrl ? 'AVAILABLE' : 'MISSING',
+    thumbnailUrl: fallback?.thumbnailUrl ?? null,
+    imageAlt:    fallback?.imageAlt ?? `Placa ${codigo}`,
     notes:            placa.notes ?? placa.observacoes ?? fallback?.notes ?? '',
     observacoes:      placa.observacoes ?? placa.notes ?? fallback?.observacoes ?? '',
     archivedAt:       placa.archivedAt ?? null,

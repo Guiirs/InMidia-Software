@@ -34,6 +34,8 @@ function Sidebar({
   onToggle,
   user = { name: 'Usuario', role: 'Operador', initials: 'IN', permissions: [] },
   companyName = 'InMidia',
+  orgPlan = null,
+  showLegacyBadge = false,
 }) {
   const visibleGroups = useMemo(() => visibleGroupsForUser(user), [user]);
 
@@ -49,7 +51,18 @@ function Sidebar({
         </div>
         <div className="v4p-sidebar__brand-text">
           <div className="v4p-sidebar__brand-name">{companyName}</div>
-          <div className="v4p-sidebar__brand-sub">OOH Intelligence</div>
+          <div className="v4p-sidebar__brand-sub">
+            {orgPlan ? orgPlan : 'OOH Intelligence'}
+            {showLegacyBadge && (
+              <span
+                className="v4p-sidebar__legacy-badge"
+                title="Modo legado ativo"
+                aria-label="Modo legado"
+              >
+                {' '}legado
+              </span>
+            )}
+          </div>
         </div>
         <button
           type="button"

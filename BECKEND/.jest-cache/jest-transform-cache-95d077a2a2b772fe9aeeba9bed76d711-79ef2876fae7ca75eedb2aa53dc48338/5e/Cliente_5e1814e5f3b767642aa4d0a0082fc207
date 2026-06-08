@@ -1,0 +1,11 @@
+b132b27dd38c4f3039ba998c3b7574ca
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const mongoose_1 = __importDefault(require("mongoose"));
+const cliente_schema_1 = require("@database/schemas/cliente.schema");
+const Cliente = mongoose_1.default.models.Cliente || mongoose_1.default.model('Cliente', cliente_schema_1.clienteSchema);
+exports.default = Cliente;
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiRzpcXElubWlkaWEgVjRcXEJFQ0tFTkRcXHNyY1xcbW9kdWxlc1xcY2xpZW50ZXNcXENsaWVudGUudHMiLCJtYXBwaW5ncyI6Ijs7Ozs7QUFBQSx3REFBMkM7QUFFM0MscUVBQWlFO0FBRWpFLE1BQU0sT0FBTyxHQUFvQixrQkFBUSxDQUFDLE1BQU0sQ0FBQyxPQUFPLElBQUksa0JBQVEsQ0FBQyxLQUFLLENBQVcsU0FBUyxFQUFFLDhCQUFhLENBQUMsQ0FBQztBQUUvRyxrQkFBZSxPQUFPLENBQUMiLCJuYW1lcyI6W10sInNvdXJjZXMiOlsiRzpcXElubWlkaWEgVjRcXEJFQ0tFTkRcXHNyY1xcbW9kdWxlc1xcY2xpZW50ZXNcXENsaWVudGUudHMiXSwic291cmNlc0NvbnRlbnQiOlsiaW1wb3J0IG1vbmdvb3NlLCB7IE1vZGVsIH0gZnJvbSAnbW9uZ29vc2UnO1xyXG5pbXBvcnQgeyBJQ2xpZW50ZSB9IGZyb20gJy4uLy4uL3R5cGVzL21vZGVscy5kJztcclxuaW1wb3J0IHsgY2xpZW50ZVNjaGVtYSB9IGZyb20gJ0BkYXRhYmFzZS9zY2hlbWFzL2NsaWVudGUuc2NoZW1hJztcclxuXHJcbmNvbnN0IENsaWVudGU6IE1vZGVsPElDbGllbnRlPiA9IG1vbmdvb3NlLm1vZGVscy5DbGllbnRlIHx8IG1vbmdvb3NlLm1vZGVsPElDbGllbnRlPignQ2xpZW50ZScsIGNsaWVudGVTY2hlbWEpO1xyXG5cclxuZXhwb3J0IGRlZmF1bHQgQ2xpZW50ZTtcclxuIl0sInZlcnNpb24iOjN9

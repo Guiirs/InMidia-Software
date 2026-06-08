@@ -9,6 +9,7 @@ import { listRegions } from '../../services/regionService';
 import { useToast } from '../../components/ToastNotification/ToastNotification';
 import Spinner from '../../components/Spinner/Spinner';
 import { getImageUrl } from '../../utils/helpers';
+import { normalizePlateCoordinatePair } from './placaFormPayload';
 import './PlacaFormPage.css';
 
 // ─── Health Score Badge ────────────────────────────────────────────────────────
@@ -257,6 +258,7 @@ function PlacaFormPage() {
     onSuccess: () => {
       showToast('Placa adicionada com sucesso!', 'success');
       queryClient.invalidateQueries({ queryKey: ['placas'] });
+      queryClient.invalidateQueries({ queryKey: ['placaLocations'] });
       navigate('/placas');
     },
     onError: (error) => {
@@ -276,6 +278,7 @@ function PlacaFormPage() {
     onSuccess: () => {
       showToast('Placa atualizada com sucesso!', 'success');
       queryClient.invalidateQueries({ queryKey: ['placas'] });
+      queryClient.invalidateQueries({ queryKey: ['placaLocations'] });
       queryClient.invalidateQueries({ queryKey: ['placa', placaId] });
       navigate('/placas');
     },
@@ -299,6 +302,14 @@ function PlacaFormPage() {
   };
 
   const onSubmit = (data) => {
+    const coords = normalizePlateCoordinatePair(data.latitude, data.longitude);
+    if (coords.error) {
+      setFormError('latitude', { type: 'validate', message: coords.error });
+      setFormError('longitude', { type: 'validate', message: coords.error });
+      showToast(coords.error, 'error');
+      return;
+    }
+
     const formData = new FormData();
 
     // Campos texto
@@ -308,9 +319,11 @@ function PlacaFormPage() {
     });
 
     // Coordenadas numéricas
-    if (data.latitude !== '' && data.latitude != null) formData.append('latitude', String(data.latitude));
-    if (data.longitude !== '' && data.longitude != null) formData.append('longitude', String(data.longitude));
-    if (data.coordenadas) formData.append('coordenadas', data.coordenadas);
+    if (coords.hasCoordinates) {
+      formData.append('latitude', String(coords.latitude));
+      formData.append('longitude', String(coords.longitude));
+      formData.append('coordenadas', `${coords.latitude},${coords.longitude}`);
+    }
 
     // Imagem
     const imageFile = data.imagem?.[0];
@@ -395,9 +408,9 @@ function PlacaFormPage() {
           <div className="placa-form-page__input-group">
             <label htmlFor="latitude" className="placa-form-page__label">Latitude</label>
             <input
-              type="number"
+              type="text"
               id="latitude"
-              step="any"
+              inputMode="decimal"
               placeholder="-23.5505"
               className={`placa-form-page__input ${errors.latitude ? 'input-error' : ''}`}
               {...register('latitude', {
@@ -418,9 +431,9 @@ function PlacaFormPage() {
           <div className="placa-form-page__input-group">
             <label htmlFor="longitude" className="placa-form-page__label">Longitude</label>
             <input
-              type="number"
+              type="text"
               id="longitude"
-              step="any"
+              inputMode="decimal"
               placeholder="-46.6333"
               className={`placa-form-page__input ${errors.longitude ? 'input-error' : ''}`}
               {...register('longitude', {

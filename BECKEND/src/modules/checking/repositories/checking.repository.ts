@@ -6,7 +6,7 @@
 import { Model, FilterQuery } from 'mongoose';
 import { Result, DomainError, NotFoundError, ValidationError } from '@shared/core';
 import type { IChecking } from '../Checking';
-import type { CreateCheckingInput, UpdateCheckingInput, ListCheckingsQuery, CheckingEntity } from '../dtos/checking.dto';
+import type { CreateCheckingInput, UpdateCheckingInput, ListCheckingsQuery, CheckingEntity, TenantCheckingInput } from '../dtos/checking.dto';
 
 export class CheckingNotFoundError extends NotFoundError {
   constructor(checkingId: string) {
@@ -15,19 +15,21 @@ export class CheckingNotFoundError extends NotFoundError {
 }
 
 export interface ICheckingRepository {
-  create(data: CreateCheckingInput): Promise<Result<CheckingEntity, DomainError>>;
-  findById(id: string): Promise<Result<CheckingEntity | null, DomainError>>;
-  update(id: string, data: UpdateCheckingInput): Promise<Result<CheckingEntity, DomainError>>;
-  findByAluguelId(aluguelId: string): Promise<Result<CheckingEntity[], DomainError>>;
-  list(query: ListCheckingsQuery): Promise<Result<CheckingEntity[], DomainError>>;
+  create(data: TenantCheckingInput<CreateCheckingInput>): Promise<Result<CheckingEntity, DomainError>>;
+  findById(id: string, empresaId: string): Promise<Result<CheckingEntity | null, DomainError>>;
+  update(id: string, empresaId: string, data: UpdateCheckingInput): Promise<Result<CheckingEntity, DomainError>>;
+  delete(id: string, empresaId: string): Promise<Result<boolean, DomainError>>;
+  findByAluguelId(aluguelId: string, empresaId: string): Promise<Result<CheckingEntity[], DomainError>>;
+  list(query: TenantCheckingInput<ListCheckingsQuery>): Promise<Result<CheckingEntity[], DomainError>>;
 }
 
 export class CheckingRepository implements ICheckingRepository {
   constructor(private readonly model: Model<IChecking>) {}
 
-  async create(data: CreateCheckingInput): Promise<Result<CheckingEntity, DomainError>> {
+  async create(data: TenantCheckingInput<CreateCheckingInput>): Promise<Result<CheckingEntity, DomainError>> {
     try {
       const checking = new this.model({
+        empresaId: data.empresaId,
         aluguelId: data.aluguelId,
         placaId: data.placaId,
         installerId: data.installerId,
@@ -56,10 +58,10 @@ export class CheckingRepository implements ICheckingRepository {
     }
   }
 
-  async findById(id: string): Promise<Result<CheckingEntity | null, DomainError>> {
+  async findById(id: string, empresaId: string): Promise<Result<CheckingEntity | null, DomainError>> {
     try {
       const checking = await this.model
-        .findById(id)
+        .findOne({ _id: id, empresaId })
         .populate('aluguelId', 'numero_contrato')
         .populate('placaId', 'numero_placa')
         .populate('installerId', 'nome email')
@@ -74,10 +76,10 @@ export class CheckingRepository implements ICheckingRepository {
     }
   }
 
-  async update(id: string, data: UpdateCheckingInput): Promise<Result<CheckingEntity, DomainError>> {
+  async update(id: string, empresaId: string, data: UpdateCheckingInput): Promise<Result<CheckingEntity, DomainError>> {
     try {
       const checking = await this.model
-        .findByIdAndUpdate(id, data, { new: true, runValidators: true })
+        .findOneAndUpdate({ _id: id, empresaId }, data, { new: true, runValidators: true })
         .populate('aluguelId', 'numero_contrato')
         .populate('placaId', 'numero_placa')
         .populate('installerId', 'nome email')
@@ -106,10 +108,24 @@ export class CheckingRepository implements ICheckingRepository {
     }
   }
 
-  async findByAluguelId(aluguelId: string): Promise<Result<CheckingEntity[], DomainError>> {
+  async delete(id: string, empresaId: string): Promise<Result<boolean, DomainError>> {
+    try {
+      const result = await this.model.deleteOne({ _id: id, empresaId }).exec();
+      if (result.deletedCount === 0) {
+        return Result.fail(new CheckingNotFoundError(id));
+      }
+      return Result.ok(true);
+    } catch (error: any) {
+      return Result.fail(
+        new ValidationError([{ field: 'geral', message: 'Erro ao remover checking' }])
+      );
+    }
+  }
+
+  async findByAluguelId(aluguelId: string, empresaId: string): Promise<Result<CheckingEntity[], DomainError>> {
     try {
       const checkings = await this.model
-        .find({ aluguelId })
+        .find({ aluguelId, empresaId })
         .populate('aluguelId', 'numero_contrato')
         .populate('placaId', 'numero_placa')
         .populate('installerId', 'nome email')
@@ -125,9 +141,9 @@ export class CheckingRepository implements ICheckingRepository {
     }
   }
 
-  async list(query: ListCheckingsQuery): Promise<Result<CheckingEntity[], DomainError>> {
+  async list(query: TenantCheckingInput<ListCheckingsQuery>): Promise<Result<CheckingEntity[], DomainError>> {
     try {
-      const filter: FilterQuery<IChecking> = {};
+      const filter: FilterQuery<IChecking> = { empresaId: query.empresaId };
 
       if (query.aluguelId) {
         filter.aluguelId = query.aluguelId;

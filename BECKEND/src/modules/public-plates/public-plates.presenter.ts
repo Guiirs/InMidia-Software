@@ -2,12 +2,22 @@
  * Mapeia um documento de Placa (com regiaoId populado) para o payload público seguro.
  *
  * imagemUrl aponta para o proxy seguro canônico (/api/v1/public/media/plates/:id/main).
+ * A versão (?v=) é derivada de PlateMedia.version para garantir cache-busting automático
+ * quando a imagem principal for trocada.
+ *
+ * FONTE ÚNICA DE VERDADE: PlateMedia.activeKey
+ * Nenhum campo legado (imagemPrincipal, imagem, imagens[]) é consultado.
+ *
  * Campos legados (imagem, jetImageUrl, etc.) são mantidos como aliases para
  * retrocompatibilidade com integrações WordPress/JetEngine.
  * Nunca expõe URLs diretas do R2 ou credenciais do bucket.
  */
 import logger from '@shared/container/logger';
-import { contentTypeFromStorageKey, resolvePlacaImageReference } from '@modules/media/placa-image-reference.resolver';
+
+export interface PlateMediaResolved {
+  activeKey: string | null;
+  version: string;
+}
 
 export interface PublicImageMeta {
   url: string;
@@ -36,7 +46,7 @@ export interface PublicPlacaPayload {
   nome: string;
   localizacao: string | null;
   status: 'disponivel' | 'reservado' | 'ocupado' | 'indisponivel' | 'desconhecido';
-  /** URL canônica do proxy de imagem. */
+  /** URL canônica do proxy de imagem (inclui ?v= para cache-busting). */
   imagemUrl: string | null;
   hasImage: boolean;
   latitude: number | null;
@@ -75,14 +85,6 @@ export interface PublicDisponibilidadePayload {
   reservado: number;
   ocupado: number;
   indisponivel: number;
-}
-
-/**
- * Deriva MIME type da extensão do path/URL armazenado no banco.
- * Nunca faz chamada ao R2 — resultado é best-effort a partir da extensão.
- */
-export function mimeTypeFromStoredPath(value: string | null | undefined): string | null {
-  return contentTypeFromStorageKey(value);
 }
 
 const statusComercialMap: Record<string, PublicPlacaPayload['disponibilidade']> = {
@@ -153,24 +155,16 @@ export function validatePublicApiBaseUrlAtStartup(): void {
 
 /**
  * Constrói a URL canônica do proxy seguro de imagem para a placa com o id informado.
+ * Inclui ?v={version} para cache-busting automático no browser quando a imagem trocar.
  * Nunca expõe a URL real do R2 ou do bucket.
  */
-export function buildProxyImageUrl(placaId: string): string {
+export function buildProxyImageUrl(placaId: string, version?: string | null): string {
   const base = getPublicApiBaseUrl();
-  return `${base}/api/v1/public/media/plates/${placaId}/main`;
-}
-
-/** @internal Mantido apenas para uso em testes legados. Não usar em produção. */
-export function normalizePublicImageUrl(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
-  const raw = value.trim();
-  if (!raw) return null;
-  if (/^https?:\/\//i.test(raw)) return raw;
-  const baseUrl = (process.env.R2_PUBLIC_URL || process.env.VITE_R2_PUBLIC_URL || '').replace(/\/+$/, '');
-  const folderName = (process.env.R2_FOLDER_NAME || 'inmidia-uploads-sistema').replace(/^\/+|\/+$/g, '');
-  const key = raw.replace(/^\/+/, '');
-  const storageKey = key.includes('/') ? key : `${folderName}/${key}`;
-  return baseUrl ? `${baseUrl}/${storageKey}` : storageKey;
+  const path = `${base}/api/v1/public/media/plates/${placaId}/main`;
+  if (version && version.trim()) {
+    return `${path}?v=${encodeURIComponent(version.trim())}`;
+  }
+  return path;
 }
 
 export function toSlug(value: string): string {
@@ -197,7 +191,14 @@ export function buildImageAltTitle(placa: { nome?: unknown; codigo?: unknown; nu
   return 'Placa';
 }
 
-export function toPublicPlaca(raw: any): PublicPlacaPayload {
+/**
+ * Converte um documento de Placa para o payload público.
+ *
+ * @param raw        Documento Placa (lean) com regiaoId populado.
+ * @param plateMedia Dados resolvidos de PlateMedia para esta placa.
+ *                   Se null, a placa não tem imagem cadastrada no sistema canônico.
+ */
+export function toPublicPlaca(raw: any, plateMedia?: PlateMediaResolved | null): PublicPlacaPayload {
   const regiaoDoc = typeof raw.regiaoId === 'object' && raw.regiaoId !== null
     ? raw.regiaoId
     : null;
@@ -209,20 +210,14 @@ export function toPublicPlaca(raw: any): PublicPlacaPayload {
   const codigo = raw.numero_placa ?? '';
   const imageLabel = buildImageAltTitle({ nome: raw.nome, codigo, numero_placa: raw.numero_placa });
 
-  const resolvedImage = resolvePlacaImageReference(raw);
-  const storedPath = resolvedImage.storageKey;
-  const hasImage = resolvedImage.hasImage;
-  const proxyUrl = hasImage && id ? buildProxyImageUrl(id) : null;
+  // ── Imagem — fonte única: PlateMedia.activeKey ────────────────────────────────
+  const hasImage = !!(plateMedia?.activeKey);
+  const proxyUrl = hasImage && id ? buildProxyImageUrl(id, plateMedia?.version) : null;
   const resolvedUpdatedAt = raw.updatedAt ? new Date(raw.updatedAt).toISOString() : null;
 
-  // Deprecated alias fields — mantidos para retrocompatibilidade com WordPress/JetEngine/Elementor.
+  // Campos deprecated — mantidos para retrocompatibilidade com WordPress/JetEngine/Elementor.
   const imagemMeta: PublicImageMeta | null = proxyUrl
-    ? {
-        url: proxyUrl,
-        mimeType: resolvedImage.contentType ?? mimeTypeFromStoredPath(storedPath),
-        cacheable: true,
-        updatedAt: resolvedUpdatedAt,
-      }
+    ? { url: proxyUrl, mimeType: null, cacheable: true, updatedAt: resolvedUpdatedAt }
     : null;
   const jetImage: PublicJetImagePayload | null = proxyUrl
     ? { id: 0, url: proxyUrl, alt: imageLabel, title: imageLabel }

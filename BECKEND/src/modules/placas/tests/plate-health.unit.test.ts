@@ -9,7 +9,7 @@ const base = {
   endereco: 'Rua das Flores, 123',
   latitude: -23.5,
   longitude: -46.6,
-  imagemPrincipal: 'placas/img.jpg',
+  plateMediaResolved: true,
   regiaoId: '507f1f77bcf86cd799439011',
   statusOperacional: 'ACTIVE',
   statusComercial: 'AVAILABLE',
@@ -24,10 +24,15 @@ describe('resolvePlateHealth()', () => {
     expect(result.issues).toHaveLength(0);
   });
 
-  it('detecta placa sem imagem', () => {
-    const result = resolvePlateHealth({ ...base, imagemPrincipal: undefined, imagem: undefined, imagens: [] });
+  it('detecta placa sem imagem (plateMediaResolved=false)', () => {
+    const result = resolvePlateHealth({ ...base, plateMediaResolved: false });
     expect(result.issues).toContain('Possui imagem principal');
     expect(result.score).toBeLessThan(100);
+  });
+
+  it('detecta placa sem imagem quando plateMediaResolved ausente', () => {
+    const result = resolvePlateHealth({ ...base, plateMediaResolved: undefined });
+    expect(result.issues).toContain('Possui imagem principal');
   });
 
   it('detecta placa sem coordenadas', () => {
@@ -57,7 +62,7 @@ describe('resolvePlateHealth()', () => {
       endereco: undefined,
       latitude: undefined,
       longitude: undefined,
-      imagemPrincipal: undefined,
+      plateMediaResolved: false,
       regiaoId: undefined,
     });
     expect(result.status).toBe('CRITICAL');
@@ -71,7 +76,7 @@ describe('resolvePlateHealth()', () => {
       endereco: 'Rua',
       latitude: -10,
       longitude: -40,
-      imagemPrincipal: undefined,
+      plateMediaResolved: false,
       regiaoId: undefined,
       statusOperacional: 'ACTIVE',
     });
@@ -83,13 +88,13 @@ describe('resolvePlateHealth()', () => {
     expect(result.issues).not.toContain('Possui coordenadas');
   });
 
-  it('aceita imagem valida via array imagens', () => {
-    const result = resolvePlateHealth({ ...base, imagemPrincipal: undefined, imagem: undefined, imagens: [{ url: 'placas/x.jpg' }] });
+  it('reconhece imagem via plateMediaResolved=true', () => {
+    const result = resolvePlateHealth({ ...base, plateMediaResolved: true });
     expect(result.issues).not.toContain('Possui imagem principal');
   });
 
-  it('rejeita imagem invalida via array imagens', () => {
-    const result = resolvePlateHealth({ ...base, imagemPrincipal: undefined, imagem: undefined, imagens: [{ url: 'x' }] });
+  it('rejeita imagem quando plateMediaResolved=false', () => {
+    const result = resolvePlateHealth({ ...base, plateMediaResolved: false });
     expect(result.issues).toContain('Possui imagem principal');
   });
 

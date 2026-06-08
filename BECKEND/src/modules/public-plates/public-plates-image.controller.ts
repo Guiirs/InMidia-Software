@@ -1,28 +1,28 @@
 /**
  * Proxy público de imagem de placa — enterprise-grade, CDN-ready.
  *
+ * FONTE ÚNICA DE VERDADE: PlateMedia.activeKey
+ * Não há fallback para campos legados (imagemPrincipal, imagem, imagens[]).
+ * Se PlateMedia não existir para a placa, retorna 404.
+ *
  * Segurança:
  *   - Sem autenticação (público para WordPress/JetEngine)
  *   - Rate limiting por IP (publicApiRateLimiter)
- *   - Hotlink middleware (pass-through; extensível)
  *   - ?path= / ?key= / ?url= / ?src= / ?file= → 400
- *   - Chave R2 extraída só do banco; traversal bloqueado por extractR2Key
+ *   - Chave R2 extraída só do PlateMedia; traversal impossível
  *   - Credenciais, keys internas e stack traces nunca expostos
  *
  * CDN / Conditional Cache:
- *   - ETag (R2 nativo via HeadObject; fallback SHA-256 de key+updatedAt)
- *   - Last-Modified (R2 LastModified ou updatedAt da placa)
+ *   - ETag (R2 nativo via HeadObject; fallback SHA-256 de key+version)
+ *   - Last-Modified (R2 LastModified ou PlateMedia.version)
  *   - If-None-Match → 304 sem rebuscar stream
  *   - If-Modified-Since → 304 sem rebuscar stream
  *   - Cache-Control: public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400
- *   - Vary: Accept-Encoding (sem Vary: x-api-key — endpoint sem auth)
- *   - Surrogate-Control para CDNs enterprise
- *   - X-Public-Api-Version
+ *   - ?v= query param (PlateMedia.version) para cache-busting no browser
  *
  * Performance:
  *   - Redis cache de metadata (TTL 120s) → zero lookups MongoDB ou R2 para 304
  *   - Com conditional headers + Redis hit: 304 sem NENHUMA chamada R2
- *   - Sem heaObject extra quando sem conditional headers (GetObject já devolve metadata)
  *   - Streaming puro sem bufferização
  *
  * Observabilidade:
@@ -33,12 +33,11 @@ import crypto from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import type { Readable } from 'stream';
+import { Types } from 'mongoose';
 import { PublicErrorPresenter } from '@modules/public-api/presenters/public-error.presenter';
 import { getR2Client, getR2BucketName } from '@shared/infra/storage/r2-client';
 import { publicMediaRateLimiter } from '@shared/infra/http/middlewares/rate-limit.middleware';
 import logger from '@shared/container/logger';
-import { getPlacaDocForImagePublic, type PlacaImageDoc } from './public-plates.service';
-import { getPlacaImageCandidates, resolvePlacaImageReference } from '@modules/media/placa-image-reference.resolver';
 import {
   getImageMetaFromCache,
   setImageMetaInCache,
@@ -46,6 +45,8 @@ import {
   isImageCacheAvailable,
 } from './image-cache.service';
 import type { ImageMetaCache, ImageProxyMetrics } from './image-meta.types';
+import { plateMediaService } from '@modules/media/plate-media.service';
+import Placa from '@modules/placas/Placa';
 
 export { publicMediaRateLimiter as imageRateLimiter };
 
@@ -59,6 +60,7 @@ const PUBLIC_API_VERSION = 'v1';
 const PUBLIC_IMAGE_CORP = 'cross-origin';
 const PUBLIC_IMAGE_CORS_ORIGIN = '*';
 
+// ?v= é permitido (cache-busting) — apenas estes são bloqueados.
 const BLOCKED_QUERY_PARAMS = ['path', 'key', 'file', 'url', 'src'];
 
 export function publicImageSecurityHeaders(
@@ -78,12 +80,12 @@ function deriveRequestId(req: Request): string {
   return req.header('x-request-id') ?? 'unknown';
 }
 
-/** ETag fallback: SHA-256(r2Key + updatedAt), estável e barato. */
-function computeFallbackETag(r2Key: string, updatedAt: string): string {
+/** ETag fallback: SHA-256(r2Key + version), estável e barato. */
+function computeFallbackETag(r2Key: string, version: string): string {
   const hash = crypto
     .createHash('sha256')
     .update(r2Key)
-    .update(updatedAt)
+    .update(version)
     .digest('hex')
     .slice(0, 32);
   return `"${hash}"`;
@@ -179,66 +181,23 @@ function emitMetrics(metrics: ImageProxyMetrics): void {
   });
 }
 
-function redactImageValue(value: unknown): string {
-  if (typeof value !== 'string' || !value.trim()) return 'empty';
-  const raw = value.trim();
-  const suffix = raw.slice(Math.max(0, raw.length - 18));
-  if (/^https?:\/\//i.test(raw)) {
-    try {
-      const parsed = new URL(raw);
-      return `${parsed.protocol}//${parsed.hostname}/...${suffix}`;
-    } catch {
-      return `url:...${suffix}`;
-    }
-  }
-  return `path:...${suffix}`;
-}
-
-function logImageResolutionFailure(input: {
-  endpoint: string;
-  placaId: string;
-  doc: PlacaImageDoc | null;
-  keyResolvida?: string | null;
-  sourceField?: string | null;
-  bucket: string;
-  reason: string;
-}): void {
-  const doc: any = input.doc ?? {};
-  logger.warn('[ImageProxy] Falha ao resolver imagem da placa', {
-    endpoint: input.endpoint,
-    reason: input.reason,
-    placaId: input.placaId,
-    codigo: doc.numero_placa ?? doc.codigo ?? null,
-    nome: doc.nome ?? null,
-    empresaId: doc.empresaId ? String(doc.empresaId) : null,
-    tenantId: doc.tenantId ? String(doc.tenantId) : doc.empresaId ? String(doc.empresaId) : null,
-    campoUsado: input.sourceField ?? null,
-    imageFields: getPlacaImageCandidates(doc).map((candidate) => ({
-      field: candidate.field,
-      value: redactImageValue(candidate.value),
-    })),
-    keyResolvida: input.keyResolvida ? redactImageValue(input.keyResolvida) : null,
-    bucket: input.bucket,
-  });
-}
-
 // ── R2 helpers ─────────────────────────────────────────────────────────────────
 
 /** Busca metadata de um objeto R2 sem baixar o conteúdo (HeadObject). */
 async function headR2Object(
   bucket: string,
   r2Key: string,
-  updatedAt: string,
+  version: string,
 ): Promise<Omit<ImageMetaCache, 'placaId' | 'r2Key' | 'updatedAt'>> {
   const client = getR2Client();
   if (!client) throw new Error('R2 client unavailable');
 
   const res = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: r2Key }));
 
-  const etag = normalizeETag(res.ETag) || computeFallbackETag(r2Key, updatedAt);
+  const etag = normalizeETag(res.ETag) || computeFallbackETag(r2Key, version);
   const lastModified = res.LastModified
     ? res.LastModified.toUTCString()
-    : new Date(updatedAt).toUTCString();
+    : new Date(parseInt(version || '0', 10) || Date.now()).toUTCString();
 
   return {
     etag,
@@ -251,11 +210,12 @@ async function headR2Object(
 // ── Controller ─────────────────────────────────────────────────────────────────
 
 /**
- * GET /api/v1/public/placas/:id/imagem
- * GET /api/public/placas/:id/imagem
+ * GET /api/v1/public/media/plates/:id/main
+ * GET /api/v1/public/placas/:id/imagem  (alias legado)
  *
- * Endpoint público (sem API key). Proxy seguro do R2 privado com suporte
- * completo a ETag, Last-Modified, 304 Not Modified e Redis cache.
+ * Endpoint público (sem API key). Proxy seguro do R2 privado.
+ * Aceita ?v={PlateMedia.version} para cache-busting — parâmetro ignorado internamente,
+ * sua presença na URL garante que o browser não use cache de versão anterior.
  */
 export async function getPlacaImagem(
   req: Request,
@@ -266,7 +226,7 @@ export async function getPlacaImagem(
   const isConditional = hasConditionalHeaders(req);
   const t0 = Date.now();
 
-  // ── 1. Bloqueia query params de path livre ─────────────────────────────────
+  // ── 1. Bloqueia query params de path livre (segurança) ────────────────────
   for (const param of BLOCKED_QUERY_PARAMS) {
     if (req.query[param] !== undefined) {
       badRequest(res, reqId, `Query param "${param}" não é permitido neste endpoint.`);
@@ -274,10 +234,14 @@ export async function getPlacaImagem(
     }
   }
 
-  // ── 2. Valida id ───────────────────────────────────────────────────────────
+  // ── 2. Valida id ──────────────────────────────────────────────────────────
   const idParam = typeof req.params.id === 'string' ? req.params.id.trim() : '';
   if (!idParam) {
     badRequest(res, reqId, 'Identificador inválido.');
+    return;
+  }
+  if (!Types.ObjectId.isValid(idParam)) {
+    notFound(res, reqId, 'Placa não encontrada.');
     return;
   }
 
@@ -292,7 +256,16 @@ export async function getPlacaImagem(
     return;
   }
 
-  // ── 3. Redis cache lookup (fast path) ─────────────────────────────────────
+  const publicPlate = await Placa.findOne({ _id: idParam, statusOperacional: { $ne: 'ARCHIVED' } })
+    .select('_id empresaId statusOperacional')
+    .lean();
+  const empresaId = publicPlate?.empresaId ? String((publicPlate as any).empresaId) : null;
+  if (!empresaId) {
+    notFound(res, reqId, 'Placa não encontrada.');
+    return;
+  }
+
+  // ── 3. Redis cache lookup (fast path) ────────────────────────────────────
   const redisAvailable = isImageCacheAvailable();
   let cachedMeta: ImageMetaCache | null = null;
   let cacheStatus: ImageProxyMetrics['cacheStatus'] = redisAvailable ? 'miss' : 'redis_unavailable';
@@ -302,163 +275,63 @@ export async function getPlacaImagem(
     if (cachedMeta) cacheStatus = 'hit';
   }
 
-  // ── 4. Fast path: Redis hit ────────────────────────────────────────────────
+  // ── 4. Fast path: Redis hit ───────────────────────────────────────────────
   if (cachedMeta) {
     if (isConditional && isNotModified(req, cachedMeta)) {
       send304(res, cachedMeta);
-      emitMetrics({
-        placaId: idParam,
-        cacheStatus: 'hit',
-        outcome: 304,
-        conditional: true,
-        r2LatencyMs: null,
-        contentType: null,
-        bytesSent: null,
-      });
+      emitMetrics({ placaId: idParam, cacheStatus: 'hit', outcome: 304, conditional: true, r2LatencyMs: null, contentType: null, bytesSent: null });
       return;
     }
-
-    // Cache hit mas precisa stream: GetObject sem HeadObject adicional
-    await streamFromR2(req, res, reqId, idParam, cachedMeta, bucket, t0, 'hit');
+    await streamFromR2(res, reqId, idParam, cachedMeta, bucket, t0, 'hit');
     return;
   }
 
-  // ── 5. Slow path: MongoDB lookup ───────────────────────────────────────────
-  let doc: PlacaImageDoc | null = null;
-  try {
-    doc = await getPlacaDocForImagePublic(idParam);
-  } catch {
-    notFound(res, reqId, 'Placa não encontrada.');
-    return;
-  }
+  // ── 5. Slow path: resolver r2Key via PlateMedia (única fonte canônica) ────
+  const pmResolution = await plateMediaService.resolvePlateMainImage(idParam, empresaId);
 
-  if (!doc) {
-    notFound(res, reqId, 'Placa não encontrada.');
-    emitMetrics({ placaId: idParam, cacheStatus, outcome: 404, conditional: isConditional, r2LatencyMs: null, contentType: null, bytesSent: null });
-    return;
-  }
-
-  const resolvedImage = resolvePlacaImageReference(doc as any);
-  if (!resolvedImage.hasImage) {
+  if (!pmResolution.hasImage || !pmResolution.activeKey) {
     notFound(res, reqId, 'Placa sem imagem cadastrada.');
-    logImageResolutionFailure({
-      endpoint: req.originalUrl ?? req.path ?? '/api/v1/public/placas/:id/imagem',
-      placaId: idParam,
-      doc,
-      keyResolvida: resolvedImage.storageKey,
-      sourceField: resolvedImage.sourceField,
-      bucket,
-      reason: 'missing_image_reference',
-    });
+    logger.info('[ImageProxy] PlateMedia sem activeKey', { placaId: idParam });
     emitMetrics({ placaId: idParam, cacheStatus, outcome: 404, conditional: isConditional, r2LatencyMs: null, contentType: null, bytesSent: null });
     return;
   }
 
-  const r2Key = resolvedImage.storageKey;
-  if (!r2Key) {
-    notFound(res, reqId, 'Imagem não disponível.');
-    logImageResolutionFailure({
-      endpoint: req.originalUrl ?? req.path ?? '/api/v1/public/placas/:id/imagem',
-      placaId: idParam,
-      doc,
-      keyResolvida: null,
-      sourceField: resolvedImage.sourceField,
-      bucket,
-      reason: 'invalid_image_reference',
-    });
-    emitMetrics({ placaId: idParam, cacheStatus, outcome: 404, conditional: isConditional, r2LatencyMs: null, contentType: null, bytesSent: null });
-    return;
-  }
+  const r2Key = pmResolution.activeKey;
+  // version é um timestamp ms string — serve como proxy de updatedAt para ETag fallback
+  const version = pmResolution.version || String(Date.now());
 
-  // [TEMP-DEBUG] Log de diagnóstico — remover após confirmar consistência listing/proxy.
-  logger.info('[ImageProxy][DIAG] resolução', {
+  logger.info('[ImageProxy] resolução via PlateMedia', {
     placaId: idParam,
-    codigo: doc.numero_placa ?? doc.codigo ?? null,
-    imagemPrincipal: doc.imagemPrincipal ?? null,
-    imagem: typeof doc.imagem === 'string' ? doc.imagem : null,
-    storageKeyResolvida: r2Key,
-    sourceField: resolvedImage.sourceField ?? null,
     tentativaR2: `${bucket}/${r2Key}`,
   });
 
-  const updatedAt =
-    doc.updatedAt instanceof Date
-      ? doc.updatedAt.toISOString()
-      : typeof doc.updatedAt === 'string'
-        ? doc.updatedAt
-        : new Date().toISOString();
-
-  // ── 6. Com conditional headers: HeadObject primeiro (barato) ───────────────
+  // ── 6. Com conditional headers: HeadObject primeiro (barato) ─────────────
   if (isConditional) {
-    let headMeta: Omit<ImageMetaCache, 'placaId' | 'r2Key' | 'updatedAt'>;
     const tHead = Date.now();
-
     try {
-      headMeta = await headR2Object(bucket, r2Key, updatedAt);
-    } catch (err: any) {
-      const httpStatus: number = err?.$metadata?.httpStatusCode ?? 0;
-      if (err?.name === 'NoSuchKey' || httpStatus === 404) {
-        notFound(res, reqId, 'Imagem não encontrada no storage.');
-        void setImageNotFound(idParam);
-        logger.warn('[ImageProxy][DIAG] R2 HeadObject NoSuchKey', {
-          placaId: idParam,
-          bucket,
-          r2Key,
-          errorName: err?.name ?? null,
-          httpStatus,
-          codigo: doc.numero_placa ?? doc.codigo ?? null,
-          imagemPrincipal: doc.imagemPrincipal ?? null,
-          imagem: typeof doc.imagem === 'string' ? doc.imagem : null,
-        });
-        logImageResolutionFailure({
-          endpoint: req.originalUrl ?? req.path ?? '/api/v1/public/placas/:id/imagem',
-          placaId: idParam,
-          doc,
-          keyResolvida: r2Key,
-          sourceField: resolvedImage.sourceField,
-          bucket,
-          reason: 'r2_head_not_found',
-        });
-        emitMetrics({ placaId: idParam, cacheStatus, outcome: 404, conditional: true, r2LatencyMs: Date.now() - tHead, contentType: null, bytesSent: null });
+      const headMeta = await headR2Object(bucket, r2Key, version);
+      const fullMeta: ImageMetaCache = { placaId: idParam, r2Key, updatedAt: version, ...headMeta };
+      void setImageMetaInCache(fullMeta);
+
+      if (isNotModified(req, fullMeta)) {
+        send304(res, fullMeta);
+        emitMetrics({ placaId: idParam, cacheStatus, outcome: 304, conditional: true, r2LatencyMs: Date.now() - tHead, contentType: null, bytesSent: null });
         return;
       }
-      res.status(500).json(
-        PublicErrorPresenter.error({ code: 'PUBLIC_API_INTERNAL_ERROR', message: 'Erro ao verificar imagem.', status: 500 }, reqId),
-      );
-      return;
+
+      await streamFromR2(res, reqId, idParam, fullMeta, bucket, t0, cacheStatus);
+    } catch (err: any) {
+      handleR2Error(err, res, reqId, idParam, r2Key, bucket, cacheStatus, t0);
     }
-
-    const fullMeta: ImageMetaCache = { placaId: idParam, r2Key, updatedAt, ...headMeta };
-    // Cache assíncrono — não bloqueia resposta
-    void setImageMetaInCache(fullMeta);
-
-    if (isNotModified(req, fullMeta)) {
-      send304(res, fullMeta);
-      emitMetrics({ placaId: idParam, cacheStatus, outcome: 304, conditional: true, r2LatencyMs: Date.now() - tHead, contentType: null, bytesSent: null });
-      return;
-    }
-
-    // Não é 304 — faz GetObject com metadata já conhecida
-    await streamFromR2(req, res, reqId, idParam, fullMeta, bucket, t0, cacheStatus, {
-      doc,
-      sourceField: resolvedImage.sourceField,
-    });
     return;
   }
 
   // ── 7. Sem conditional headers: GetObject direto ──────────────────────────
-  // Obtemos metadata do GetObject response e cacheamos (evita HeadObject extra)
-  await streamFromR2WithMetaCapture(
-    req, res, reqId, idParam, r2Key, updatedAt, bucket, t0, cacheStatus, {
-      doc,
-      sourceField: resolvedImage.sourceField,
-    },
-  );
+  await streamFromR2WithMetaCapture(res, reqId, idParam, r2Key, version, bucket, t0, cacheStatus);
 }
 
 /** Stream do R2 quando já temos a metadata (cache hit ou pós-HeadObject). */
 async function streamFromR2(
-  _req: Request,
   res: Response,
   reqId: string,
   placaId: string,
@@ -466,7 +339,6 @@ async function streamFromR2(
   bucket: string,
   t0: number,
   cacheStatus: ImageProxyMetrics['cacheStatus'],
-  resolutionContext?: { doc: PlacaImageDoc | null; sourceField?: string | null },
 ): Promise<void> {
   const client = getR2Client()!;
   const tR2 = Date.now();
@@ -482,7 +354,6 @@ async function streamFromR2(
       return;
     }
 
-    // Atualiza ETag/LastModified se R2 devolveu valores mais frescos
     const freshEtag = response.ETag ? normalizeETag(response.ETag) : meta.etag;
     const freshLastModified = response.LastModified
       ? response.LastModified.toUTCString()
@@ -496,9 +367,7 @@ async function streamFromR2(
       contentLength: response.ContentLength ?? meta.contentLength,
     };
 
-    // Atualiza cache assincronamente
     void setImageMetaInCache(freshMeta);
-
     setCdnHeaders(res, freshMeta);
 
     const stream = response.Body as unknown as Readable;
@@ -507,16 +376,10 @@ async function streamFromR2(
       else res.destroy();
     });
 
-    const bytesSent = freshMeta.contentLength ?? null;
-    emitMetrics({ placaId, cacheStatus, outcome: 200, conditional: false, r2LatencyMs: Date.now() - tR2, contentType: freshMeta.contentType, bytesSent });
+    emitMetrics({ placaId, cacheStatus, outcome: 200, conditional: false, r2LatencyMs: Date.now() - tR2, contentType: freshMeta.contentType, bytesSent: freshMeta.contentLength ?? null });
     stream.pipe(res);
   } catch (err: any) {
-    handleR2Error(err, res, reqId, placaId, cacheStatus, t0, {
-      bucket,
-      r2Key: meta.r2Key,
-      doc: resolutionContext?.doc ?? null,
-      sourceField: resolutionContext?.sourceField ?? null,
-    });
+    handleR2Error(err, res, reqId, placaId, meta.r2Key, bucket, cacheStatus, t0);
   }
 }
 
@@ -525,16 +388,14 @@ async function streamFromR2(
  * Captura ETag/LastModified do GetObject response e popula o Redis.
  */
 async function streamFromR2WithMetaCapture(
-  _req: Request,
   res: Response,
   reqId: string,
   placaId: string,
   r2Key: string,
-  updatedAt: string,
+  version: string,
   bucket: string,
   t0: number,
   cacheStatus: ImageProxyMetrics['cacheStatus'],
-  resolutionContext?: { doc: PlacaImageDoc | null; sourceField?: string | null },
 ): Promise<void> {
   const client = getR2Client()!;
   const tR2 = Date.now();
@@ -552,26 +413,15 @@ async function streamFromR2WithMetaCapture(
 
     const etag = response.ETag
       ? normalizeETag(response.ETag)
-      : computeFallbackETag(r2Key, updatedAt);
+      : computeFallbackETag(r2Key, version);
     const lastModified = response.LastModified
       ? response.LastModified.toUTCString()
-      : new Date(updatedAt).toUTCString();
+      : new Date(parseInt(version || '0', 10) || Date.now()).toUTCString();
     const contentType = response.ContentType || 'application/octet-stream';
     const contentLength = response.ContentLength;
 
-    const meta: ImageMetaCache = {
-      placaId,
-      r2Key,
-      etag,
-      lastModified,
-      contentType,
-      contentLength,
-      updatedAt,
-    };
-
-    // Popula Redis assincronamente — não bloqueia stream
+    const meta: ImageMetaCache = { placaId, r2Key, etag, lastModified, contentType, contentLength, updatedAt: version };
     void setImageMetaInCache(meta);
-
     setCdnHeaders(res, meta);
 
     const stream = response.Body as unknown as Readable;
@@ -583,12 +433,7 @@ async function streamFromR2WithMetaCapture(
     emitMetrics({ placaId, cacheStatus, outcome: 200, conditional: false, r2LatencyMs: Date.now() - tR2, contentType, bytesSent: contentLength ?? null });
     stream.pipe(res);
   } catch (err: any) {
-    handleR2Error(err, res, reqId, placaId, cacheStatus, t0, {
-      bucket,
-      r2Key,
-      doc: resolutionContext?.doc ?? null,
-      sourceField: resolutionContext?.sourceField ?? null,
-    });
+    handleR2Error(err, res, reqId, placaId, r2Key, bucket, cacheStatus, t0);
   }
 }
 
@@ -597,46 +442,22 @@ function handleR2Error(
   res: Response,
   reqId: string,
   placaId: string,
+  r2Key: string,
+  bucket: string,
   cacheStatus: ImageProxyMetrics['cacheStatus'],
   t0: number,
-  context?: { bucket: string; r2Key: string; doc?: PlacaImageDoc | null; sourceField?: string | null },
 ): void {
   const httpStatus: number = err?.$metadata?.httpStatusCode ?? 0;
   if (err?.name === 'NoSuchKey' || httpStatus === 404) {
     notFound(res, reqId, 'Imagem não encontrada no storage.');
-
-    // Marca no cache negativo — a listagem vai ignorar hasImage: true para esta placa
-    // até o arquivo ser de fato carregado no R2 (TTL 5 min, auto-recuperável).
     void setImageNotFound(placaId);
-
-    // [TEMP-DEBUG] Log de diagnóstico detalhado do erro R2.
-    logger.warn('[ImageProxy][DIAG] R2 NoSuchKey', {
+    logger.warn('[ImageProxy] R2 NoSuchKey', {
       placaId,
-      bucket: context?.bucket ?? null,
-      r2Key: context?.r2Key ?? null,
+      bucket,
+      r2Key,
       errorName: err?.name ?? null,
       httpStatus,
-      errorMessage: err?.message ?? null,
-      doc: context?.doc
-        ? {
-            codigo: (context.doc as any).numero_placa ?? (context.doc as any).codigo ?? null,
-            imagemPrincipal: (context.doc as any).imagemPrincipal ?? null,
-            imagem: typeof (context.doc as any).imagem === 'string' ? (context.doc as any).imagem : null,
-          }
-        : null,
     });
-
-    if (context) {
-      logImageResolutionFailure({
-        endpoint: '/api/v1/public/placas/:id/imagem',
-        placaId,
-        doc: context.doc ?? null,
-        keyResolvida: context.r2Key,
-        sourceField: context.sourceField ?? null,
-        bucket: context.bucket,
-        reason: 'r2_get_not_found',
-      });
-    }
     emitMetrics({ placaId, cacheStatus, outcome: 404, conditional: false, r2LatencyMs: Date.now() - t0, contentType: null, bytesSent: null });
     return;
   }

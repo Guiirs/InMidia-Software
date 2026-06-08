@@ -166,6 +166,42 @@ describe('MapPage integration surface', () => {
     expect(screen.getByTestId('operational-map')).toHaveAttribute('data-coordinates', '-23.5505,-46.6333');
   });
 
+  it('gera markers para placas com latitude/longitude string, coordenadas string e coordinates array', async () => {
+    setMapData({
+      regions: [],
+      boards: [
+        { id: 'b1', codigo: 'LAT-STR', nome: 'Lat string', latitude: '-23.55052', longitude: '-46.633308', localizacao: 'Rua 1' },
+        { id: 'b2', codigo: 'COORD-STR', nome: 'Coord string', coordenadas: '-23.55052, -46.633308', localizacao: 'Rua 2' },
+        { id: 'b3', codigo: 'ARR-GEO', nome: 'Array geo', coordinates: [-46.633308, -23.55052], localizacao: 'Rua 3' },
+        { id: 'b4', codigo: 'ARR-LAT', nome: 'Array latlng', coordinates: [-23.55052, -46.633308], localizacao: 'Rua 4' },
+      ],
+    });
+
+    const { default: MapPage } = await import('./MapPage.jsx');
+    render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+    expect(screen.getByTestId('operational-map')).toHaveAttribute('data-points', 'LAT-STR|COORD-STR|ARR-GEO|ARR-LAT');
+    expect(screen.getByTestId('operational-map')).toHaveAttribute(
+      'data-coordinates',
+      '-23.55052,-46.633308|-23.55052,-46.633308|-23.55052,-46.633308|-23.55052,-46.633308',
+    );
+  });
+
+  it('nao remove placa com coordenada valida por status ou regiao ausente', async () => {
+    setMapData({
+      regions: [],
+      boards: [
+        { id: 'b1', codigo: 'SEM-STATUS', nome: 'Sem status', latitude: -23.55052, longitude: -46.633308, localizacao: 'Rua 1' },
+        { id: 'b2', codigo: 'SEM-REGIAO', nome: 'Sem regiao', latitude: -23.551, longitude: -46.634, status: 'available', localizacao: 'Rua 2' },
+      ],
+    });
+
+    const { default: MapPage } = await import('./MapPage.jsx');
+    render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+    expect(screen.getByTestId('operational-map')).toHaveAttribute('data-points', 'SEM-STATUS|SEM-REGIAO');
+  });
+
   it('repassa flyTo para V4OperationalMap quando regiao selecionada tem coordenadas', () => {
     const source = readFileSync(MAP_PAGE_SOURCE, 'utf8');
     expect(source).toContain('flyTo={flyTo}');
@@ -392,35 +428,41 @@ describe('MapPage integration surface', () => {
       });
       const { default: MapPage } = await import('./MapPage.jsx');
       const source = readFileSync(MAP_PAGE_SOURCE, 'utf8');
-      expect(source).toContain('commercialStatus');
+      const toMapPointsBody = source.slice(source.indexOf('function toMapPoints'), source.indexOf('function getRegionValue'));
+      expect(toMapPointsBody).not.toContain('commercialStatus');
       expect(source).toContain('metadata:');
     });
 
     it('MapPoint preserva commercialProjection no metadata', () => {
       const source = readFileSync(MAP_PAGE_SOURCE, 'utf8');
-      expect(source).toContain('commercialProjection');
-      expect(source).toContain('cp?.activeContract');
+      const toMapPointsBody = source.slice(source.indexOf('function toMapPoints'), source.indexOf('function getRegionValue'));
+      expect(toMapPointsBody).not.toContain('commercialProjection');
+      expect(toMapPointsBody).not.toContain('cp?.activeContract');
     });
 
     it('MapPoint preserva cliente_nome no metadata', () => {
       const source = readFileSync(MAP_PAGE_SOURCE, 'utf8');
-      expect(source).toContain('cliente_nome');
+      const toMapPointsBody = source.slice(source.indexOf('function toMapPoints'), source.indexOf('function getRegionValue'));
+      expect(toMapPointsBody).not.toContain('cliente_nome');
     });
 
     it('MapPoint preserva valorMensal no metadata', () => {
       const source = readFileSync(MAP_PAGE_SOURCE, 'utf8');
-      expect(source).toContain('valorMensal');
-      expect(source).toContain('receitaEstimada');
+      const toMapPointsBody = source.slice(source.indexOf('function toMapPoints'), source.indexOf('function getRegionValue'));
+      expect(toMapPointsBody).not.toContain('valorMensal');
+      expect(toMapPointsBody).not.toContain('receitaEstimada');
     });
 
     it('MapPoint preserva activeContract no metadata', () => {
       const source = readFileSync(MAP_PAGE_SOURCE, 'utf8');
-      expect(source).toContain('activeContract');
+      const toMapPointsBody = source.slice(source.indexOf('function toMapPoints'), source.indexOf('function getRegionValue'));
+      expect(toMapPointsBody).not.toContain('activeContract');
     });
 
     it('MapPoint preserva reservation no metadata', () => {
       const source = readFileSync(MAP_PAGE_SOURCE, 'utf8');
-      expect(source).toContain('reservation');
+      const toMapPointsBody = source.slice(source.indexOf('function toMapPoints'), source.indexOf('function getRegionValue'));
+      expect(toMapPointsBody).not.toContain('reservation');
     });
 
     it('toMapPoints repassa commercialStatus no data-points via metadata', async () => {

@@ -40,7 +40,11 @@ function LoginPage() {
       const responseData = await loginUser(data.email, data.password);
 
       if (responseData && responseData.user && responseData.token) {
-        login(responseData.user, responseData.token);
+        login(responseData.user, responseData.token, {
+          organization: responseData.organization,
+          membership: responseData.membership,
+          tenantMode: responseData.tenantMode,
+        });
         showToast('Login bem-sucedido!', 'success');
       } else {
         throw new Error(responseData?.message || 'Resposta inesperada do servidor.');

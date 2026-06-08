@@ -1,6 +1,8 @@
 function toFiniteNumber(value) {
   if (value === null || value === undefined || value === '') return null;
-  const number = Number(value);
+  const normalized = typeof value === 'string' ? value.trim().replace(',', '.') : value;
+  if (normalized === '') return null;
+  const number = Number(normalized);
   return Number.isFinite(number) ? number : null;
 }
 
@@ -33,6 +35,24 @@ function normalizeGeoJsonArray(input, source) {
   return normalizePair(input[1], input[0], source);
 }
 
+function normalizeCoordinateArray(input, source) {
+  if (!Array.isArray(input) || input.length < 2) return null;
+
+  const first = toFiniteNumber(input[0]);
+  const second = toFiniteNumber(input[1]);
+  if (first === null || second === null) return null;
+
+  const asLatLng = normalizePair(first, second, `${source}:lat/lng`);
+  const asGeoJson = normalizePair(second, first, `${source}:lng/lat`);
+
+  if (asLatLng && !asGeoJson) return asLatLng;
+  if (asGeoJson && !asLatLng) return asGeoJson;
+  if (!asLatLng && !asGeoJson) return null;
+
+  const firstLooksLikeBrazilLongitude = first < 0 && second < 0 && Math.abs(first) > Math.abs(second);
+  return firstLooksLikeBrazilLongitude ? asGeoJson : asLatLng;
+}
+
 function normalizeCoordinateString(input, source) {
   if (typeof input !== 'string' || !input.includes(',')) return null;
   const [latitude, longitude] = input.split(',').map((part) => part.trim());
@@ -45,6 +65,9 @@ export function normalizeBoardCoordinates(board = {}) {
 
   const short = normalizePair(board.lat, board.lng ?? board.lon, 'lat/lng');
   if (short) return short;
+
+  const coordinatesArray = normalizeCoordinateArray(board.coordinates, 'coordinates');
+  if (coordinatesArray) return coordinatesArray;
 
   const coordinates = normalizeObject(board.coordinates, 'coordinates');
   if (coordinates) return coordinates;
@@ -65,6 +88,12 @@ export function normalizeBoardCoordinates(board = {}) {
   if (geoGeoJson) return geoGeoJson;
 
   return { latitude: null, longitude: null, hasCoordinates: false, source: null };
+}
+
+export function normalizeMapCoordinates(board = {}) {
+  const coords = normalizeBoardCoordinates(board);
+  if (!coords.hasCoordinates) return null;
+  return { lat: coords.latitude, lng: coords.longitude };
 }
 
 export function formatBoardCoordinates(board = {}) {

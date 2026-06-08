@@ -13,6 +13,7 @@ import {
 } from '@shared/core';
 import { Log } from '@shared/core';
 import { safeDeleteFromR2 } from '@shared/infra/http/middlewares/upload.middleware';
+import { extractR2Key } from '@shared/infra/storage/r2-key.helper';
 import Aluguel from '@modules/alugueis/Aluguel';
 import Regiao from '@modules/regioes/Regiao';
 import { commercialProjectionService } from '@modules/commercial-projection/commercial-projection.service';
@@ -20,7 +21,7 @@ import { inventoryService } from '@modules/inventory';
 import { projectionService } from '@modules/projections';
 import { mediaPipelineService } from '@modules/media';
 import { mediaService } from '@modules/media/media.service';
-import { normalizePlacaStorageKey, resolvePlacaImageReference } from '@modules/media/placa-image-reference.resolver';
+import { plateMediaService } from '@modules/media/plate-media.service';
 import { temporalEngine } from '@modules/temporal';
 import { commercialAvailabilityProjection } from '@modules/commercial-availability';
 import type { IPlacaRepository } from '../repositories/placa.repository';
@@ -53,11 +54,13 @@ interface S3File {
 }
 
 function storageKeyFromFile(file: S3File): string {
-  return normalizePlacaStorageKey(file.key || file.location || '') ?? '';
+  const raw = (file.key || file.location || '').trim();
+  return raw ? (extractR2Key(raw) ?? '') : '';
 }
 
-async function safeDeleteStoredImage(placa: unknown): Promise<void> {
-  const key = resolvePlacaImageReference(placa as any).storageKey;
+async function safeDeleteStoredImage(plateId: string, empresaId: string): Promise<void> {
+  const pm = await plateMediaService.getPlateMedia(plateId, empresaId);
+  const key = pm?.activeKey;
   if (!key) return;
   try { await safeDeleteFromR2(key); } catch { /* non-critical */ }
 }
@@ -193,7 +196,7 @@ export class PlacaService {
         if (!regiaoExists) return Result.fail(new NotFoundError('Região', validatedData.regiaoId));
       }
 
-      // Processar imagem
+      // Processar imagem — toda imagem vai para PlateMedia (fonte canônica)
       if (file) {
         const mediaResult = mediaPipelineService.processMediaAsset(file, { ownerType: 'placa', ownerId: id, empresaId });
         if (mediaResult.warnings.length > 0) {
@@ -201,7 +204,11 @@ export class PlacaService {
         }
         validatePlacaImage({ mimetype: file.mimetype, size: file.size, filename: file.originalname });
         if (file.buffer) {
-          const asset = await mediaService.uploadMedia(file as any, {
+          // uploadMedia handles: R2 upload, old-image deletion via replaceMain, and
+          // PlateMedia sync via syncPlateMedia. Do NOT call safeDeleteStoredImage or
+          // setActivePlateImage here — they would act on the already-updated PlateMedia
+          // (new key), causing the newly uploaded image to be deleted from R2.
+          await mediaService.uploadMedia(file as any, {
             ownerType: 'PLATE',
             ownerId: id,
             category: 'MAIN',
@@ -210,32 +217,21 @@ export class PlacaService {
             preservePreviousMain: false,
             version: 1,
           }, empresaId, userId);
-          const imageKey = asset.storageKey
-            ? normalizePlacaStorageKey(asset.storageKey)
-            : normalizePlacaStorageKey(asset.url);
-          if (!imageKey) {
-            return Result.fail(new ValidationError([{ field: 'imagem', message: 'Referência de imagem inválida' }]));
-          }
-          (validatedData as any).imagem = imageKey;
-          (validatedData as any).imagemPrincipal = imageKey;
         } else {
           const imageKey = storageKeyFromFile(file);
           if (!imageKey) {
             return Result.fail(new ValidationError([{ field: 'imagem', message: 'Referência de imagem inválida' }]));
           }
-          (validatedData as any).imagem = imageKey;
-          (validatedData as any).imagemPrincipal = imageKey;
-        }
-
-        if (resolvePlacaImageReference(placaExistente as any).hasImage) {
-          await safeDeleteStoredImage(placaExistente);
+          await safeDeleteStoredImage(id, empresaId);
+          await plateMediaService.setActivePlateImage(id, empresaId, {
+            key: imageKey,
+            source: 'upload',
+          });
         }
       } else if ('imagem' in validatedData && (validatedData as any).imagem === null) {
-        if (resolvePlacaImageReference(placaExistente as any).hasImage) {
-          await safeDeleteStoredImage(placaExistente);
-        }
-        (validatedData as any).imagem = undefined;
-        (validatedData as any).imagemPrincipal = undefined;
+        await safeDeleteStoredImage(id, empresaId);
+        await plateMediaService.clearActivePlateImage(id, empresaId);
+        delete (validatedData as any).imagem;
       }
 
       const result = await this.repository.update(id, validatedData, empresaId, userId);
@@ -265,7 +261,9 @@ export class PlacaService {
       const { data, total } = result.value;
       const { page, limit } = validatedQuery;
       const placasComAluguel = await this.enrichWithAluguelData(data, empresaId);
-      const items = toListItems(placasComAluguel);
+      const plateIds = placasComAluguel.map((p: any) => String((p as any)._id || (p as any).id));
+      const plateMediaMap = await plateMediaService.batchResolvePlateMedia(plateIds, empresaId);
+      const items = toListItems(placasComAluguel, plateMediaMap as any);
       const totalPages = Math.ceil(total / limit);
 
       return Result.ok({
@@ -314,8 +312,6 @@ export class PlacaService {
       if (placaResult.isFailure) return Result.fail(placaResult.error);
       if (!placaResult.value) return Result.fail(new PlacaNotFoundError(id));
 
-      const placa = placaResult.value;
-
       try {
         await temporalEngine.assertPlateCanBeEdited(
           id,
@@ -339,7 +335,7 @@ export class PlacaService {
         return Result.fail(new BusinessRuleViolationError('Não é possível apagar uma placa que está atualmente alugada ou reservada'));
       }
 
-      await safeDeleteStoredImage(placa);
+      await safeDeleteStoredImage(id, empresaId);
 
       const deleteResult = await this.repository.delete(id, empresaId);
       if (deleteResult.isFailure) return Result.fail(deleteResult.error);
@@ -735,7 +731,8 @@ export class PlacaService {
         // non-critical
       }
 
-      const health = resolvePlateHealth({ ...placa, temporalStatus });
+      const pm = await plateMediaService.resolvePlateMainImage(id, empresaId);
+      const health = resolvePlateHealth({ ...placa, temporalStatus, plateMediaResolved: pm.hasImage });
       return Result.ok(health);
     } catch (error) {
       return Result.fail(toDomainError(error));

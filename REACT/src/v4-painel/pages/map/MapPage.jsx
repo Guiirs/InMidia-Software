@@ -27,7 +27,6 @@ const STATUS_FILTERS = [
 function toMapPoints(boards) {
   return boards.map((board) => {
     const coords = normalizeBoardCoordinates(board);
-    const cp = board.commercialProjection ?? null;
     return {
       id: board.id ?? board.codigo,
       title: board.codigo,
@@ -41,14 +40,7 @@ function toMapPoints(boards) {
       images: board.images ?? board.imagens ?? [],
       imageStatus: board.imageStatus ?? (resolveSafePlateImageUrl(board) ? 'AVAILABLE' : 'MISSING'),
       metadata: {
-        coordinateSource:    coords.source,
-        commercialStatus:    board.commercialStatus    ?? board.statusComercial   ?? null,
-        commercialProjection: cp,
-        cliente_nome:        board.cliente_nome        ?? board.cliente           ?? null,
-        valorMensal:         board.valorMensal         ?? board.valor_mensal      ?? board.receitaEstimada ?? null,
-        valor_mensal:        board.valor_mensal        ?? null,
-        activeContract:      board.activeContract      ?? cp?.activeContract      ?? null,
-        reservation:         board.reservation         ?? cp?.reservation         ?? null,
+        coordinateSource: coords.source,
       },
     };
   });

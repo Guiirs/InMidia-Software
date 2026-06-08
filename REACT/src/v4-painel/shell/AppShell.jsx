@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useTenant } from '../../context/TenantContext.jsx';
 import { useSyncResource } from '../../core/sync-core/hooks/useSyncResource.js';
 import { findNavItem, getNavContext, NAV_ITEM_ID } from '../foundation/navigation.js';
 import Sidebar from './Sidebar.jsx';
@@ -43,6 +44,8 @@ function shellUserFromSession(auth, session) {
   };
 }
 
+const IS_DEV = import.meta.env.DEV;
+
 export function AppShell({
   initialActiveId = NAV_ITEM_ID.DASHBOARD,
   activeId = null,
@@ -50,6 +53,7 @@ export function AppShell({
   children,
 }) {
   const auth = useAuth();
+  const tenant = useTenant();
   const navigate = useNavigate();
   const sessionResource = useSyncResource('users.session');
   const [internalActiveId, setInternalActiveId] = useState(initialActiveId);
@@ -94,7 +98,9 @@ export function AppShell({
         onSelect={handleNavigate}
         onToggle={handleToggleSidebar}
         user={shellUser}
-        companyName="InMidia"
+        companyName={tenant.organization?.name ?? 'InMidia'}
+        orgPlan={tenant.organization?.plan ?? null}
+        showLegacyBadge={IS_DEV && tenant.isLegacyMode}
       />
 
       <div className="v4p-shell__main">

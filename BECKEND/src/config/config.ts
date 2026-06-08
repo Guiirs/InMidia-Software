@@ -53,6 +53,7 @@ interface IConfig {
   redisEnabled: boolean;
   metricsUser?: string;
   metricsPassword?: string;
+  enableOrganizationBootstrapOnLogin: boolean;
 }
 
 function resolveCorsOrigin(): string {
@@ -153,6 +154,10 @@ const config: IConfig = {
   redisEnabled: parseEnvToggle(process.env.REDIS_ENABLED, true),
   metricsUser: process.env.METRICS_USER,
   metricsPassword: process.env.METRICS_PASSWORD,
+  enableOrganizationBootstrapOnLogin: parseEnvToggle(
+    process.env.ENABLE_ORGANIZATION_BOOTSTRAP_ON_LOGIN,
+    (process.env.NODE_ENV ?? 'development') !== 'production',
+  ),
 };
 
 export default config;

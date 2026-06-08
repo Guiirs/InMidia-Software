@@ -9,6 +9,20 @@ type Params = Record<string, string>;
 import type { ICheckingService } from '../services/checking.service';
 import { CreateCheckingSchema, UpdateCheckingSchema, ListCheckingsQuerySchema } from '../dtos/checking.dto';
 import { ZodError } from 'zod';
+import { getErrorStatusCode } from '@shared/core';
+
+function tenantIdFromRequest(req: Request): string {
+  const empresaId = req.empresaId ?? req.tenantContext?.empresaId ?? req.user?.empresaId;
+  if (!empresaId) throw new Error('Tenant nao encontrado na requisicao');
+  return String(empresaId);
+}
+
+function sendDomainError(res: Response, error: any): void {
+  res.status(getErrorStatusCode(error)).json({
+    success: false,
+    error: error.message,
+  });
+}
 
 export class CheckingController {
   constructor(private readonly service: ICheckingService) {}
@@ -20,14 +34,12 @@ export class CheckingController {
   createChecking = async (req: Request, res: Response): Promise<void> => {
     try {
       const validated = CreateCheckingSchema.parse(req.body);
+      const empresaId = tenantIdFromRequest(req);
 
-      const result = await this.service.createChecking(validated);
+      const result = await this.service.createChecking({ ...validated, empresaId });
 
       if (result.isFailure) {
-        res.status(400).json({
-          success: false,
-          error: result.error.message,
-        });
+        sendDomainError(res, result.error);
         return;
       }
 
@@ -61,6 +73,7 @@ export class CheckingController {
   getCheckingById = async (req: Request, res: Response): Promise<void> => {
     try {
       const { id } = req.params as Params;
+      const empresaId = tenantIdFromRequest(req);
 
       if (!id) {
         res.status(400).json({
@@ -70,13 +83,10 @@ export class CheckingController {
         return;
       }
 
-      const result = await this.service.getCheckingById(id);
+      const result = await this.service.getCheckingById(id, empresaId);
 
       if (result.isFailure) {
-        res.status(400).json({
-          success: false,
-          error: result.error.message,
-        });
+        sendDomainError(res, result.error);
         return;
       }
 
@@ -107,6 +117,7 @@ export class CheckingController {
   updateChecking = async (req: Request, res: Response): Promise<void> => {
     try {
       const { id } = req.params as Params;
+      const empresaId = tenantIdFromRequest(req);
 
       if (!id) {
         res.status(400).json({
@@ -118,13 +129,10 @@ export class CheckingController {
 
       const validated = UpdateCheckingSchema.parse(req.body);
 
-      const result = await this.service.updateChecking(id, validated);
+      const result = await this.service.updateChecking(id, empresaId, validated);
 
       if (result.isFailure) {
-        res.status(400).json({
-          success: false,
-          error: result.error.message,
-        });
+        sendDomainError(res, result.error);
         return;
       }
 
@@ -158,14 +166,12 @@ export class CheckingController {
   listCheckings = async (req: Request, res: Response): Promise<void> => {
     try {
       const query = ListCheckingsQuerySchema.parse(req.query);
+      const empresaId = tenantIdFromRequest(req);
 
-      const result = await this.service.listCheckings(query);
+      const result = await this.service.listCheckings({ ...query, empresaId });
 
       if (result.isFailure) {
-        res.status(400).json({
-          success: false,
-          error: result.error.message,
-        });
+        sendDomainError(res, result.error);
         return;
       }
 
@@ -199,6 +205,7 @@ export class CheckingController {
   getCheckingsByAluguel = async (req: Request, res: Response): Promise<void> => {
     try {
       const { aluguelId } = req.params as Params;
+      const empresaId = tenantIdFromRequest(req);
 
       if (!aluguelId) {
         res.status(400).json({
@@ -208,13 +215,10 @@ export class CheckingController {
         return;
       }
 
-      const result = await this.service.getCheckingsByAluguel(aluguelId);
+      const result = await this.service.getCheckingsByAluguel(aluguelId, empresaId);
 
       if (result.isFailure) {
-        res.status(400).json({
-          success: false,
-          error: result.error.message,
-        });
+        sendDomainError(res, result.error);
         return;
       }
 
@@ -226,6 +230,39 @@ export class CheckingController {
       res.status(500).json({
         success: false,
         error: error.message || 'Erro ao buscar checkings por aluguel',
+      });
+    }
+  };
+
+  /**
+   * DELETE /api/checkings/:id
+   * Remove checking por ID
+   */
+  deleteChecking = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params as Params;
+      const empresaId = tenantIdFromRequest(req);
+
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          error: 'ID e obrigatorio',
+        });
+        return;
+      }
+
+      const result = await this.service.deleteChecking(id, empresaId);
+
+      if (result.isFailure) {
+        sendDomainError(res, result.error);
+        return;
+      }
+
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Erro ao remover checking',
       });
     }
   };

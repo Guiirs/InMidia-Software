@@ -4,6 +4,7 @@ export { clienteSchema } from './cliente.schema';
 export { contratoSchema } from './contrato.schema';
 export { empresaSchema, IApiKeyHistory } from './empresa.schema';
 export { mediaAssetSchema } from './mediaAsset.schema';
+export { plateMediaSchema } from './plateMedia.schema';
 export { piGenJobSchema } from './pi-gen-job.schema';
 export { placaSchema } from './placa.schema';
 export { propostaInternaSchema } from './proposta-interna.schema';

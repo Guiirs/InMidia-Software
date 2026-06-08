@@ -4,12 +4,8 @@ import { regionService } from '@modules/regions/region.service';
 import { commercialProjectionService } from '@modules/commercial-projection/commercial-projection.service';
 import type { CommercialProjection } from '@modules/commercial-projection/commercial-projection.types';
 import { mapCommercialStatusToLegacyStatusComercial } from '@modules/placas/utils/commercial-status.utils';
-import {
-  normalizePlacaStorageKey,
-  resolvePlacaGallery,
-  resolvePlacaImageReference,
-} from '@modules/media/placa-image-reference.resolver';
 import { buildProxyImageUrl } from '@modules/public-plates/public-plates.presenter';
+import { plateMediaService } from '@modules/media/plate-media.service';
 import mongoose from 'mongoose';
 import AppError from '@shared/container/AppError';
 
@@ -25,9 +21,6 @@ export interface CreateBoardPayload {
   coordenadas?: unknown;
   tamanho?: string;
   tipo?: string;
-  imagem?: string;
-  imagemPrincipal?: string;
-  imageUrl?: string;
   regiaoId?: string;
   regionId?: string;
   regionalLot?: string;
@@ -264,26 +257,6 @@ export class InventoryBoardsService {
     return placa;
   }
 
-  private normalizeImageContract(placa: any): {
-    imagemPrincipal: string | null;
-    imagens: unknown[];
-    imageStatus: 'AVAILABLE' | 'MISSING';
-  } {
-    const imagens = resolvePlacaGallery(placa);
-    const imageReference = resolvePlacaImageReference(placa);
-    const placaId = placa?._id?.toString?.() ?? String(placa?._id ?? '');
-    // Return the proxy URL so consumers (React panel, adapters) get a valid HTTP URL.
-    const imagemPrincipal = imageReference.hasImage && placaId
-      ? buildProxyImageUrl(placaId)
-      : null;
-
-    return {
-      imagemPrincipal,
-      imagens,
-      imageStatus: imageReference.hasImage ? 'AVAILABLE' : 'MISSING',
-    };
-  }
-
   async listBoards(
     empresaId: string,
     options: { page?: number; limit?: number; status?: string; search?: string; regiaoId?: string } = {},
@@ -332,12 +305,13 @@ export class InventoryBoardsService {
       rentalsByBoard.get(pid)!.push(a);
     });
 
-    // Batch-resolve Commercial Projection (O(1) round trips, no N+1)
-    const cpProjections = await commercialProjectionService.resolveBatch(
-      placas.map((placa: any) => String(placa._id)),
-      empresaId,
-      now,
-    );
+    const placaIdStrings = placas.map((placa: any) => String(placa._id));
+
+    // Batch-resolve Commercial Projection e PlateMedia em paralelo (O(1) round trips)
+    const [cpProjections, plateMediaMap] = await Promise.all([
+      commercialProjectionService.resolveBatch(placaIdStrings, empresaId, now),
+      plateMediaService.batchResolvePlateMedia(placaIdStrings, empresaId),
+    ]);
 
     const boards: BoardListItem[] = placas.map((placa: any) => {
       const rentals = rentalsByBoard.get(String(placa._id)) ?? [];
@@ -353,8 +327,11 @@ export class InventoryBoardsService {
       const coordinates = normalizeInventoryBoardCoordinates(placa);
       const endereco = placa.endereco ?? placa.nomeDaRua ?? (typeof placa.localizacao === 'string' ? placa.localizacao : null) ?? null;
       const regiaoId = toId(regiaoRaw) || toId(placa.regiaoId) || null;
-      const imageContract = this.normalizeImageContract(placa);
-      const imagemPrincipal = imageContract.imagemPrincipal;
+      const pm = plateMediaMap.get(String(placa._id));
+      const hasImage = !!(pm?.activeKey);
+      const imagemPrincipal = hasImage ? buildProxyImageUrl(String(placa._id), pm!.version) : null;
+      const imagens: unknown[] = [];
+      const imageStatus: 'AVAILABLE' | 'MISSING' = hasImage ? 'AVAILABLE' : 'MISSING';
 
       // Legacy compat fields derived from Commercial Projection
       const legacyIsOccupied = cp
@@ -380,9 +357,9 @@ export class InventoryBoardsService {
         imagem: imagemPrincipal,
         imagemPrincipal,
         mainImageUrl: imagemPrincipal,
-        imagens: imageContract.imagens,
-        images: imageContract.imagens,
-        imageStatus: imageContract.imageStatus,
+        imagens,
+        images: imagens,
+        imageStatus,
         regiaoId,
         regionId: placa.regionId ? toId(placa.regionId) : regiaoId,
         regionalLot: placa.regionalLot ?? placa.loteRegional ?? null,
@@ -500,11 +477,6 @@ export class InventoryBoardsService {
     }
     if (typeof payload.tamanho === 'string') allowed.tamanho = payload.tamanho.trim();
     if (typeof payload.tipo === 'string') allowed.tipo = payload.tipo.trim();
-    const imageReference = resolvePlacaImageReference(payload);
-    if (imageReference.hasImage) {
-      allowed.imagemPrincipal = imageReference.storageKey;
-      allowed.imagem = imageReference.storageKey;
-    }
     if (typeof payload.disponivel === 'boolean') allowed.disponivel = payload.disponivel;
     if (typeof payload.statusOperacional === 'string') allowed.statusOperacional = payload.statusOperacional.trim();
     if (typeof payload.regionalLot === 'string') allowed.regionalLot = payload.regionalLot.trim();
@@ -548,12 +520,6 @@ export class InventoryBoardsService {
     }
     const address = payload.endereco?.trim() || payload.nomeDaRua?.trim() || payload.localizacao?.trim() || undefined;
     const coordinates = normalizeInventoryBoardCoordinates(payload as Record<string, unknown>);
-    const image = normalizePlacaStorageKey(
-      resolvePlacaImageReference(payload).storageKey
-        ?? payload.imagemPrincipal
-        ?? payload.imagem
-        ?? payload.imageUrl,
-    ) ?? undefined;
 
     const doc = await Placa.create({
       numero_placa: codigo,
@@ -565,8 +531,6 @@ export class InventoryBoardsService {
       coordenadas: coordinates ? `${coordinates.latitude},${coordinates.longitude}` : (typeof payload.coordenadas === 'string' ? payload.coordenadas.trim() : undefined),
       tamanho: payload.tamanho?.trim() || undefined,
       tipo: payload.tipo?.trim() || undefined,
-      imagem: image,
-      imagemPrincipal: image,
       regiaoId: new mongoose.Types.ObjectId(regionId),
       empresaId: this.toEmpresaObjectId(empresaId),
       regionalLot: payload.regionalLot?.trim() || undefined,

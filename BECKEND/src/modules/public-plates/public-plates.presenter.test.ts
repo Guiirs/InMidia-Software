@@ -1,141 +1,115 @@
-import { toPublicPlaca, buildProxyImageUrl, mimeTypeFromStoredPath } from './public-plates.presenter';
+/**
+ * Testes do presenter público de placas.
+ *
+ * API canônica: toPublicPlaca(raw, plateMedia?)
+ *   - plateMedia: { activeKey, version } — fonte única de verdade da imagem.
+ *   - Sem plateMedia (null/undefined): imagemUrl=null, hasImage=false.
+ *   - Nunca lê imagemPrincipal, imagem ou imagens[] do raw doc para resolução de imagem.
+ */
+import { toPublicPlaca, buildProxyImageUrl } from './public-plates.presenter';
+import type { PlateMediaResolved } from './public-plates.presenter';
 
 const PROXY_BASE = 'https://inmidia.futureoutdoors.com.br';
 const PLACA_ID = '69d7d2a69b9a603e468392e3';
 const EXPECTED_PROXY = `${PROXY_BASE}/api/v1/public/media/plates/${PLACA_ID}/main`;
+const R2_KEY = 'empresas/e1/plates/p/main/photo.jpg';
 
-describe('public plates presenter — proxy de imagem', () => {
+const PM: PlateMediaResolved = { activeKey: R2_KEY, version: '1704067200000' };
+
+describe('public plates presenter — proxy de imagem (nova API PlateMedia)', () => {
   const origBase = process.env.PUBLIC_API_BASE_URL;
-  const origR2 = process.env.R2_PUBLIC_URL;
-  const origNodeEnv = process.env.NODE_ENV;
 
   beforeEach(() => {
     process.env.PUBLIC_API_BASE_URL = PROXY_BASE;
-    process.env.R2_PUBLIC_URL = 'https://pub-storage.r2.dev';
-    process.env.NODE_ENV = 'test';
   });
 
   afterEach(() => {
     if (origBase === undefined) delete process.env.PUBLIC_API_BASE_URL;
     else process.env.PUBLIC_API_BASE_URL = origBase;
-    if (origR2 === undefined) delete process.env.R2_PUBLIC_URL;
-    else process.env.R2_PUBLIC_URL = origR2;
-    process.env.NODE_ENV = origNodeEnv || 'test';
   });
 
-  // ── imagemUrl aponta para o proxy canônico ────────────────────────────────
+  // ── imagemUrl aponta para o proxy canônico ──────────────────────────────────
 
-  it('imagemUrl usa URL canônica quando placa tem imagemPrincipal com pasta', () => {
-    const placa = toPublicPlaca({
-      _id: PLACA_ID,
-      numero_placa: 'CAU-37',
-      imagemPrincipal: 'inmidia-uploads-sistema/cau-37.jpg',
-    });
-    expect(placa.imagemUrl).toBe(EXPECTED_PROXY);
-    expect(placa.imagem).toBe(EXPECTED_PROXY);
-  });
-
-  it('imagemUrl usa URL canônica quando placa tem apenas filename (resolvido com pasta default)', () => {
-    // Plain filenames are accepted — extractR2Key adds the default folder prefix.
-    const placa = toPublicPlaca({
-      _id: PLACA_ID,
-      numero_placa: 'CAU-37',
-      imagemPrincipal: 'cau-37.jpg',
-    });
-    expect(placa.imagemUrl).toBe(EXPECTED_PROXY);
+  it('imagemUrl usa URL canônica quando PlateMedia tem activeKey', () => {
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'CAU-37' }, PM);
+    expect(placa.imagemUrl).toBe(`${EXPECTED_PROXY}?v=1704067200000`);
+    expect(placa.imagem).toBe(placa.imagemUrl);
     expect(placa.hasImage).toBe(true);
   });
 
-  it('imagemUrl usa URL canônica quando placa tem campo imagem legado (URL R2)', () => {
-    const placa = toPublicPlaca({
-      _id: PLACA_ID,
-      numero_placa: 'CAU-37',
-      imagem: 'https://pub-storage.r2.dev/inmidia-uploads-sistema/cau-37.jpg',
-    });
-    expect(placa.imagemUrl).toBe(EXPECTED_PROXY);
-  });
-
-  it('imagemUrl usa URL canônica quando placa tem imagens array', () => {
-    const placa = toPublicPlaca({
-      _id: PLACA_ID,
-      numero_placa: 'CAU-37',
-      imagens: [{ key: 'inmidia-uploads-sistema/cau-37.jpg', isMain: true }],
-    });
-    expect(placa.imagemUrl).toBe(EXPECTED_PROXY);
-  });
-
-  it('imagemUrl usa URL canônica quando galeria tem url/publicUrl do fluxo interno', () => {
-    const placa = toPublicPlaca({
-      _id: PLACA_ID,
-      numero_placa: 'CAU-37',
-      imagemPrincipal: null,
-      imagem: null,
-      imagens: [{ url: 'https://pub-storage.r2.dev/inmidia-uploads-sistema/cau-37.webp', isMain: true }],
-    });
-    expect(placa.imagemUrl).toBe(EXPECTED_PROXY);
-    expect(placa.imagemMeta?.mimeType).toBe('image/webp');
-  });
-
-  it('imagemUrl é null quando placa não tem nenhum campo de imagem', () => {
-    const placa = toPublicPlaca({
-      _id: PLACA_ID,
-      numero_placa: 'CAU-37',
-      imagemPrincipal: null,
-      imagem: null,
-      imagens: [],
-    });
+  it('imagemUrl é null quando plateMedia é null', () => {
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'CAU-37' }, null);
     expect(placa.imagemUrl).toBeNull();
     expect(placa.imagem).toBeNull();
     expect(placa.hasImage).toBe(false);
   });
 
-  // ── imagemUrl NÃO expõe URLs do storage ───────────────────────────────────
-
-  it('imagemUrl não contém r2.dev', () => {
-    const placa = toPublicPlaca({
-      _id: PLACA_ID,
-      numero_placa: 'CAU-37',
-      imagemPrincipal: 'https://pub-storage.r2.dev/inmidia-uploads-sistema/cau-37.jpg',
-    });
-    expect(placa.imagemUrl).not.toContain('r2.dev');
+  it('imagemUrl é null quando plateMedia é undefined (sem segundo arg)', () => {
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'CAU-37' });
+    expect(placa.imagemUrl).toBeNull();
+    expect(placa.hasImage).toBe(false);
   });
 
-  it('imagemUrl não contém cloudflarestorage.com', () => {
-    const placa = toPublicPlaca({
-      _id: PLACA_ID,
-      numero_placa: 'CAU-37',
-      imagemPrincipal: 'https://abc.r2.cloudflarestorage.com/bucket/cau-37.jpg',
-    });
-    expect(placa.imagemUrl).not.toContain('cloudflarestorage.com');
-  });
-
-  it('imagemUrl tem o formato canônico /api/v1/public/media/plates/:id/main', () => {
+  it('ignora imagemPrincipal do raw doc quando plateMedia é null', () => {
     const placa = toPublicPlaca({
       _id: PLACA_ID,
       numero_placa: 'CAU-37',
       imagemPrincipal: 'inmidia-uploads-sistema/cau-37.jpg',
-    });
-    expect(placa.imagemUrl).toMatch(/\/api\/v1\/public\/media\/plates\/[a-f0-9]+\/main$/);
+    }, null);
+    expect(placa.imagemUrl).toBeNull();
+    expect(placa.hasImage).toBe(false);
   });
 
-  // ── buildProxyImageUrl ─────────────────────────────────────────────────────
+  it('ignora imagens[] do raw doc quando plateMedia é null', () => {
+    const placa = toPublicPlaca({
+      _id: PLACA_ID,
+      numero_placa: 'CAU-37',
+      imagens: [{ key: 'inmidia-uploads-sistema/cau-37.jpg', isMain: true }],
+    }, null);
+    expect(placa.imagemUrl).toBeNull();
+    expect(placa.hasImage).toBe(false);
+  });
 
-  it('buildProxyImageUrl constrói URL canônica correta', () => {
-    expect(buildProxyImageUrl(PLACA_ID)).toBe(EXPECTED_PROXY);
+  // ── imagemUrl NÃO expõe URLs do storage ────────────────────────────────────
+
+  it('imagemUrl não contém r2.dev', () => {
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'CAU-37' }, PM);
+    expect(placa.imagemUrl).not.toContain('r2.dev');
+  });
+
+  it('imagemUrl não contém cloudflarestorage.com', () => {
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'CAU-37' }, PM);
+    expect(placa.imagemUrl).not.toContain('cloudflarestorage.com');
+  });
+
+  it('imagemUrl não contém a activeKey do R2', () => {
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'CAU-37' }, PM);
+    expect(placa.imagemUrl).not.toContain(R2_KEY);
+    expect(placa.imagemUrl).not.toContain('empresas/');
+  });
+
+  it('imagemUrl tem o formato canônico /api/v1/public/media/plates/:id/main', () => {
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'CAU-37' }, PM);
+    expect(placa.imagemUrl).toMatch(/\/api\/v1\/public\/media\/plates\/[a-f0-9]+\/main/);
+  });
+
+  // ── buildProxyImageUrl ──────────────────────────────────────────────────────
+
+  it('buildProxyImageUrl constrói URL canônica correta com version', () => {
+    expect(buildProxyImageUrl(PLACA_ID, '1234')).toBe(`${EXPECTED_PROXY}?v=1234`);
   });
 
   it('buildProxyImageUrl funciona sem PUBLIC_API_BASE_URL (relativa)', () => {
     delete process.env.PUBLIC_API_BASE_URL;
-    expect(buildProxyImageUrl(PLACA_ID)).toBe(`/api/v1/public/media/plates/${PLACA_ID}/main`);
+    expect(buildProxyImageUrl(PLACA_ID, '1')).toBe(`/api/v1/public/media/plates/${PLACA_ID}/main?v=1`);
   });
 
-  it('PUBLIC_API_BASE_URL sem trailing slash retorna URL absoluta', () => {
-    process.env.PUBLIC_API_BASE_URL = 'https://inmidia.futureoutdoors.com.br';
+  it('buildProxyImageUrl sem version não inclui ?v=', () => {
     expect(buildProxyImageUrl(PLACA_ID)).toBe(EXPECTED_PROXY);
   });
 
-  it('PUBLIC_API_BASE_URL com trailing slash retorna URL absoluta sem barra dupla', () => {
-    process.env.PUBLIC_API_BASE_URL = 'https://inmidia.futureoutdoors.com.br/';
+  it('PUBLIC_API_BASE_URL com trailing slash retorna URL sem barra dupla', () => {
+    process.env.PUBLIC_API_BASE_URL = `${PROXY_BASE}/`;
     const url = buildProxyImageUrl(PLACA_ID);
     expect(url).toBe(EXPECTED_PROXY);
     expect(url).not.toContain('//api/');
@@ -147,126 +121,50 @@ describe('public plates presenter — proxy de imagem', () => {
     const url = buildProxyImageUrl(PLACA_ID);
     expect(url).toBe(`/api/v1/public/media/plates/${PLACA_ID}/main`);
     expect(url).not.toContain('localhost');
+    process.env.NODE_ENV = 'test';
   });
 
-  it('imagemUrl, imagem e imagemMeta.url usam URL absoluta do proxy canônico', () => {
-    const placa = toPublicPlaca({
-      _id: PLACA_ID,
-      numero_placa: 'CAU-37',
-      imagemPrincipal: 'inmidia-uploads-sistema/cau-37.jpg',
-    });
-    expect(placa.imagemUrl).toBe(EXPECTED_PROXY);
-    expect(placa.imagem).toBe(EXPECTED_PROXY);
-    expect(placa.imagemMeta?.url).toBe(EXPECTED_PROXY);
-    expect(placa.jetImageUrl).toBe(EXPECTED_PROXY);
-    expect(placa.jet_image_url).toBe(EXPECTED_PROXY);
-    expect(placa.jetImage?.url).toBe(EXPECTED_PROXY);
-    expect(placa.image?.url).toBe(EXPECTED_PROXY);
-  });
+  // ── hasImage ────────────────────────────────────────────────────────────────
 
-  it('payload de imagem nao retorna undefined, //api ou localhost', () => {
-    const placa = toPublicPlaca({
-      _id: PLACA_ID,
-      numero_placa: 'CAU-37',
-      imagemPrincipal: 'inmidia-uploads-sistema/cau-37.jpg',
-    });
-    const serialized = JSON.stringify(placa);
-    expect(Object.values(placa)).not.toContain(undefined);
-    expect(serialized).not.toContain('//api/');
-    expect(serialized).not.toContain('localhost');
-    expect(placa.imagemUrl).not.toBeNull();
-    expect(placa.imagem).not.toBeNull();
-    expect(placa.imagemMeta?.url).not.toBeNull();
-  });
-
-  // ── hasImage ──────────────────────────────────────────────────────────────
-
-  it('hasImage true quando existe referência de imagem (com pasta)', () => {
-    const placa = toPublicPlaca({
-      _id: PLACA_ID,
-      numero_placa: 'CAU-37',
-      imagemPrincipal: 'inmidia-uploads-sistema/cau-37.jpg',
-    });
+  it('hasImage true quando PlateMedia tem activeKey', () => {
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'CAU-37' }, PM);
     expect(placa.hasImage).toBe(true);
   });
 
-  it('hasImage true quando referência é apenas filename (resolvido com pasta default)', () => {
-    const placa = toPublicPlaca({
-      _id: PLACA_ID,
-      numero_placa: 'CAU-37',
-      imagemPrincipal: 'cau-37.jpg',
-    });
-    expect(placa.hasImage).toBe(true);
-  });
-
-  it('hasImage false quando não existe referência', () => {
-    const placa = toPublicPlaca({
-      _id: PLACA_ID,
-      numero_placa: 'CAU-37',
-      imagemPrincipal: null,
-      imagem: null,
-      imagens: [],
-    });
+  it('hasImage false quando PlateMedia é null', () => {
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'CAU-37' }, null);
     expect(placa.hasImage).toBe(false);
   });
 
-  it('imagemUrl não é null quando placa tem imagem', () => {
-    const placa = toPublicPlaca({
-      _id: PLACA_ID,
-      numero_placa: 'CAU-37',
-      imagemPrincipal: 'cau-37.jpg',
-    });
-    expect(placa.imagemUrl).not.toBeNull();
-    expect(placa.hasImage).toBe(true);
+  it('hasImage false quando PlateMedia.activeKey é null', () => {
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'CAU-37' }, { activeKey: null, version: '' });
+    expect(placa.hasImage).toBe(false);
+    expect(placa.imagemUrl).toBeNull();
   });
 
-  // ── Campos JetEngine/Elementor (aliases para retrocompatibilidade) ─────────
+  // ── aliases retrocompatibilidade ────────────────────────────────────────────
 
-  it('campos JetEngine/Elementor usam formato compativel', () => {
-    const placa = toPublicPlaca({
-      _id: PLACA_ID,
-      numero_placa: '01',
-      imagemPrincipal: 'https://pub-storage.r2.dev/inmidia-uploads-sistema/01.jpg',
-    });
-    expect(placa.jetImageUrl).toBe(EXPECTED_PROXY);
-    expect(placa.jet_image_url).toBe(EXPECTED_PROXY);
-    expect(placa.jetImage).toEqual({ id: 0, url: EXPECTED_PROXY, alt: '01', title: '01' });
-    expect(placa.image).toEqual({ url: EXPECTED_PROXY, alt: '01', title: '01' });
+  it('imagemUrl, imagem, imagemMeta.url, jetImageUrl apontam para o mesmo proxy', () => {
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'CAU-37' }, PM);
+    expect(placa.imagem).toBe(placa.imagemUrl);
+    expect(placa.imagemMeta?.url).toBe(placa.imagemUrl);
+    expect(placa.jetImageUrl).toBe(placa.imagemUrl);
+    expect(placa.jet_image_url).toBe(placa.imagemUrl);
+    expect(placa.jetImage?.url).toBe(placa.imagemUrl);
+    expect(placa.image?.url).toBe(placa.imagemUrl);
   });
 
-  it('campos JetEngine/Elementor usam nome como alt/title', () => {
-    const placa = toPublicPlaca({
-      _id: PLACA_ID,
-      numero_placa: '01',
-      nome: 'Placa 01',
-      imagemPrincipal: 'inmidia-uploads-sistema/01.jpg',
-    });
-    expect(placa.jetImage?.alt).toBe('Placa 01');
-    expect(placa.jetImage?.title).toBe('Placa 01');
-    expect(placa.image?.alt).toBe('Placa 01');
-    expect(placa.image?.title).toBe('Placa 01');
-  });
-
-  it('campos JetEngine/Elementor são null quando placa não tem imagem', () => {
-    const placa = toPublicPlaca({
-      _id: PLACA_ID,
-      numero_placa: '01',
-      imagemPrincipal: null,
-      imagem: null,
-      imagens: [],
-    });
+  it('campos JetEngine/Elementor são null quando não há PlateMedia', () => {
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: '01' }, null);
     expect(placa.jetImageUrl).toBeNull();
     expect(placa.jet_image_url).toBeNull();
     expect(placa.jetImage).toBeNull();
     expect(placa.image).toBeNull();
+    expect(placa.imagemMeta).toBeNull();
   });
 
-  it('campos JetEngine/Elementor não expoem R2 ou paths internos', () => {
-    const placa = toPublicPlaca({
-      _id: PLACA_ID,
-      numero_placa: 'CAU-37',
-      imagemPrincipal: 'https://abc.r2.cloudflarestorage.com/bucket/cau-37.jpg',
-    });
+  it('campos JetEngine/Elementor não expõem R2 ou paths internos', () => {
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'CAU-37' }, PM);
     const imagePayload = JSON.stringify({
       jetImageUrl: placa.jetImageUrl,
       jet_image_url: placa.jet_image_url,
@@ -275,22 +173,33 @@ describe('public plates presenter — proxy de imagem', () => {
     });
     expect(imagePayload).not.toContain('r2.dev');
     expect(imagePayload).not.toContain('cloudflarestorage.com');
-    expect(imagePayload).not.toContain('inmidia-uploads-sistema');
-    expect(imagePayload).toContain(EXPECTED_PROXY);
+    expect(imagePayload).not.toContain(R2_KEY);
+    expect(imagePayload).toContain('/api/v1/public/media/plates/');
   });
 
-  // ── JSON público não vaza dados internos ──────────────────────────────────
+  // ── ?v= cache-busting ───────────────────────────────────────────────────────
+
+  it('imagemUrl inclui ?v= de PlateMedia.version', () => {
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X' }, { activeKey: R2_KEY, version: '9999' });
+    expect(placa.imagemUrl).toContain('?v=9999');
+  });
+
+  it('version diferente produz imagemUrl diferente (cache-busting)', () => {
+    const url1 = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X' }, { activeKey: R2_KEY, version: '1000' }).imagemUrl;
+    const url2 = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X' }, { activeKey: R2_KEY, version: '2000' }).imagemUrl;
+    expect(url1).not.toBe(url2);
+  });
+
+  // ── JSON público não vaza dados internos ────────────────────────────────────
 
   it('JSON público não vaza key, bucket, R2 ou campos internos', () => {
-    const placa = toPublicPlaca({
-      _id: PLACA_ID,
-      numero_placa: 'CAU-37',
-      imagemPrincipal: 'https://abc.r2.cloudflarestorage.com/bucket/cau-37.jpg',
-    });
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'CAU-37' }, PM);
     const serialized = JSON.stringify(placa);
     expect(serialized).not.toContain('r2.dev');
     expect(serialized).not.toContain('cloudflarestorage.com');
-    expect(serialized).not.toContain('inmidia-uploads-sistema');
+    expect(serialized).not.toContain(R2_KEY);
+    expect(serialized).not.toContain('activeKey');
+    expect(serialized).not.toContain('r2Key');
   });
 
   it('payload não contém empresaId', () => {
@@ -298,7 +207,7 @@ describe('public plates presenter — proxy de imagem', () => {
       _id: PLACA_ID,
       numero_placa: 'CAU-37',
       empresaId: 'empresa-secreta-123',
-    }) as any;
+    }, null) as any;
     expect(placa.empresaId).toBeUndefined();
   });
 
@@ -307,7 +216,7 @@ describe('public plates presenter — proxy de imagem', () => {
       _id: PLACA_ID,
       numero_placa: 'CAU-37',
       statusComercial: 'AVAILABLE',
-    }) as any;
+    }, null) as any;
     expect(placa.statusComercial).toBeUndefined();
   });
 
@@ -316,43 +225,42 @@ describe('public plates presenter — proxy de imagem', () => {
       _id: PLACA_ID,
       numero_placa: 'CAU-37',
       regiaoId: { _id: 'regiao-interna', nome: 'Aldeota', city: 'Fortaleza' },
-    }) as any;
+    }, null) as any;
     expect(placa.regiaoId).toBeUndefined();
     expect(placa.regiao).toBe('Aldeota');
   });
 
-  // ── status e disponibilidade ───────────────────────────────────────────────
+  // ── status e disponibilidade ────────────────────────────────────────────────
 
   it('placa disponível tem status e disponibilidade corretos', () => {
-    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X', statusComercial: 'AVAILABLE' });
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X', statusComercial: 'AVAILABLE' }, null);
     expect(placa.status).toBe('disponivel');
     expect(placa.disponibilidade).toBe('disponivel');
   });
 
   it('placa reservada tem status reservado', () => {
-    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X', statusComercial: 'RESERVED' });
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X', statusComercial: 'RESERVED' }, null);
     expect(placa.status).toBe('reservado');
-    expect(placa.disponibilidade).toBe('reservado');
   });
 
   it('placa ocupada tem status ocupado', () => {
-    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X', statusComercial: 'OCCUPIED' });
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X', statusComercial: 'OCCUPIED' }, null);
     expect(placa.status).toBe('ocupado');
   });
 
   it('placa indisponível tem status indisponivel', () => {
-    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X', statusComercial: 'UNAVAILABLE' });
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X', statusComercial: 'UNAVAILABLE' }, null);
     expect(placa.status).toBe('indisponivel');
   });
 });
 
-// ── Testes de imagemMeta ──────────────────────────────────────────────────────
+// ── imagemMeta ────────────────────────────────────────────────────────────────
 
 describe('public plates presenter — imagemMeta', () => {
   const origBase = process.env.PUBLIC_API_BASE_URL;
 
   beforeEach(() => {
-    process.env.PUBLIC_API_BASE_URL = 'https://inmidia.futureoutdoors.com.br';
+    process.env.PUBLIC_API_BASE_URL = PROXY_BASE;
   });
 
   afterEach(() => {
@@ -360,76 +268,34 @@ describe('public plates presenter — imagemMeta', () => {
     else process.env.PUBLIC_API_BASE_URL = origBase;
   });
 
-  it('imagemMeta.url aponta para o proxy canônico', () => {
-    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X', imagemPrincipal: 'pasta/foto.jpg' });
-    expect(placa.imagemMeta?.url).toBe(`https://inmidia.futureoutdoors.com.br/api/v1/public/media/plates/${PLACA_ID}/main`);
+  it('imagemMeta.url aponta para o proxy canônico com ?v=', () => {
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X' }, PM);
+    expect(placa.imagemMeta?.url).toBe(`${EXPECTED_PROXY}?v=${PM.version}`);
   });
 
-  it('imagemMeta.mimeType derivado de .jpg → image/jpeg', () => {
-    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X', imagemPrincipal: 'pasta/foto.jpg' });
-    expect(placa.imagemMeta?.mimeType).toBe('image/jpeg');
+  it('imagemMeta.mimeType é null (mimeType derivado apenas do PlateMedia — não exposto no presenter)', () => {
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X' }, PM);
+    expect(placa.imagemMeta?.mimeType).toBeNull();
   });
 
-  it('imagemMeta.mimeType derivado de .webp → image/webp', () => {
-    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X', imagemPrincipal: 'pasta/foto.webp' });
-    expect(placa.imagemMeta?.mimeType).toBe('image/webp');
-  });
-
-  it('imagemMeta.mimeType derivado de filename solto .jpg → image/jpeg', () => {
-    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X', imagemPrincipal: 'foto.jpg' });
-    expect(placa.imagemMeta?.mimeType).toBe('image/jpeg');
-  });
-
-  it('imagemMeta.cacheable é true quando há imagem', () => {
-    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X', imagemPrincipal: 'pasta/foto.jpg' });
+  it('imagemMeta.cacheable é true quando há PlateMedia', () => {
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X' }, PM);
     expect(placa.imagemMeta?.cacheable).toBe(true);
   });
 
   it('imagemMeta.updatedAt reflete updatedAt da placa', () => {
-    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X', imagemPrincipal: 'pasta/foto.jpg', updatedAt: '2026-01-01T00:00:00.000Z' });
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X', updatedAt: '2026-01-01T00:00:00.000Z' }, PM);
     expect(placa.imagemMeta?.updatedAt).toBe('2026-01-01T00:00:00.000Z');
   });
 
-  it('imagemMeta é null quando placa não tem imagem', () => {
-    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X', imagemPrincipal: null, imagem: null, imagens: [] });
+  it('imagemMeta é null quando não há PlateMedia', () => {
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X' }, null);
     expect(placa.imagemMeta).toBeNull();
   });
 
-  it('imagemUrl legado continua presente com valor correto', () => {
-    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X', imagemPrincipal: 'pasta/foto.jpg' });
+  it('imagemUrl e imagemMeta.url são consistentes', () => {
+    const placa = toPublicPlaca({ _id: PLACA_ID, numero_placa: 'X' }, PM);
     expect(placa.imagemUrl).toBe(placa.imagemMeta?.url);
     expect(placa.imagem).toBe(placa.imagemMeta?.url);
-  });
-});
-
-// ── Testes de mimeTypeFromStoredPath ──────────────────────────────────────────
-
-describe('mimeTypeFromStoredPath', () => {
-  test.each([
-    ['.jpg', 'image/jpeg'],
-    ['.jpeg', 'image/jpeg'],
-    ['.png', 'image/png'],
-    ['.gif', 'image/gif'],
-    ['.webp', 'image/webp'],
-    ['.avif', 'image/avif'],
-    ['.svg', 'image/svg+xml'],
-  ])('extensão %s → %s', (ext, expected) => {
-    expect(mimeTypeFromStoredPath(`pasta/foto${ext}`)).toBe(expected);
-  });
-
-  it('extensão desconhecida → null', () => {
-    expect(mimeTypeFromStoredPath('pasta/foto.tiff')).toBeNull();
-  });
-
-  it('sem extensão → null', () => {
-    expect(mimeTypeFromStoredPath('pasta/foto')).toBeNull();
-  });
-
-  it('null → null', () => {
-    expect(mimeTypeFromStoredPath(null)).toBeNull();
-  });
-
-  it('remove querystring antes de verificar extensão', () => {
-    expect(mimeTypeFromStoredPath('pasta/foto.jpg?v=1')).toBe('image/jpeg');
   });
 });

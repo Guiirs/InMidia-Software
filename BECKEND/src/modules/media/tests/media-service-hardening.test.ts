@@ -16,6 +16,14 @@ jest.mock('@shared/infra/http/middlewares/upload.middleware', () => ({
   safeDeleteFromR2: jest.fn(),
 }));
 
+jest.mock('@modules/media/plate-media.service', () => ({
+  plateMediaService: {
+    setActivePlateImage: jest.fn().mockResolvedValue(undefined),
+    clearActivePlateImage: jest.fn().mockResolvedValue(undefined),
+    getPlateMedia: jest.fn().mockResolvedValue(null),
+  },
+}));
+
 const mockedPlaca = Placa as unknown as jest.Mocked<Pick<typeof Placa, 'updateOne' | 'findOne'>>;
 const mockedUpload = safeUploadBufferToR2 as jest.MockedFunction<typeof safeUploadBufferToR2>;
 
@@ -92,16 +100,20 @@ describe('MediaService upload/sync hardening', () => {
       source: 'UPLOAD',
       isMain: true,
     }));
+    // syncPlateMedia writes isMain flag to gallery — no legacy imagemPrincipal/imagem writes
     expect(mockedPlaca.updateOne).toHaveBeenLastCalledWith(
       { _id: expect.any(Types.ObjectId), empresaId: expect.any(Types.ObjectId) },
       expect.objectContaining({
         $set: expect.objectContaining({
-          imagemPrincipal: asset.storageKey,
-          imagem: asset.storageKey,
           'imagens.$[img].isMain': true,
         }),
       }),
       expect.objectContaining({ arrayFilters: expect.any(Array) }),
+    );
+    expect(mockedPlaca.updateOne).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ $set: expect.objectContaining({ imagemPrincipal: expect.anything() }) }),
+      expect.anything(),
     );
   });
 

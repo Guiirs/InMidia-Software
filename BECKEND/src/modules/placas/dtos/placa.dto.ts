@@ -8,7 +8,6 @@ import { ValidationMessages, FieldMessages } from '@shared/validators/validation
 import { GeoPointInputSchema } from '@modules/spatial';
 import { PlateImageCategoryValues } from '@database/schemas/placa.schema';
 import { buildProxyImageUrl } from '@modules/public-plates/public-plates.presenter';
-import { normalizePlacaStorageKey, resolvePlacaImageReference } from '@modules/media/placa-image-reference.resolver';
 
 const LEGACY_COMMERCIAL_PLATE_FIELDS = [
   'cliente',
@@ -43,37 +42,9 @@ function stripCommercialPlateFields(data: unknown): Record<string, any> {
 }
 
 function normalizeImageMutationFields(data: Record<string, any>): void {
-  const hasRemoval =
-    data.imagem === null ||
-    data.imagemPrincipal === null ||
-    data.imageUrl === null;
-
-  if (hasRemoval) {
-    data.imagem = null;
-    data.imagemPrincipal = null;
-    delete data.imageUrl;
-    return;
-  }
-
-  const imageReference = resolvePlacaImageReference(data);
-  if (imageReference.storageKey) {
-    data.imagem = imageReference.storageKey;
-    data.imagemPrincipal = imageReference.storageKey;
-    delete data.imageUrl;
-    return;
-  }
-
-  for (const field of ['imagem', 'imagemPrincipal', 'imageUrl']) {
-    if (!(field in data)) continue;
-    const normalized = normalizePlacaStorageKey(data[field]);
-    if (normalized) {
-      data.imagem = normalized;
-      data.imagemPrincipal = normalized;
-      delete data.imageUrl;
-      return;
-    }
-    delete data[field];
-  }
+  // imagem: null is the only accepted image mutation — it signals deletion via PlateMedia.
+  // Any non-null value is stripped (image updates must go through the upload endpoint).
+  if (data.imagem !== null) delete data.imagem;
 }
 
 // ============================================
@@ -205,9 +176,8 @@ export const CreatePlacaSchema = PlacaBaseSchema.superRefine((data, ctx) => {
 });
 
 export const UpdatePlacaSchema = PlacaBaseSchema.partial().extend({
-  imagem: z.union([z.string(), z.null()]).optional(),
-  imagemPrincipal: z.union([z.string(), z.null()]).optional(),
-  imageUrl: z.union([z.string(), z.null()]).optional(),
+  /** Aceita apenas null como sinal de remoção de imagem. Strings são ignoradas — use o endpoint de upload. */
+  imagem: z.null().optional(),
 }).superRefine((data, ctx) => {
   if (
     (data.latitude !== undefined && data.latitude !== null) !==
@@ -478,6 +448,20 @@ export interface PlateHealthResult {
 // HELPERS DE VALIDAÇÃO
 // ============================================
 
+/**
+ * Coerce coordinate strings from FormData to number.
+ * Empty strings and non-finite results are returned as undefined (field absent).
+ * Invalid non-empty strings are returned as-is so Zod emits a proper type error.
+ */
+function coerceCoordinate(val: unknown): number | undefined | null {
+  if (val === null || val === undefined) return val as null | undefined;
+  if (typeof val === 'number') return val;
+  const s = String(val).trim();
+  if (s === '') return undefined;
+  const n = parseFloat(s.replace(',', '.'));
+  return Number.isFinite(n) ? n : (val as any);
+}
+
 export function validateCreatePlaca(data: unknown): CreatePlacaDTO {
   const normalized = stripCommercialPlateFields(data);
   if (normalized.ativa !== undefined && normalized.disponivel === undefined) {
@@ -489,6 +473,13 @@ export function validateCreatePlaca(data: unknown): CreatePlacaDTO {
   if (normalized.loteRegional && !normalized.regionalLot) normalized.regionalLot = normalized.loteRegional;
   if (!normalized.endereco && normalized.nomeDaRua) normalized.endereco = normalized.nomeDaRua;
   if (!normalized.endereco && normalized.localizacao) normalized.endereco = normalized.localizacao;
+  // Coerce lat/lng strings from multipart/FormData to numbers before Zod validates
+  normalized.latitude = coerceCoordinate(normalized.latitude);
+  normalized.longitude = coerceCoordinate(normalized.longitude);
+  // Treat empty coordenadas string as absent
+  if (typeof normalized.coordenadas === 'string' && normalized.coordenadas.trim() === '') {
+    normalized.coordenadas = undefined;
+  }
   return CreatePlacaSchema.parse(normalized);
 }
 
@@ -501,6 +492,13 @@ export function validateUpdatePlaca(data: unknown): UpdatePlacaDTO {
   if (!normalized.endereco && normalized.nomeDaRua) normalized.endereco = normalized.nomeDaRua;
   if (!normalized.endereco && normalized.localizacao) normalized.endereco = normalized.localizacao;
   normalizeImageMutationFields(normalized);
+  // Coerce lat/lng strings from multipart/FormData to numbers before Zod validates
+  normalized.latitude = coerceCoordinate(normalized.latitude);
+  normalized.longitude = coerceCoordinate(normalized.longitude);
+  // Treat empty coordenadas string as absent
+  if (typeof normalized.coordenadas === 'string' && normalized.coordenadas.trim() === '') {
+    normalized.coordenadas = undefined;
+  }
   return UpdatePlacaSchema.parse(normalized);
 }
 
@@ -534,14 +532,15 @@ export function validateArchivePlaca(data: unknown): ArchivePlacaDTO {
 // TRANSFORMERS
 // ============================================
 
-export function toListItem(placa: PlacaEntity & any): PlacaListItem {
+export function toListItem(placa: PlacaEntity & any, plateMediaMap?: Map<string, { activeKey: string | null; version: string }>): PlacaListItem {
   const regiao = placa.regiaoId;
   const regiaoNome = typeof regiao === 'object' && regiao?.nome ? regiao.nome : 'Sem região';
   const regiaoId = typeof regiao === 'object' && regiao?._id ? regiao._id : regiao;
   const disponivel = placa.disponivel ?? placa.ativa ?? true;
   const placaId = placa._id.toString();
-  const imageReference = resolvePlacaImageReference(placa);
-  const imageUrl = imageReference.hasImage ? buildProxyImageUrl(placaId) : null;
+  const pm = plateMediaMap?.get(placaId);
+  const hasImage = !!(pm?.activeKey);
+  const imageUrl = hasImage ? buildProxyImageUrl(placaId, pm!.version) : null;
 
   return {
     _id: placaId,
@@ -557,8 +556,8 @@ export function toListItem(placa: PlacaEntity & any): PlacaListItem {
     imagemPrincipal: imageUrl ?? undefined,
     mainImageUrl: imageUrl,
     imagem: imageUrl ?? undefined,
-    hasImage: imageReference.hasImage,
-    imageStatus: imageReference.hasImage ? 'AVAILABLE' : 'MISSING',
+    hasImage,
+    imageStatus: hasImage ? 'AVAILABLE' : 'MISSING',
     regiao: typeof regiao === 'object' ? regiao : { _id: regiaoId, id: regiaoId, nome: regiaoNome },
     regiaoId,
     regionId: placa.regionId || regiaoId,
@@ -581,6 +580,6 @@ export function toListItem(placa: PlacaEntity & any): PlacaListItem {
   };
 }
 
-export function toListItems(placas: Array<PlacaEntity & any>): PlacaListItem[] {
-  return placas.map(toListItem);
+export function toListItems(placas: Array<PlacaEntity & any>, plateMediaMap?: Map<string, { activeKey: string | null; version: string }>): PlacaListItem[] {
+  return placas.map((p) => toListItem(p, plateMediaMap));
 }

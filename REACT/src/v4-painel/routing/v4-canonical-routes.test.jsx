@@ -29,8 +29,27 @@ vi.mock('../../context/AuthContext.jsx', () => ({
     hasPermission: (_p) => true,
     logout: vi.fn(),
     sessionWarning: false,
+    organization: null,
+    membership: null,
+    tenantMode: null,
   }),
   AuthProvider: ({ children }) => children,
+}));
+
+vi.mock('../../context/TenantContext.jsx', () => ({
+  useTenant: () => ({
+    organization: null,
+    membership: null,
+    tenantMode: null,
+    hasOrganization: false,
+    role: null,
+    canManageOrganization: false,
+    canInviteMembers: false,
+    isOwner: false,
+    isAdmin: false,
+    isLegacyMode: true,
+  }),
+  TenantProvider: ({ children }) => children,
 }));
 
 vi.mock('../providers/OperationalStateProvider.jsx', () => ({

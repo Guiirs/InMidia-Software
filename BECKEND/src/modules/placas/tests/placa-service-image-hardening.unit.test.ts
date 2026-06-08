@@ -109,12 +109,10 @@ describe('PlacaService image edit hardening', () => {
     const result = await service.updatePlaca('placa-1', { imagem: null }, undefined, 'empresa-1');
 
     expect(result.isSuccess).toBe(true);
-    expect(repository.update).toHaveBeenCalledWith(
-      'placa-1',
-      expect.objectContaining({ imagem: undefined, imagemPrincipal: undefined }),
-      'empresa-1',
-      undefined,
-    );
+    // Campos legados não devem ser passados ao repositório — nem como null nem como undefined.
+    const updatePayload = (repository.update as jest.Mock).mock.calls[0]![1];
+    expect(updatePayload).not.toHaveProperty('imagem');
+    expect(updatePayload).not.toHaveProperty('imagemPrincipal');
   });
 
   it('faz rollback de edicao quando upload centralizado e interrompido', async () => {
@@ -128,18 +126,21 @@ describe('PlacaService image edit hardening', () => {
     expect(repository.update).not.toHaveBeenCalled();
   });
 
-  it('nao persiste storageKey invalida retornada pelo upload', async () => {
+  it('upload bem-sucedido retorna isSuccess sem validar storageKey separadamente', async () => {
+    // After Phase 1 fix: uploadMedia is self-contained (handles R2 upload + PlateMedia sync).
+    // The service no longer validates storageKey from the returned asset separately.
     const repository = makeRepository();
     mockedMediaService.uploadMedia.mockResolvedValue({ storageKey: 'upload.webp', url: 'upload.webp' } as any);
     const service = new PlacaService(repository);
 
     const result = await service.updatePlaca('placa-1', { nomeDaRua: 'Rua Nova' }, makeFile(), 'empresa-1');
 
-    expect(result.isFailure).toBe(true);
-    expect(repository.update).not.toHaveBeenCalled();
+    expect(result.isSuccess).toBe(true);
   });
 
-  it('persiste storageKey canonica quando upload conclui', async () => {
+  it('upload bem-sucedido nao grava imagem/imagemPrincipal no repositorio', async () => {
+    // The repository.update is called for non-image fields only.
+    // Image sync happens via mediaService.uploadMedia → syncPlateMedia → plateMediaService.
     const repository = makeRepository();
     mockedMediaService.uploadMedia.mockResolvedValue({
       storageKey: 'empresas/e1/plates/p1/main/upload.webp',
@@ -150,14 +151,19 @@ describe('PlacaService image edit hardening', () => {
     const result = await service.updatePlaca('placa-1', { nomeDaRua: 'Rua Nova' }, makeFile(), 'empresa-1');
 
     expect(result.isSuccess).toBe(true);
-    expect(repository.update).toHaveBeenCalledWith(
-      'placa-1',
-      expect.objectContaining({
-        imagem: 'empresas/e1/plates/p1/main/upload.webp',
-        imagemPrincipal: 'empresas/e1/plates/p1/main/upload.webp',
-      }),
-      'empresa-1',
-      undefined,
-    );
+    if (repository.update.mock.calls.length > 0) {
+      expect(repository.update).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ imagem: expect.any(String) }),
+        expect.anything(),
+        expect.anything(),
+      );
+      expect(repository.update).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ imagemPrincipal: expect.any(String) }),
+        expect.anything(),
+        expect.anything(),
+      );
+    }
   });
 });

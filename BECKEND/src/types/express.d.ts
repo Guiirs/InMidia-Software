@@ -2,6 +2,7 @@ import { JwtPayload } from 'jsonwebtoken';
 import { ObjectId } from 'mongoose';
 import type { PermissionContext, Role } from '@shared/infra/http/permissions/permissions.types';
 import type { SecurityContext } from '@security/block-auth/types/blockAuth.types';
+import type { OrganizationContext } from '@shared/tenant/tenant-context';
 
 /**
  * User payload from JWT token
@@ -48,6 +49,13 @@ declare global {
         cnpj?: string;
       };
       securityContext?: SecurityContext;
+      /**
+       * Contexto de tenant rico — Organization + TenantMembership.
+       * Populado por resolveTenantMiddleware quando disponível.
+       * isLegacyFallback=true indica que não há Membership ativo e o sistema
+       * está usando o role do JWT como fallback.
+       */
+      organizationContext?: OrganizationContext;
     }
   }
 }

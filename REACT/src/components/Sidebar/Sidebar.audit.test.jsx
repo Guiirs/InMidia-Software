@@ -16,6 +16,10 @@ vi.mock('../../context/ConfirmationContext', () => ({
   useConfirmation: () => vi.fn(),
 }));
 
+vi.mock('../../context/TenantContext', () => ({
+  useTenant: () => ({ canManageOrganization: false, canInviteMembers: false }),
+}));
+
 import Sidebar from './Sidebar';
 
 describe('Sidebar audit access', () => {

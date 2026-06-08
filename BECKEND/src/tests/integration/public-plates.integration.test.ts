@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { Types } from 'mongoose';
 
 import Empresa from '@modules/empresas/Empresa';
+import PlateMedia from '@modules/media/PlateMedia';
 import TemporalReservation from '@modules/temporal/TemporalReservation';
 import { publicApiKeyManager } from '@modules/public-api/managers/public-api-key.manager';
 import {
@@ -13,6 +14,22 @@ import {
   setupIntegrationDb,
   teardownIntegrationDb,
 } from './setup';
+
+/** Creates a PlateMedia doc so the public API resolves hasImage=true for this plate. */
+async function seedPlateMedia(placa: any, empresaId: Types.ObjectId, r2Key = 'inmidia-uploads-sistema/test.jpg'): Promise<void> {
+  await PlateMedia.create({
+    plateId: placa._id,
+    empresaId,
+    activeKey: r2Key,
+    status: 'active',
+    version: String(Date.now()),
+    mimeType: null,
+    size: null,
+    width: null,
+    height: null,
+    history: [{ key: r2Key, mimeType: null, size: null, uploadedAt: new Date(), isActive: true, source: 'migration' }],
+  });
+}
 
 const API_KEY_PREFIX = 'pubtest';
 const API_KEY_SECRET = 'segredo-publico';
@@ -131,18 +148,17 @@ describe('Public plates integration', () => {
       city: 'Sao Paulo',
     });
 
-    await createTestPlaca(regiao._id.toString(), {
+    const pub001 = await createTestPlaca(regiao._id.toString(), {
       empresaId: empresa._id,
       numero_placa: 'PUB-001',
       endereco: 'Av. Paulista, 1000',
       latitude: -23.561684,
       longitude: -46.656139,
-      // R2-resolvable path so the resolver produces hasImage=true
-      imagemPrincipal: 'inmidia-uploads-sistema/pub-001.jpg',
       statusComercial: 'AVAILABLE',
       notes: 'nao pode aparecer',
       valor_mensal: 9999,
     });
+    await seedPlateMedia(pub001, empresa._id, 'inmidia-uploads-sistema/pub-001.jpg');
 
     const res = await request(app)
       .get('/api/v1/public/placas')
@@ -153,7 +169,7 @@ describe('Public plates integration', () => {
     expect(Array.isArray(res.body.data)).toBe(true);
     expect(res.body.data).toHaveLength(1);
     const placa = res.body.data[0];
-    const expectedImageUrl = canonicalImageUrl(placa.id);
+    const expectedImageBase = canonicalImageUrl(placa.id); // without ?v=
     expect(placa).toMatchObject({
       id: expect.any(String),
       codigo: 'PUB-001',
@@ -161,17 +177,17 @@ describe('Public plates integration', () => {
       localizacao: 'Av. Paulista, 1000',
       regiao: 'Centro',
       status: 'disponivel',
-      imagemUrl: expectedImageUrl,
-      imagem: expectedImageUrl,
-      imagemMeta: expect.objectContaining({ url: expectedImageUrl }),
-      jetImageUrl: expectedImageUrl,
-      jet_image_url: expectedImageUrl,
+      imagemUrl: expect.stringContaining(expectedImageBase),
+      imagem: expect.stringContaining(expectedImageBase),
+      imagemMeta: expect.objectContaining({ url: expect.stringContaining(expectedImageBase) }),
+      jetImageUrl: expect.stringContaining(expectedImageBase),
+      jet_image_url: expect.stringContaining(expectedImageBase),
       hasImage: true,
       latitude: -23.561684,
       longitude: -46.656139,
     });
-    // imagemUrl aponta para o endpoint canônico
-    expect(placa.imagemUrl).toMatch(/\/api\/v1\/public\/media\/plates\/[a-f0-9]+\/main$/);
+    // imagemUrl aponta para o endpoint canônico (com ?v= de cache-busting)
+    expect(placa.imagemUrl).toMatch(/\/api\/v1\/public\/media\/plates\/[a-f0-9]+\/main/);
     // Campos internos ausentes
     expect(placa.empresaId).toBeUndefined();
     expect(placa.valor_mensal).toBeUndefined();
@@ -190,33 +206,31 @@ describe('Public plates integration', () => {
       codigo: 'CENTRO',
     });
 
-    await createTestPlaca(regiao._id.toString(), {
+    const img001 = await createTestPlaca(regiao._id.toString(), {
       empresaId: empresa._id,
       numero_placa: 'PUB-IMG-001',
-      // Plain filename: resolver now accepts it, adding default folder prefix.
-      imagemPrincipal: 'placa-relativa.jpg',
       statusComercial: 'AVAILABLE',
     });
+    await seedPlateMedia(img001, empresa._id, 'inmidia-uploads-sistema/placa-001.jpg');
 
-    await createTestPlaca(regiao._id.toString(), {
+    const img002 = await createTestPlaca(regiao._id.toString(), {
       empresaId: empresa._id,
       numero_placa: 'PUB-IMG-002',
-      imagemPrincipal: 'inmidia-uploads-sistema/placa-com-prefixo.jpg',
       statusComercial: 'AVAILABLE',
     });
+    await seedPlateMedia(img002, empresa._id, 'inmidia-uploads-sistema/placa-com-prefixo.jpg');
 
-    await createTestPlaca(regiao._id.toString(), {
+    const img003 = await createTestPlaca(regiao._id.toString(), {
       empresaId: empresa._id,
       numero_placa: 'PUB-IMG-003',
-      imagemPrincipal: 'inmidia-uploads-sistema/placa-pronta.jpg',
       statusComercial: 'AVAILABLE',
     });
+    await seedPlateMedia(img003, empresa._id, 'inmidia-uploads-sistema/placa-pronta.jpg');
 
+    // PUB-IMG-004: no image → no PlateMedia seeded
     await createTestPlaca(regiao._id.toString(), {
       empresaId: empresa._id,
       numero_placa: 'PUB-IMG-004',
-      imagemPrincipal: null,
-      imagem: null,
       statusComercial: 'AVAILABLE',
     });
 
@@ -230,13 +244,14 @@ describe('Public plates integration', () => {
     );
 
     for (const codigo of ['PUB-IMG-001', 'PUB-IMG-002', 'PUB-IMG-003']) {
-      const expectedUrl = canonicalImageUrl(byCodigo[codigo].id);
-      expect(byCodigo[codigo].imagemUrl).toBe(expectedUrl);
-      expect(byCodigo[codigo].imagem).toBe(expectedUrl);
-      expect(byCodigo[codigo].imagemMeta.url).toBe(expectedUrl);
+      const expectedBase = canonicalImageUrl(byCodigo[codigo].id); // without ?v=
+      // imagemUrl includes ?v= for cache-busting — verify via prefix match
+      expect(byCodigo[codigo].imagemUrl).toContain(expectedBase);
+      expect(byCodigo[codigo].imagem).toContain(expectedBase);
+      expect(byCodigo[codigo].imagemMeta.url).toContain(expectedBase);
       expect(byCodigo[codigo].hasImage).toBe(true);
-      expect(expectedUrl).not.toContain('//api/');
-      expect(expectedUrl).not.toContain('localhost');
+      expect(byCodigo[codigo].imagemUrl).not.toContain('//api/');
+      expect(byCodigo[codigo].imagemUrl).not.toContain('localhost');
     }
     expect(byCodigo['PUB-IMG-004'].imagemUrl).toBeNull();
     expect(byCodigo['PUB-IMG-004'].hasImage).toBe(false);
@@ -252,12 +267,12 @@ describe('Public plates integration', () => {
       codigo: 'CENTRO',
     });
 
-    await createTestPlaca(regiao._id.toString(), {
+    const leak001 = await createTestPlaca(regiao._id.toString(), {
       empresaId: empresa._id,
       numero_placa: 'PUB-LEAK-001',
-      imagemPrincipal: 'inmidia-uploads-sistema/placa-leak.jpg',
       statusComercial: 'AVAILABLE',
     });
+    await seedPlateMedia(leak001, empresa._id, 'inmidia-uploads-sistema/placa-leak.jpg');
 
     const res = await request(app)
       .get('/api/v1/public/placas')

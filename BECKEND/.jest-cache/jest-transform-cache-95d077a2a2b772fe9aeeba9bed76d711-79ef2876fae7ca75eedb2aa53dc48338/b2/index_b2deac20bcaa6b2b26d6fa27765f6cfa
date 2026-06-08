@@ -1,0 +1,72 @@
+f85d13171f40f50946cb6e71d93a9d36
+"use strict";
+/**
+ * Core System - Export Central
+ *
+ * Sistema de fundação type-safe da API incluindo:
+ * - Result Pattern para error handling
+ * - Domain Errors hierarchy
+ * - Singleton Managers (DB, Cache, Logger)
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Log = exports.Cache = exports.DB = exports.getErrorMessage = exports.getErrorStatusCode = exports.toDomainError = exports.isDomainError = exports.NotImplementedError = exports.UnexpectedError = exports.InternalError = exports.TimeoutError = exports.CacheError = exports.DatabaseError = exports.ExternalServiceError = exports.ClienteHasDependenciesError = exports.ContratoCannotBeDeletedError = exports.AluguelOverlapError = exports.InvalidDateRangeError = exports.PlacaNotAvailableError = exports.BusinessRuleViolationError = exports.DuplicateKeyError = exports.ResourceAlreadyExistsError = exports.ConflictError = exports.PropostaInternaNotFoundError = exports.AluguelNotFoundError = exports.ContratoNotFoundError = exports.PlacaNotFoundError = exports.ClienteNotFoundError = exports.NotFoundError = exports.InsufficientPermissionsError = exports.ForbiddenError = exports.InvalidTokenError = exports.TokenExpiredError = exports.InvalidCredentialsError = exports.UnauthorizedError = exports.RequiredFieldError = exports.InvalidObjectIdError = exports.InvalidInputError = exports.ValidationError = exports.DomainError = exports.UnwrapError = exports.UnwrapResult = exports.Result = void 0;
+// Result Pattern
+var Result_1 = require("./Result");
+Object.defineProperty(exports, "Result", { enumerable: true, get: function () { return Result_1.Result; } });
+Object.defineProperty(exports, "UnwrapResult", { enumerable: true, get: function () { return Result_1.UnwrapResult; } });
+Object.defineProperty(exports, "UnwrapError", { enumerable: true, get: function () { return Result_1.UnwrapError; } });
+// Domain Errors
+var DomainError_1 = require("./DomainError");
+// Base
+Object.defineProperty(exports, "DomainError", { enumerable: true, get: function () { return DomainError_1.DomainError; } });
+// Validation (400)
+Object.defineProperty(exports, "ValidationError", { enumerable: true, get: function () { return DomainError_1.ValidationError; } });
+Object.defineProperty(exports, "InvalidInputError", { enumerable: true, get: function () { return DomainError_1.InvalidInputError; } });
+Object.defineProperty(exports, "InvalidObjectIdError", { enumerable: true, get: function () { return DomainError_1.InvalidObjectIdError; } });
+Object.defineProperty(exports, "RequiredFieldError", { enumerable: true, get: function () { return DomainError_1.RequiredFieldError; } });
+// Authentication (401)
+Object.defineProperty(exports, "UnauthorizedError", { enumerable: true, get: function () { return DomainError_1.UnauthorizedError; } });
+Object.defineProperty(exports, "InvalidCredentialsError", { enumerable: true, get: function () { return DomainError_1.InvalidCredentialsError; } });
+Object.defineProperty(exports, "TokenExpiredError", { enumerable: true, get: function () { return DomainError_1.TokenExpiredError; } });
+Object.defineProperty(exports, "InvalidTokenError", { enumerable: true, get: function () { return DomainError_1.InvalidTokenError; } });
+// Authorization (403)
+Object.defineProperty(exports, "ForbiddenError", { enumerable: true, get: function () { return DomainError_1.ForbiddenError; } });
+Object.defineProperty(exports, "InsufficientPermissionsError", { enumerable: true, get: function () { return DomainError_1.InsufficientPermissionsError; } });
+// Not Found (404)
+Object.defineProperty(exports, "NotFoundError", { enumerable: true, get: function () { return DomainError_1.NotFoundError; } });
+Object.defineProperty(exports, "ClienteNotFoundError", { enumerable: true, get: function () { return DomainError_1.ClienteNotFoundError; } });
+Object.defineProperty(exports, "PlacaNotFoundError", { enumerable: true, get: function () { return DomainError_1.PlacaNotFoundError; } });
+Object.defineProperty(exports, "ContratoNotFoundError", { enumerable: true, get: function () { return DomainError_1.ContratoNotFoundError; } });
+Object.defineProperty(exports, "AluguelNotFoundError", { enumerable: true, get: function () { return DomainError_1.AluguelNotFoundError; } });
+Object.defineProperty(exports, "PropostaInternaNotFoundError", { enumerable: true, get: function () { return DomainError_1.PropostaInternaNotFoundError; } });
+// Conflict (409)
+Object.defineProperty(exports, "ConflictError", { enumerable: true, get: function () { return DomainError_1.ConflictError; } });
+Object.defineProperty(exports, "ResourceAlreadyExistsError", { enumerable: true, get: function () { return DomainError_1.ResourceAlreadyExistsError; } });
+Object.defineProperty(exports, "DuplicateKeyError", { enumerable: true, get: function () { return DomainError_1.DuplicateKeyError; } });
+// Business Rules (422)
+Object.defineProperty(exports, "BusinessRuleViolationError", { enumerable: true, get: function () { return DomainError_1.BusinessRuleViolationError; } });
+Object.defineProperty(exports, "PlacaNotAvailableError", { enumerable: true, get: function () { return DomainError_1.PlacaNotAvailableError; } });
+Object.defineProperty(exports, "InvalidDateRangeError", { enumerable: true, get: function () { return DomainError_1.InvalidDateRangeError; } });
+Object.defineProperty(exports, "AluguelOverlapError", { enumerable: true, get: function () { return DomainError_1.AluguelOverlapError; } });
+Object.defineProperty(exports, "ContratoCannotBeDeletedError", { enumerable: true, get: function () { return DomainError_1.ContratoCannotBeDeletedError; } });
+Object.defineProperty(exports, "ClienteHasDependenciesError", { enumerable: true, get: function () { return DomainError_1.ClienteHasDependenciesError; } });
+// External/Infrastructure (502-504)
+Object.defineProperty(exports, "ExternalServiceError", { enumerable: true, get: function () { return DomainError_1.ExternalServiceError; } });
+Object.defineProperty(exports, "DatabaseError", { enumerable: true, get: function () { return DomainError_1.DatabaseError; } });
+Object.defineProperty(exports, "CacheError", { enumerable: true, get: function () { return DomainError_1.CacheError; } });
+Object.defineProperty(exports, "TimeoutError", { enumerable: true, get: function () { return DomainError_1.TimeoutError; } });
+// Internal (500)
+Object.defineProperty(exports, "InternalError", { enumerable: true, get: function () { return DomainError_1.InternalError; } });
+Object.defineProperty(exports, "UnexpectedError", { enumerable: true, get: function () { return DomainError_1.UnexpectedError; } });
+Object.defineProperty(exports, "NotImplementedError", { enumerable: true, get: function () { return DomainError_1.NotImplementedError; } });
+// Helpers
+Object.defineProperty(exports, "isDomainError", { enumerable: true, get: function () { return DomainError_1.isDomainError; } });
+Object.defineProperty(exports, "toDomainError", { enumerable: true, get: function () { return DomainError_1.toDomainError; } });
+Object.defineProperty(exports, "getErrorStatusCode", { enumerable: true, get: function () { return DomainError_1.getErrorStatusCode; } });
+Object.defineProperty(exports, "getErrorMessage", { enumerable: true, get: function () { return DomainError_1.getErrorMessage; } });
+// Singleton Managers
+var Managers_1 = require("./Managers");
+Object.defineProperty(exports, "DB", { enumerable: true, get: function () { return Managers_1.DB; } });
+Object.defineProperty(exports, "Cache", { enumerable: true, get: function () { return Managers_1.Cache; } });
+Object.defineProperty(exports, "Log", { enumerable: true, get: function () { return Managers_1.Log; } });
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiRzpcXElubWlkaWEgVjRcXEJFQ0tFTkRcXHNyY1xcc2hhcmVkXFxjb3JlXFxpbmRleC50cyIsIm1hcHBpbmdzIjoiO0FBQUE7Ozs7Ozs7R0FPRzs7O0FBRUgsaUJBQWlCO0FBQ2pCLG1DQUE2RDtBQUFwRCxnR0FBQSxNQUFNLE9BQUE7QUFBRSxzR0FBQSxZQUFZLE9BQUE7QUFBRSxxR0FBQSxXQUFXLE9BQUE7QUFFMUMsZ0JBQWdCO0FBQ2hCLDZDQXlEdUI7QUF4RHJCLE9BQU87QUFDUCwwR0FBQSxXQUFXLE9BQUE7QUFFWCxtQkFBbUI7QUFDbkIsOEdBQUEsZUFBZSxPQUFBO0FBQ2YsZ0hBQUEsaUJBQWlCLE9BQUE7QUFDakIsbUhBQUEsb0JBQW9CLE9BQUE7QUFDcEIsaUhBQUEsa0JBQWtCLE9BQUE7QUFFbEIsdUJBQXVCO0FBQ3ZCLGdIQUFBLGlCQUFpQixPQUFBO0FBQ2pCLHNIQUFBLHVCQUF1QixPQUFBO0FBQ3ZCLGdIQUFBLGlCQUFpQixPQUFBO0FBQ2pCLGdIQUFBLGlCQUFpQixPQUFBO0FBRWpCLHNCQUFzQjtBQUN0Qiw2R0FBQSxjQUFjLE9BQUE7QUFDZCwySEFBQSw0QkFBNEIsT0FBQTtBQUU1QixrQkFBa0I7QUFDbEIsNEdBQUEsYUFBYSxPQUFBO0FBQ2IsbUhBQUEsb0JBQW9CLE9BQUE7QUFDcEIsaUhBQUEsa0JBQWtCLE9BQUE7QUFDbEIsb0hBQUEscUJBQXFCLE9BQUE7QUFDckIsbUhBQUEsb0JBQW9CLE9BQUE7QUFDcEIsMkhBQUEsNEJBQTRCLE9BQUE7QUFFNUIsaUJBQWlCO0FBQ2pCLDRHQUFBLGFBQWEsT0FBQTtBQUNiLHlIQUFBLDBCQUEwQixPQUFBO0FBQzFCLGdIQUFBLGlCQUFpQixPQUFBO0FBRWpCLHVCQUF1QjtBQUN2Qix5SEFBQSwwQkFBMEIsT0FBQTtBQUMxQixxSEFBQSxzQkFBc0IsT0FBQTtBQUN0QixvSEFBQSxxQkFBcUIsT0FBQTtBQUNyQixrSEFBQSxtQkFBbUIsT0FBQTtBQUNuQiwySEFBQSw0QkFBNEIsT0FBQTtBQUM1QiwwSEFBQSwyQkFBMkIsT0FBQTtBQUUzQixvQ0FBb0M7QUFDcEMsbUhBQUEsb0JBQW9CLE9BQUE7QUFDcEIsNEdBQUEsYUFBYSxPQUFBO0FBQ2IseUdBQUEsVUFBVSxPQUFBO0FBQ1YsMkdBQUEsWUFBWSxPQUFBO0FBRVosaUJBQWlCO0FBQ2pCLDRHQUFBLGFBQWEsT0FBQTtBQUNiLDhHQUFBLGVBQWUsT0FBQTtBQUNmLGtIQUFBLG1CQUFtQixPQUFBO0FBRW5CLFVBQVU7QUFDViw0R0FBQSxhQUFhLE9BQUE7QUFDYiw0R0FBQSxhQUFhLE9BQUE7QUFDYixpSEFBQSxrQkFBa0IsT0FBQTtBQUNsQiw4R0FBQSxlQUFlLE9BQUE7QUFHakIscUJBQXFCO0FBQ3JCLHVDQU9vQjtBQU5sQiw4RkFBQSxFQUFFLE9BQUE7QUFDRixpR0FBQSxLQUFLLE9BQUE7QUFDTCwrRkFBQSxHQUFHLE9BQUEiLCJuYW1lcyI6W10sInNvdXJjZXMiOlsiRzpcXElubWlkaWEgVjRcXEJFQ0tFTkRcXHNyY1xcc2hhcmVkXFxjb3JlXFxpbmRleC50cyJdLCJzb3VyY2VzQ29udGVudCI6WyIvKipcclxuICogQ29yZSBTeXN0ZW0gLSBFeHBvcnQgQ2VudHJhbFxyXG4gKiBcclxuICogU2lzdGVtYSBkZSBmdW5kYcOnw6NvIHR5cGUtc2FmZSBkYSBBUEkgaW5jbHVpbmRvOlxyXG4gKiAtIFJlc3VsdCBQYXR0ZXJuIHBhcmEgZXJyb3IgaGFuZGxpbmdcclxuICogLSBEb21haW4gRXJyb3JzIGhpZXJhcmNoeVxyXG4gKiAtIFNpbmdsZXRvbiBNYW5hZ2VycyAoREIsIENhY2hlLCBMb2dnZXIpXHJcbiAqL1xyXG5cclxuLy8gUmVzdWx0IFBhdHRlcm5cclxuZXhwb3J0IHsgUmVzdWx0LCBVbndyYXBSZXN1bHQsIFVud3JhcEVycm9yIH0gZnJvbSAnLi9SZXN1bHQnO1xyXG5cclxuLy8gRG9tYWluIEVycm9yc1xyXG5leHBvcnQge1xyXG4gIC8vIEJhc2VcclxuICBEb21haW5FcnJvcixcclxuICBcclxuICAvLyBWYWxpZGF0aW9uICg0MDApXHJcbiAgVmFsaWRhdGlvbkVycm9yLFxyXG4gIEludmFsaWRJbnB1dEVycm9yLFxyXG4gIEludmFsaWRPYmplY3RJZEVycm9yLFxyXG4gIFJlcXVpcmVkRmllbGRFcnJvcixcclxuICBcclxuICAvLyBBdXRoZW50aWNhdGlvbiAoNDAxKVxyXG4gIFVuYXV0aG9yaXplZEVycm9yLFxyXG4gIEludmFsaWRDcmVkZW50aWFsc0Vycm9yLFxyXG4gIFRva2VuRXhwaXJlZEVycm9yLFxyXG4gIEludmFsaWRUb2tlbkVycm9yLFxyXG4gIFxyXG4gIC8vIEF1dGhvcml6YXRpb24gKDQwMylcclxuICBGb3JiaWRkZW5FcnJvcixcclxuICBJbnN1ZmZpY2llbnRQZXJtaXNzaW9uc0Vycm9yLFxyXG4gIFxyXG4gIC8vIE5vdCBGb3VuZCAoNDA0KVxyXG4gIE5vdEZvdW5kRXJyb3IsXHJcbiAgQ2xpZW50ZU5vdEZvdW5kRXJyb3IsXHJcbiAgUGxhY2FOb3RGb3VuZEVycm9yLFxyXG4gIENvbnRyYXRvTm90Rm91bmRFcnJvcixcclxuICBBbHVndWVsTm90Rm91bmRFcnJvcixcclxuICBQcm9wb3N0YUludGVybmFOb3RGb3VuZEVycm9yLFxyXG4gIFxyXG4gIC8vIENvbmZsaWN0ICg0MDkpXHJcbiAgQ29uZmxpY3RFcnJvcixcclxuICBSZXNvdXJjZUFscmVhZHlFeGlzdHNFcnJvcixcclxuICBEdXBsaWNhdGVLZXlFcnJvcixcclxuICBcclxuICAvLyBCdXNpbmVzcyBSdWxlcyAoNDIyKVxyXG4gIEJ1c2luZXNzUnVsZVZpb2xhdGlvbkVycm9yLFxyXG4gIFBsYWNhTm90QXZhaWxhYmxlRXJyb3IsXHJcbiAgSW52YWxpZERhdGVSYW5nZUVycm9yLFxyXG4gIEFsdWd1ZWxPdmVybGFwRXJyb3IsXHJcbiAgQ29udHJhdG9DYW5ub3RCZURlbGV0ZWRFcnJvcixcclxuICBDbGllbnRlSGFzRGVwZW5kZW5jaWVzRXJyb3IsXHJcbiAgXHJcbiAgLy8gRXh0ZXJuYWwvSW5mcmFzdHJ1Y3R1cmUgKDUwMi01MDQpXHJcbiAgRXh0ZXJuYWxTZXJ2aWNlRXJyb3IsXHJcbiAgRGF0YWJhc2VFcnJvcixcclxuICBDYWNoZUVycm9yLFxyXG4gIFRpbWVvdXRFcnJvcixcclxuICBcclxuICAvLyBJbnRlcm5hbCAoNTAwKVxyXG4gIEludGVybmFsRXJyb3IsXHJcbiAgVW5leHBlY3RlZEVycm9yLFxyXG4gIE5vdEltcGxlbWVudGVkRXJyb3IsXHJcbiAgXHJcbiAgLy8gSGVscGVyc1xyXG4gIGlzRG9tYWluRXJyb3IsXHJcbiAgdG9Eb21haW5FcnJvcixcclxuICBnZXRFcnJvclN0YXR1c0NvZGUsXHJcbiAgZ2V0RXJyb3JNZXNzYWdlXHJcbn0gZnJvbSAnLi9Eb21haW5FcnJvcic7XHJcblxyXG4vLyBTaW5nbGV0b24gTWFuYWdlcnNcclxuZXhwb3J0IHtcclxuICBEQixcclxuICBDYWNoZSxcclxuICBMb2csXHJcbiAgdHlwZSBEYXRhYmFzZUNvbmZpZyxcclxuICB0eXBlIENhY2hlQ29uZmlnLFxyXG4gIHR5cGUgTG9nZ2VyQ29uZmlnXHJcbn0gZnJvbSAnLi9NYW5hZ2Vycyc7XHJcblxyXG4vLyA9PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PVxyXG4vLyBSRS1FWFBPUlQgQ09NTU9OIFRZUEVTXHJcbi8vID09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09XHJcblxyXG5pbXBvcnQgeyBSZXN1bHQgfSBmcm9tICcuL1Jlc3VsdCc7XHJcbmltcG9ydCB0eXBlIHsgRG9tYWluRXJyb3IgfSBmcm9tICcuL0RvbWFpbkVycm9yJztcclxuXHJcbi8qKlxyXG4gKiBUaXBvIGNvbXVtIHBhcmEgb3BlcmHDp8O1ZXMgYXNzw61uY3JvbmFzIHF1ZSBwb2RlbSBmYWxoYXJcclxuICovXHJcbmV4cG9ydCB0eXBlIEFzeW5jUmVzdWx0PFQ+ID0gUHJvbWlzZTxSZXN1bHQ8VCwgRG9tYWluRXJyb3I+PjtcclxuXHJcbi8qKlxyXG4gKiBUaXBvIHBhcmEgZnVuw6fDtWVzIHF1ZSByZXRvcm5hbSBSZXN1bHRcclxuICovXHJcbmV4cG9ydCB0eXBlIFJlc3VsdEZuPFQsIEUgPSBEb21haW5FcnJvcj4gPSAoKSA9PiBSZXN1bHQ8VCwgRT47XHJcblxyXG4vKipcclxuICogVGlwbyBwYXJhIGZ1bsOnw7VlcyBhc3PDrW5jcm9uYXMgcXVlIHJldG9ybmFtIFJlc3VsdFxyXG4gKi9cclxuZXhwb3J0IHR5cGUgQXN5bmNSZXN1bHRGbjxULCBFID0gRG9tYWluRXJyb3I+ID0gKCkgPT4gUHJvbWlzZTxSZXN1bHQ8VCwgRT4+O1xyXG4iXSwidmVyc2lvbiI6M30=

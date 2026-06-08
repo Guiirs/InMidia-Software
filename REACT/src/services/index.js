@@ -30,5 +30,8 @@ export * from './auditService';
 // Queue
 export * from './queueService';
 
+// Organization
+export { organizationService, default as organizationServiceDefault } from './organizationService';
+
 // Cliente HTTP base
 export { default as apiClient } from './apiClient';

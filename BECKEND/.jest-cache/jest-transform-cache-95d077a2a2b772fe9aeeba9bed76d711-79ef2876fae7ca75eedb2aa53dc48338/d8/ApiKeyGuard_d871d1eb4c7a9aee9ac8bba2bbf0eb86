@@ -1,0 +1,40 @@
+50290e84c2b0b7f823c2ff5b9ae0a1d1
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ApiKeyGuard = void 0;
+const blockAuthPolicy_1 = require("../config/blockAuthPolicy");
+const logger_1 = __importDefault(require("@shared/container/logger"));
+const PUBLIC_IMAGE_PREFIXES = [
+    '/public/v1/images/',
+    '/api/public/images/',
+];
+function isPublicImageRoute(path) {
+    return PUBLIC_IMAGE_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+class ApiKeyGuard {
+    execute(req, _context) {
+        if (!(0, blockAuthPolicy_1.isPublicApiPath)(req.path)) {
+            return { decision: 'ALLOW' };
+        }
+        // Block API key in query string — it would be logged in plaintext server logs
+        const query = req.query;
+        const hasQueryApiKey = !!(query['apiKey'] || query['api_key']);
+        if (hasQueryApiKey) {
+            logger_1.default.warn(`[ApiKeyGuard] API key in query string path=${req.path} ip=${req.ip ?? 'unknown'}`);
+            return { decision: 'BLOCK', reason: 'API_KEY_QUERY_FORBIDDEN', riskScore: 50 };
+        }
+        // Public image routes are intentionally accessible without an API key
+        if (isPublicImageRoute(req.path)) {
+            return { decision: 'ALLOW' };
+        }
+        // Missing API key: ALLOW — let the existing apiKeyAuthMiddleware produce its own 401 +
+        // PUBLIC_API_KEY_MISSING response. Block Auth V1 only enforces the query-string
+        // prohibition; key presence/validation stays in the existing middleware chain.
+        return { decision: 'ALLOW' };
+    }
+}
+exports.ApiKeyGuard = ApiKeyGuard;
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiRzpcXElubWlkaWEgVjRcXEJFQ0tFTkRcXHNyY1xcc2VjdXJpdHlcXGJsb2NrLWF1dGhcXGd1YXJkc1xcQXBpS2V5R3VhcmQudHMiLCJtYXBwaW5ncyI6Ijs7Ozs7O0FBRUEsK0RBQTREO0FBQzVELHNFQUE4QztBQUU5QyxNQUFNLHFCQUFxQixHQUFzQjtJQUMvQyxvQkFBb0I7SUFDcEIscUJBQXFCO0NBQ3RCLENBQUM7QUFFRixTQUFTLGtCQUFrQixDQUFDLElBQVk7SUFDdEMsT0FBTyxxQkFBcUIsQ0FBQyxJQUFJLENBQUMsQ0FBQyxNQUFNLEVBQUUsRUFBRSxDQUFDLElBQUksQ0FBQyxVQUFVLENBQUMsTUFBTSxDQUFDLENBQUMsQ0FBQztBQUN6RSxDQUFDO0FBRUQsTUFBYSxXQUFXO0lBQ3RCLE9BQU8sQ0FBQyxHQUFZLEVBQUUsUUFBeUI7UUFDN0MsSUFBSSxDQUFDLElBQUEsaUNBQWUsRUFBQyxHQUFHLENBQUMsSUFBSSxDQUFDLEVBQUUsQ0FBQztZQUMvQixPQUFPLEVBQUUsUUFBUSxFQUFFLE9BQU8sRUFBRSxDQUFDO1FBQy9CLENBQUM7UUFFRCw4RUFBOEU7UUFDOUUsTUFBTSxLQUFLLEdBQUcsR0FBRyxDQUFDLEtBQWdDLENBQUM7UUFDbkQsTUFBTSxjQUFjLEdBQUcsQ0FBQyxDQUFDLENBQUMsS0FBSyxDQUFDLFFBQVEsQ0FBQyxJQUFJLEtBQUssQ0FBQyxTQUFTLENBQUMsQ0FBQyxDQUFDO1FBQy9ELElBQUksY0FBYyxFQUFFLENBQUM7WUFDbkIsZ0JBQU0sQ0FBQyxJQUFJLENBQ1QsOENBQThDLEdBQUcsQ0FBQyxJQUFJLE9BQU8sR0FBRyxDQUFDLEVBQUUsSUFBSSxTQUFTLEVBQUUsQ0FDbkYsQ0FBQztZQUNGLE9BQU8sRUFBRSxRQUFRLEVBQUUsT0FBTyxFQUFFLE1BQU0sRUFBRSx5QkFBeUIsRUFBRSxTQUFTLEVBQUUsRUFBRSxFQUFFLENBQUM7UUFDakYsQ0FBQztRQUVELHNFQUFzRTtRQUN0RSxJQUFJLGtCQUFrQixDQUFDLEdBQUcsQ0FBQyxJQUFJLENBQUMsRUFBRSxDQUFDO1lBQ2pDLE9BQU8sRUFBRSxRQUFRLEVBQUUsT0FBTyxFQUFFLENBQUM7UUFDL0IsQ0FBQztRQUVELHVGQUF1RjtRQUN2RixnRkFBZ0Y7UUFDaEYsK0VBQStFO1FBQy9FLE9BQU8sRUFBRSxRQUFRLEVBQUUsT0FBTyxFQUFFLENBQUM7SUFDL0IsQ0FBQztDQUNGO0FBMUJELGtDQTBCQyIsIm5hbWVzIjpbXSwic291cmNlcyI6WyJHOlxcSW5taWRpYSBWNFxcQkVDS0VORFxcc3JjXFxzZWN1cml0eVxcYmxvY2stYXV0aFxcZ3VhcmRzXFxBcGlLZXlHdWFyZC50cyJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgeyBSZXF1ZXN0IH0gZnJvbSAnZXhwcmVzcyc7XG5pbXBvcnQgeyBCbG9ja0F1dGhHdWFyZFJlc3VsdCwgSUJsb2NrQXV0aEd1YXJkLCBTZWN1cml0eUNvbnRleHQgfSBmcm9tICcuLi90eXBlcy9ibG9ja0F1dGgudHlwZXMnO1xuaW1wb3J0IHsgaXNQdWJsaWNBcGlQYXRoIH0gZnJvbSAnLi4vY29uZmlnL2Jsb2NrQXV0aFBvbGljeSc7XG5pbXBvcnQgbG9nZ2VyIGZyb20gJ0BzaGFyZWQvY29udGFpbmVyL2xvZ2dlcic7XG5cbmNvbnN0IFBVQkxJQ19JTUFHRV9QUkVGSVhFUzogcmVhZG9ubHkgc3RyaW5nW10gPSBbXG4gICcvcHVibGljL3YxL2ltYWdlcy8nLFxuICAnL2FwaS9wdWJsaWMvaW1hZ2VzLycsXG5dO1xuXG5mdW5jdGlvbiBpc1B1YmxpY0ltYWdlUm91dGUocGF0aDogc3RyaW5nKTogYm9vbGVhbiB7XG4gIHJldHVybiBQVUJMSUNfSU1BR0VfUFJFRklYRVMuc29tZSgocHJlZml4KSA9PiBwYXRoLnN0YXJ0c1dpdGgocHJlZml4KSk7XG59XG5cbmV4cG9ydCBjbGFzcyBBcGlLZXlHdWFyZCBpbXBsZW1lbnRzIElCbG9ja0F1dGhHdWFyZCB7XG4gIGV4ZWN1dGUocmVxOiBSZXF1ZXN0LCBfY29udGV4dDogU2VjdXJpdHlDb250ZXh0KTogQmxvY2tBdXRoR3VhcmRSZXN1bHQge1xuICAgIGlmICghaXNQdWJsaWNBcGlQYXRoKHJlcS5wYXRoKSkge1xuICAgICAgcmV0dXJuIHsgZGVjaXNpb246ICdBTExPVycgfTtcbiAgICB9XG5cbiAgICAvLyBCbG9jayBBUEkga2V5IGluIHF1ZXJ5IHN0cmluZyDigJQgaXQgd291bGQgYmUgbG9nZ2VkIGluIHBsYWludGV4dCBzZXJ2ZXIgbG9nc1xuICAgIGNvbnN0IHF1ZXJ5ID0gcmVxLnF1ZXJ5IGFzIFJlY29yZDxzdHJpbmcsIHVua25vd24+O1xuICAgIGNvbnN0IGhhc1F1ZXJ5QXBpS2V5ID0gISEocXVlcnlbJ2FwaUtleSddIHx8IHF1ZXJ5WydhcGlfa2V5J10pO1xuICAgIGlmIChoYXNRdWVyeUFwaUtleSkge1xuICAgICAgbG9nZ2VyLndhcm4oXG4gICAgICAgIGBbQXBpS2V5R3VhcmRdIEFQSSBrZXkgaW4gcXVlcnkgc3RyaW5nIHBhdGg9JHtyZXEucGF0aH0gaXA9JHtyZXEuaXAgPz8gJ3Vua25vd24nfWBcbiAgICAgICk7XG4gICAgICByZXR1cm4geyBkZWNpc2lvbjogJ0JMT0NLJywgcmVhc29uOiAnQVBJX0tFWV9RVUVSWV9GT1JCSURERU4nLCByaXNrU2NvcmU6IDUwIH07XG4gICAgfVxuXG4gICAgLy8gUHVibGljIGltYWdlIHJvdXRlcyBhcmUgaW50ZW50aW9uYWxseSBhY2Nlc3NpYmxlIHdpdGhvdXQgYW4gQVBJIGtleVxuICAgIGlmIChpc1B1YmxpY0ltYWdlUm91dGUocmVxLnBhdGgpKSB7XG4gICAgICByZXR1cm4geyBkZWNpc2lvbjogJ0FMTE9XJyB9O1xuICAgIH1cblxuICAgIC8vIE1pc3NpbmcgQVBJIGtleTogQUxMT1cg4oCUIGxldCB0aGUgZXhpc3RpbmcgYXBpS2V5QXV0aE1pZGRsZXdhcmUgcHJvZHVjZSBpdHMgb3duIDQwMSArXG4gICAgLy8gUFVCTElDX0FQSV9LRVlfTUlTU0lORyByZXNwb25zZS4gQmxvY2sgQXV0aCBWMSBvbmx5IGVuZm9yY2VzIHRoZSBxdWVyeS1zdHJpbmdcbiAgICAvLyBwcm9oaWJpdGlvbjsga2V5IHByZXNlbmNlL3ZhbGlkYXRpb24gc3RheXMgaW4gdGhlIGV4aXN0aW5nIG1pZGRsZXdhcmUgY2hhaW4uXG4gICAgcmV0dXJuIHsgZGVjaXNpb246ICdBTExPVycgfTtcbiAgfVxufVxuIl0sInZlcnNpb24iOjN9

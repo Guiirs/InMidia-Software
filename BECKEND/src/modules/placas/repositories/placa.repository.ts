@@ -14,8 +14,8 @@ import {
   toDomainError
 } from '@shared/core';
 import { Log } from '@shared/core';
-import { resolvePlacaImageReference } from '@modules/media/placa-image-reference.resolver';
-import type { 
+import { plateMediaService } from '@modules/media/plate-media.service';
+import type {
   PlacaEntity, 
   CreatePlacaDTO, 
   UpdatePlacaDTO,
@@ -404,25 +404,23 @@ export class PlacaRepository implements IPlacaRepository {
         );
       }
 
-      const setPayload: Record<string, unknown> = {};
-      if (isMain) {
-        const imageReference = resolvePlacaImageReference({ mainImage: image });
-        setPayload.imagemPrincipal = imageReference.storageKey;
-        setPayload.imagem = imageReference.storageKey;
-      }
-
       const placa = await Placa.findOneAndUpdate(
         { _id: id, empresaId },
-        {
-          $push: { imagens: normalizedImage },
-          ...(Object.keys(setPayload).length ? { $set: setPayload } : {}),
-        },
+        { $push: { imagens: normalizedImage } },
         { new: true, runValidators: true },
       )
       .populate('regiaoId', 'nome')
       .lean();
 
       if (!placa) return Result.fail(new PlacaNotFoundError(id));
+
+      if (isMain && typeof image.storageKey === 'string') {
+        await plateMediaService.setActivePlateImage(id, empresaId, {
+          key: image.storageKey,
+          mimeType: typeof image.mimeType === 'string' ? image.mimeType : null,
+          source: 'upload',
+        });
+      }
 
       Log.info('[PlacaRepository] Imagem adicionada à placa', { placaId: id, empresaId });
       return Result.ok(placa as unknown as PlacaEntity);
@@ -453,21 +451,22 @@ export class PlacaRepository implements IPlacaRepository {
         isMain: String(item._id) === imageId || String(item.id) === imageId,
         updatedAt: now,
       }));
-      const imageReference = resolvePlacaImageReference({ mainImage: img });
 
       const updated = await Placa.findOneAndUpdate(
         { _id: id, empresaId },
-        {
-          $set: {
-            imagemPrincipal: imageReference.storageKey,
-            imagem: imageReference.storageKey,
-            imagens,
-          },
-        },
+        { $set: { imagens } },
         { new: true },
       )
       .populate('regiaoId', 'nome')
       .lean();
+
+      if (img.storageKey) {
+        await plateMediaService.setActivePlateImage(id, empresaId, {
+          key: img.storageKey,
+          mimeType: img.mimeType ?? null,
+          source: 'upload',
+        });
+      }
 
       return Result.ok(updated as unknown as PlacaEntity);
     } catch (error) {
@@ -493,11 +492,8 @@ export class PlacaRepository implements IPlacaRepository {
       if (!target) return Result.fail(new PlacaNotFoundError(`Imagem ${imageId}`));
 
       const remaining = imagens.filter((i: any) => String(i._id) !== imageId && String(i.id) !== imageId);
-      const currentReference = resolvePlacaImageReference(placa as any);
-      const targetReference = resolvePlacaImageReference({ mainImage: target });
-      const targetIsMain = Boolean(target.isMain) || targetReference.storageKey === currentReference.storageKey;
+      const targetIsMain = Boolean(target.isMain);
       const fallbackMain = targetIsMain ? remaining[0] : remaining.find((i: any) => i.isMain);
-      const fallbackReference = resolvePlacaImageReference({ mainImage: fallbackMain });
       const normalizedRemaining = remaining.map((item: any) => ({
         ...item,
         isMain: fallbackMain ? String(item._id) === String(fallbackMain._id) || String(item.id) === String(fallbackMain.id) : false,
@@ -506,17 +502,23 @@ export class PlacaRepository implements IPlacaRepository {
 
       const updated = await Placa.findOneAndUpdate(
         { _id: id, empresaId },
-        {
-          $set: {
-            imagens: normalizedRemaining,
-            imagemPrincipal: fallbackReference.storageKey,
-            imagem: fallbackReference.storageKey,
-          },
-        },
+        { $set: { imagens: normalizedRemaining } },
         { new: true },
       )
       .populate('regiaoId', 'nome')
       .lean();
+
+      if (targetIsMain) {
+        if (fallbackMain?.storageKey) {
+          await plateMediaService.setActivePlateImage(id, empresaId, {
+            key: fallbackMain.storageKey,
+            mimeType: fallbackMain.mimeType ?? null,
+            source: 'upload',
+          });
+        } else {
+          await plateMediaService.clearActivePlateImage(id, empresaId);
+        }
+      }
 
       return Result.ok(updated as unknown as PlacaEntity);
     } catch (error) {

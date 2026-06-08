@@ -15,6 +15,7 @@ const newService = new NewCheckingService(repository);
 
 class CheckingService {
   async createChecking(data: {
+    empresaId: string;
     aluguelId: string;
     placaId: string;
     installerId: string;
@@ -31,8 +32,8 @@ class CheckingService {
     return result.value as any;
   }
 
-  async getCheckingById(id: string): Promise<IChecking | null> {
-    const result = await newService.getCheckingById(id);
+  async getCheckingById(id: string, empresaId: string): Promise<IChecking | null> {
+    const result = await newService.getCheckingById(id, empresaId);
 
     if (result.isFailure) {
       console.error('[CheckingService Legacy] Erro:', result.error.message);
@@ -42,8 +43,8 @@ class CheckingService {
     return result.value as any;
   }
 
-  async getCheckingsByAluguel(aluguelId: string): Promise<IChecking[]> {
-    const result = await newService.getCheckingsByAluguel(aluguelId);
+  async getCheckingsByAluguel(aluguelId: string, empresaId: string): Promise<IChecking[]> {
+    const result = await newService.getCheckingsByAluguel(aluguelId, empresaId);
 
     if (result.isFailure) {
       console.error('[CheckingService Legacy] Erro:', result.error.message);

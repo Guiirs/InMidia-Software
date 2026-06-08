@@ -3,12 +3,18 @@ module.exports = {
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
   testMatch: ['**/*.test.ts', '**/*.spec.ts'],
+  maxWorkers: 2,
+  workerIdleMemoryLimit: '768MB',
+  cacheDirectory: '<rootDir>/.jest-cache',
+  collectCoverage: false,
+  detectOpenHandles: false,
+  forceExit: false,
   transform: {
-    // diagnostics: true (padrão) — ARCH-11: todos os arquivos ativos estão
-    // livres de @ts-nocheck. Erros de tipo em código de teste são agora erros reais.
+    // MEMORY OPTIMIZATION: diagnostics: false para testes normais
+    // Type checking é feito separadamente via: npx tsc --noEmit
     '^.+\\.ts$': ['ts-jest', {
       tsconfig: '<rootDir>/tsconfig.test.json',
-      diagnostics: true,
+      diagnostics: process.env.TS_JEST_DIAGNOSTICS === 'true',
     }],
   },
   moduleFileExtensions: ['ts', 'js', 'json'],

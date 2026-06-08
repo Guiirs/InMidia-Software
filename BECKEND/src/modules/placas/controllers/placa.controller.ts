@@ -15,7 +15,7 @@ import { spatialService } from '@modules/spatial';
 import { eventBus } from '@modules/realtime/event-bus.service';
 import { OPERATIONAL_EVENT_TYPES } from '@modules/realtime/domain-events';
 import { buildProxyImageUrl } from '@modules/public-plates/public-plates.presenter';
-import { resolvePlacaGallery, resolvePlacaImageReference } from '@modules/media/placa-image-reference.resolver';
+import { plateMediaService } from '@modules/media/plate-media.service';
 
 // Express 5: req.params[x] é string | string[] — o cast abaixo é seguro para route params
 type Params = Record<string, string>;
@@ -57,21 +57,23 @@ function emitOperationalEvent(input: {
   });
 }
 
-function withImageContract<T extends Record<string, any>>(placa: T): T {
-  const imagens = resolvePlacaGallery(placa);
-  const placaId = placa?._id?.toString?.() || placa?.id;
-  const imageReference = resolvePlacaImageReference({ ...placa, imagens });
-  const mainImageUrl = imageReference.hasImage && placaId ? buildProxyImageUrl(String(placaId)) : null;
-
+async function withImageContract<T extends Record<string, any>>(placa: T): Promise<T> {
+  const placaId: string | undefined = placa?._id?.toString?.() || placa?.id;
+  const empresaId: string | undefined = placa?.empresaId?.toString?.() || placa?.empresaId;
+  if (!placaId) {
+    return { ...placa, imagemPrincipal: null, mainImageUrl: null, imagem: null, hasImage: false, imagens: placa.imagens ?? [], images: placa.imagens ?? [], imageStatus: 'MISSING' };
+  }
+  const pm = await plateMediaService.resolvePlateMainImage(placaId, empresaId);
+  const mainImageUrl = pm.hasImage ? buildProxyImageUrl(placaId, pm.version) : null;
   return {
     ...placa,
     imagemPrincipal: mainImageUrl,
     mainImageUrl,
     imagem: mainImageUrl,
-    hasImage: imageReference.hasImage,
-    imagens,
-    images: imagens,
-    imageStatus: imageReference.hasImage ? 'AVAILABLE' : 'MISSING',
+    hasImage: pm.hasImage,
+    imagens: placa.imagens ?? [],
+    images: placa.imagens ?? [],
+    imageStatus: pm.hasImage ? 'AVAILABLE' : 'MISSING',
   };
 }
 
@@ -174,7 +176,7 @@ export class PlacaController {
 
       res.status(201).json({
         success: true,
-        data: withImageContract(result.value as any)
+        data: await withImageContract(result.value as any)
       });
     } catch (error) {
       next(error);
@@ -298,7 +300,7 @@ export class PlacaController {
         metadata: { changedFields: Object.keys(req.body || {}) },
       });
 
-      const placa = withImageContract(result.value as any);
+      const placa = await withImageContract(result.value as any);
       const regiao = placa.regiaoId;
       const regiaoNome = typeof regiao === 'object' && regiao?.nome ? regiao.nome : 'Sem região';
       const regiaoId = typeof regiao === 'object' && regiao?._id ? regiao._id : regiao;
@@ -451,7 +453,7 @@ export class PlacaController {
         return;
       }
 
-      const placa = withImageContract(result.value as any);
+      const placa = await withImageContract(result.value as any);
       const regiao = placa.regiaoId;
       const regiaoNome = typeof regiao === 'object' && regiao?.nome ? regiao.nome : 'Sem região';
       const regiaoId = typeof regiao === 'object' && regiao?._id ? regiao._id : regiao;
@@ -886,7 +888,7 @@ export class PlacaController {
 
       void defaultAuditService.recordEntityUpdated({ ...auditRequestContext(req), module: 'placas', entityType: 'placa', entityId: placaId, entityLabel: placaId, metadata: { action: 'IMAGE_UPLOADED' } });
 
-      res.status(201).json({ success: true, data: withImageContract(result.value as any) });
+      res.status(201).json({ success: true, data: await withImageContract(result.value as any) });
     } catch (error) {
       next(error);
     }
@@ -923,7 +925,7 @@ export class PlacaController {
 
       void defaultAuditService.recordEntityUpdated({ ...auditRequestContext(req), module: 'placas', entityType: 'placa', entityId: placaId, entityLabel: (result.value as any).numero_placa, metadata: { action: 'PLATE_MAIN_IMAGE_CHANGED', imageId } });
 
-      res.status(200).json({ success: true, data: withImageContract(result.value as any) });
+      res.status(200).json({ success: true, data: await withImageContract(result.value as any) });
     } catch (error) {
       next(error);
     }
@@ -960,7 +962,7 @@ export class PlacaController {
 
       void defaultAuditService.recordEntityUpdated({ ...auditRequestContext(req), module: 'placas', entityType: 'placa', entityId: placaId, entityLabel: (result.value as any).numero_placa, metadata: { action: 'PLATE_IMAGE_REMOVED', imageId } });
 
-      res.status(200).json({ success: true, data: withImageContract(result.value as any) });
+      res.status(200).json({ success: true, data: await withImageContract(result.value as any) });
     } catch (error) {
       next(error);
     }

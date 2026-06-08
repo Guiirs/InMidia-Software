@@ -1,0 +1,33 @@
+d913f0ebea22368eccbd199a32e39b00
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+describe('EnterpriseBIContract', () => {
+    it('exposes canonical BI snapshot fields', () => {
+        const snapshot = {
+            id: 'bi-1',
+            tenantId: 'empresa-1',
+            generatedAt: '2026-05-18T12:00:00.000Z',
+            sourceOperationalAnalyticsSnapshotId: 'op-1',
+            sourceProjectionId: 'projection-1',
+            sourceProjectionVersion: 1,
+            grain: 'global',
+            exportProfile: 'executive-summary',
+            visibility: 'executive',
+            datasets: [],
+            metrics: [],
+            summary: {
+                datasetCount: 0,
+                rowCount: 0,
+                incompleteDatasets: 0,
+                blockedSensitiveFields: 0,
+                hasSensitiveData: false,
+                exportedProfile: 'executive-summary',
+                grain: 'global',
+                visibility: 'executive',
+            },
+        };
+        expect(snapshot.exportProfile).toBe('executive-summary');
+        expect(snapshot.summary.datasetCount).toBe(0);
+    });
+});
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiRzpcXElubWlkaWEgVjRcXEJFQ0tFTkRcXHNyY1xcdGVzdHNcXGNvbnRyYWN0c1xcZW50ZXJwcmlzZS1iaS5jb250cmFjdC50ZXN0LnRzIiwibWFwcGluZ3MiOiI7O0FBRUEsUUFBUSxDQUFDLHNCQUFzQixFQUFFLEdBQUcsRUFBRTtJQUNwQyxFQUFFLENBQUMsc0NBQXNDLEVBQUUsR0FBRyxFQUFFO1FBQzlDLE1BQU0sUUFBUSxHQUF5QjtZQUNyQyxFQUFFLEVBQUUsTUFBTTtZQUNWLFFBQVEsRUFBRSxXQUFXO1lBQ3JCLFdBQVcsRUFBRSwwQkFBMEI7WUFDdkMsb0NBQW9DLEVBQUUsTUFBTTtZQUM1QyxrQkFBa0IsRUFBRSxjQUFjO1lBQ2xDLHVCQUF1QixFQUFFLENBQUM7WUFDMUIsS0FBSyxFQUFFLFFBQVE7WUFDZixhQUFhLEVBQUUsbUJBQW1CO1lBQ2xDLFVBQVUsRUFBRSxXQUFXO1lBQ3ZCLFFBQVEsRUFBRSxFQUFFO1lBQ1osT0FBTyxFQUFFLEVBQUU7WUFDWCxPQUFPLEVBQUU7Z0JBQ1AsWUFBWSxFQUFFLENBQUM7Z0JBQ2YsUUFBUSxFQUFFLENBQUM7Z0JBQ1gsa0JBQWtCLEVBQUUsQ0FBQztnQkFDckIsc0JBQXNCLEVBQUUsQ0FBQztnQkFDekIsZ0JBQWdCLEVBQUUsS0FBSztnQkFDdkIsZUFBZSxFQUFFLG1CQUFtQjtnQkFDcEMsS0FBSyxFQUFFLFFBQVE7Z0JBQ2YsVUFBVSxFQUFFLFdBQVc7YUFDeEI7U0FDRixDQUFDO1FBRUYsTUFBTSxDQUFDLFFBQVEsQ0FBQyxhQUFhLENBQUMsQ0FBQyxJQUFJLENBQUMsbUJBQW1CLENBQUMsQ0FBQztRQUN6RCxNQUFNLENBQUMsUUFBUSxDQUFDLE9BQU8sQ0FBQyxZQUFZLENBQUMsQ0FBQyxJQUFJLENBQUMsQ0FBQyxDQUFDLENBQUM7SUFDaEQsQ0FBQyxDQUFDLENBQUM7QUFDTCxDQUFDLENBQUMsQ0FBQyIsIm5hbWVzIjpbXSwic291cmNlcyI6WyJHOlxcSW5taWRpYSBWNFxcQkVDS0VORFxcc3JjXFx0ZXN0c1xcY29udHJhY3RzXFxlbnRlcnByaXNlLWJpLmNvbnRyYWN0LnRlc3QudHMiXSwic291cmNlc0NvbnRlbnQiOlsiaW1wb3J0IHR5cGUgeyBFbnRlcnByaXNlQklTbmFwc2hvdCB9IGZyb20gJ0Btb2R1bGVzL2VudGVycHJpc2UtYmknO1xyXG5cclxuZGVzY3JpYmUoJ0VudGVycHJpc2VCSUNvbnRyYWN0JywgKCkgPT4ge1xyXG4gIGl0KCdleHBvc2VzIGNhbm9uaWNhbCBCSSBzbmFwc2hvdCBmaWVsZHMnLCAoKSA9PiB7XHJcbiAgICBjb25zdCBzbmFwc2hvdDogRW50ZXJwcmlzZUJJU25hcHNob3QgPSB7XHJcbiAgICAgIGlkOiAnYmktMScsXHJcbiAgICAgIHRlbmFudElkOiAnZW1wcmVzYS0xJyxcclxuICAgICAgZ2VuZXJhdGVkQXQ6ICcyMDI2LTA1LTE4VDEyOjAwOjAwLjAwMFonLFxyXG4gICAgICBzb3VyY2VPcGVyYXRpb25hbEFuYWx5dGljc1NuYXBzaG90SWQ6ICdvcC0xJyxcclxuICAgICAgc291cmNlUHJvamVjdGlvbklkOiAncHJvamVjdGlvbi0xJyxcclxuICAgICAgc291cmNlUHJvamVjdGlvblZlcnNpb246IDEsXHJcbiAgICAgIGdyYWluOiAnZ2xvYmFsJyxcclxuICAgICAgZXhwb3J0UHJvZmlsZTogJ2V4ZWN1dGl2ZS1zdW1tYXJ5JyxcclxuICAgICAgdmlzaWJpbGl0eTogJ2V4ZWN1dGl2ZScsXHJcbiAgICAgIGRhdGFzZXRzOiBbXSxcclxuICAgICAgbWV0cmljczogW10sXHJcbiAgICAgIHN1bW1hcnk6IHtcclxuICAgICAgICBkYXRhc2V0Q291bnQ6IDAsXHJcbiAgICAgICAgcm93Q291bnQ6IDAsXHJcbiAgICAgICAgaW5jb21wbGV0ZURhdGFzZXRzOiAwLFxyXG4gICAgICAgIGJsb2NrZWRTZW5zaXRpdmVGaWVsZHM6IDAsXHJcbiAgICAgICAgaGFzU2Vuc2l0aXZlRGF0YTogZmFsc2UsXHJcbiAgICAgICAgZXhwb3J0ZWRQcm9maWxlOiAnZXhlY3V0aXZlLXN1bW1hcnknLFxyXG4gICAgICAgIGdyYWluOiAnZ2xvYmFsJyxcclxuICAgICAgICB2aXNpYmlsaXR5OiAnZXhlY3V0aXZlJyxcclxuICAgICAgfSxcclxuICAgIH07XHJcblxyXG4gICAgZXhwZWN0KHNuYXBzaG90LmV4cG9ydFByb2ZpbGUpLnRvQmUoJ2V4ZWN1dGl2ZS1zdW1tYXJ5Jyk7XHJcbiAgICBleHBlY3Qoc25hcHNob3Quc3VtbWFyeS5kYXRhc2V0Q291bnQpLnRvQmUoMCk7XHJcbiAgfSk7XHJcbn0pO1xyXG4iXSwidmVyc2lvbiI6M30=

@@ -1,0 +1,44 @@
+e3d03bd6a0bbc229870a8c128271f942
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getR2Client = getR2Client;
+exports.getR2BucketName = getR2BucketName;
+const client_s3_1 = require("@aws-sdk/client-s3");
+let _client = null;
+function normalizeEndpoint(endpoint) {
+    try {
+        const url = new URL(endpoint);
+        url.pathname = '';
+        url.search = '';
+        url.hash = '';
+        return url.toString().replace(/\/+$/, '');
+    }
+    catch {
+        return endpoint.replace(/\/+$/, '');
+    }
+}
+/**
+ * Retorna o S3Client configurado para o R2 privado.
+ * Singleton: reutiliza a instância entre chamadas.
+ * Retorna null se as credenciais não estiverem configuradas.
+ */
+function getR2Client() {
+    if (_client)
+        return _client;
+    const endpoint = process.env.R2_ENDPOINT;
+    const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+    if (!endpoint || !accessKeyId || !secretAccessKey)
+        return null;
+    _client = new client_s3_1.S3Client({
+        endpoint: normalizeEndpoint(endpoint),
+        region: 'auto',
+        credentials: { accessKeyId, secretAccessKey },
+    });
+    return _client;
+}
+/** Expõe o bucket name configurado. */
+function getR2BucketName() {
+    return process.env.R2_BUCKET_NAME || '';
+}
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiRzpcXElubWlkaWEgVjRcXEJFQ0tFTkRcXHNyY1xcc2hhcmVkXFxpbmZyYVxcc3RvcmFnZVxccjItY2xpZW50LnRzIiwibWFwcGluZ3MiOiI7O0FBcUJBLGtDQWdCQztBQUdELDBDQUVDO0FBMUNELGtEQUE4QztBQUU5QyxJQUFJLE9BQU8sR0FBb0IsSUFBSSxDQUFDO0FBRXBDLFNBQVMsaUJBQWlCLENBQUMsUUFBZ0I7SUFDekMsSUFBSSxDQUFDO1FBQ0gsTUFBTSxHQUFHLEdBQUcsSUFBSSxHQUFHLENBQUMsUUFBUSxDQUFDLENBQUM7UUFDOUIsR0FBRyxDQUFDLFFBQVEsR0FBRyxFQUFFLENBQUM7UUFDbEIsR0FBRyxDQUFDLE1BQU0sR0FBRyxFQUFFLENBQUM7UUFDaEIsR0FBRyxDQUFDLElBQUksR0FBRyxFQUFFLENBQUM7UUFDZCxPQUFPLEdBQUcsQ0FBQyxRQUFRLEVBQUUsQ0FBQyxPQUFPLENBQUMsTUFBTSxFQUFFLEVBQUUsQ0FBQyxDQUFDO0lBQzVDLENBQUM7SUFBQyxNQUFNLENBQUM7UUFDUCxPQUFPLFFBQVEsQ0FBQyxPQUFPLENBQUMsTUFBTSxFQUFFLEVBQUUsQ0FBQyxDQUFDO0lBQ3RDLENBQUM7QUFDSCxDQUFDO0FBRUQ7Ozs7R0FJRztBQUNILFNBQWdCLFdBQVc7SUFDekIsSUFBSSxPQUFPO1FBQUUsT0FBTyxPQUFPLENBQUM7SUFFNUIsTUFBTSxRQUFRLEdBQUcsT0FBTyxDQUFDLEdBQUcsQ0FBQyxXQUFXLENBQUM7SUFDekMsTUFBTSxXQUFXLEdBQUcsT0FBTyxDQUFDLEdBQUcsQ0FBQyxnQkFBZ0IsQ0FBQztJQUNqRCxNQUFNLGVBQWUsR0FBRyxPQUFPLENBQUMsR0FBRyxDQUFDLG9CQUFvQixDQUFDO0lBRXpELElBQUksQ0FBQyxRQUFRLElBQUksQ0FBQyxXQUFXLElBQUksQ0FBQyxlQUFlO1FBQUUsT0FBTyxJQUFJLENBQUM7SUFFL0QsT0FBTyxHQUFHLElBQUksb0JBQVEsQ0FBQztRQUNyQixRQUFRLEVBQUUsaUJBQWlCLENBQUMsUUFBUSxDQUFDO1FBQ3JDLE1BQU0sRUFBRSxNQUFNO1FBQ2QsV0FBVyxFQUFFLEVBQUUsV0FBVyxFQUFFLGVBQWUsRUFBRTtLQUM5QyxDQUFDLENBQUM7SUFFSCxPQUFPLE9BQU8sQ0FBQztBQUNqQixDQUFDO0FBRUQsdUNBQXVDO0FBQ3ZDLFNBQWdCLGVBQWU7SUFDN0IsT0FBTyxPQUFPLENBQUMsR0FBRyxDQUFDLGNBQWMsSUFBSSxFQUFFLENBQUM7QUFDMUMsQ0FBQyIsIm5hbWVzIjpbXSwic291cmNlcyI6WyJHOlxcSW5taWRpYSBWNFxcQkVDS0VORFxcc3JjXFxzaGFyZWRcXGluZnJhXFxzdG9yYWdlXFxyMi1jbGllbnQudHMiXSwic291cmNlc0NvbnRlbnQiOlsiaW1wb3J0IHsgUzNDbGllbnQgfSBmcm9tICdAYXdzLXNkay9jbGllbnQtczMnO1xuXG5sZXQgX2NsaWVudDogUzNDbGllbnQgfCBudWxsID0gbnVsbDtcblxuZnVuY3Rpb24gbm9ybWFsaXplRW5kcG9pbnQoZW5kcG9pbnQ6IHN0cmluZyk6IHN0cmluZyB7XG4gIHRyeSB7XG4gICAgY29uc3QgdXJsID0gbmV3IFVSTChlbmRwb2ludCk7XG4gICAgdXJsLnBhdGhuYW1lID0gJyc7XG4gICAgdXJsLnNlYXJjaCA9ICcnO1xuICAgIHVybC5oYXNoID0gJyc7XG4gICAgcmV0dXJuIHVybC50b1N0cmluZygpLnJlcGxhY2UoL1xcLyskLywgJycpO1xuICB9IGNhdGNoIHtcbiAgICByZXR1cm4gZW5kcG9pbnQucmVwbGFjZSgvXFwvKyQvLCAnJyk7XG4gIH1cbn1cblxuLyoqXG4gKiBSZXRvcm5hIG8gUzNDbGllbnQgY29uZmlndXJhZG8gcGFyYSBvIFIyIHByaXZhZG8uXG4gKiBTaW5nbGV0b246IHJldXRpbGl6YSBhIGluc3TDom5jaWEgZW50cmUgY2hhbWFkYXMuXG4gKiBSZXRvcm5hIG51bGwgc2UgYXMgY3JlZGVuY2lhaXMgbsOjbyBlc3RpdmVyZW0gY29uZmlndXJhZGFzLlxuICovXG5leHBvcnQgZnVuY3Rpb24gZ2V0UjJDbGllbnQoKTogUzNDbGllbnQgfCBudWxsIHtcbiAgaWYgKF9jbGllbnQpIHJldHVybiBfY2xpZW50O1xuXG4gIGNvbnN0IGVuZHBvaW50ID0gcHJvY2Vzcy5lbnYuUjJfRU5EUE9JTlQ7XG4gIGNvbnN0IGFjY2Vzc0tleUlkID0gcHJvY2Vzcy5lbnYuUjJfQUNDRVNTX0tFWV9JRDtcbiAgY29uc3Qgc2VjcmV0QWNjZXNzS2V5ID0gcHJvY2Vzcy5lbnYuUjJfU0VDUkVUX0FDQ0VTU19LRVk7XG5cbiAgaWYgKCFlbmRwb2ludCB8fCAhYWNjZXNzS2V5SWQgfHwgIXNlY3JldEFjY2Vzc0tleSkgcmV0dXJuIG51bGw7XG5cbiAgX2NsaWVudCA9IG5ldyBTM0NsaWVudCh7XG4gICAgZW5kcG9pbnQ6IG5vcm1hbGl6ZUVuZHBvaW50KGVuZHBvaW50KSxcbiAgICByZWdpb246ICdhdXRvJyxcbiAgICBjcmVkZW50aWFsczogeyBhY2Nlc3NLZXlJZCwgc2VjcmV0QWNjZXNzS2V5IH0sXG4gIH0pO1xuXG4gIHJldHVybiBfY2xpZW50O1xufVxuXG4vKiogRXhww7VlIG8gYnVja2V0IG5hbWUgY29uZmlndXJhZG8uICovXG5leHBvcnQgZnVuY3Rpb24gZ2V0UjJCdWNrZXROYW1lKCk6IHN0cmluZyB7XG4gIHJldHVybiBwcm9jZXNzLmVudi5SMl9CVUNLRVRfTkFNRSB8fCAnJztcbn1cbiJdLCJ2ZXJzaW9uIjozfQ==

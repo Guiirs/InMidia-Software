@@ -65,9 +65,9 @@ export const placaSchema = new Schema<IPlaca>(
     coordenadas: { type: String, trim: true },
 
     // ── Imagens ────────────────────────────────────────────────────────────
-    /** URL canônica da imagem principal (aponta para R2). */
+    /** @deprecated Migrado para PlateMedia.activeKey na FASE 8. Campo vazio em produção. */
     imagemPrincipal: { type: String, trim: true },
-    /** @deprecated Use imagemPrincipal. */
+    /** @deprecated Migrado para PlateMedia.activeKey na FASE 8. Campo vazio em produção. */
     imagem: { type: String, trim: true },
     /** Galeria de imagens com metadata completo. */
     imagens: { type: [plateImageSchema], default: [] },
@@ -143,9 +143,6 @@ export const placaSchema = new Schema<IPlaca>(
         // Endereço canônico retrocompatível
         ret.nomeDaRua = ret.nomeDaRua || ret.endereco;
         ret.endereco = ret.endereco || ret.nomeDaRua;
-        // Imagem canônica retrocompatível
-        ret.imagem = ret.imagem || ret.imagemPrincipal;
-        ret.imagemPrincipal = ret.imagemPrincipal || ret.imagem;
         return ret;
       },
     },
@@ -157,8 +154,6 @@ export const placaSchema = new Schema<IPlaca>(
         }
         ret.nomeDaRua = ret.nomeDaRua || ret.endereco;
         ret.endereco = ret.endereco || ret.nomeDaRua;
-        ret.imagem = ret.imagem || ret.imagemPrincipal;
-        ret.imagemPrincipal = ret.imagemPrincipal || ret.imagem;
         return ret;
       },
     },
@@ -214,10 +209,6 @@ placaSchema.pre('validate', function normalizePlacaAliases(next) {
   // Endereço
   doc.endereco = doc.endereco || doc.nomeDaRua || doc.localizacao;
   doc.nomeDaRua = doc.nomeDaRua || doc.endereco;
-
-  // Imagem principal
-  doc.imagemPrincipal = doc.imagemPrincipal || doc.imagem;
-  doc.imagem = doc.imagem || doc.imagemPrincipal;
 
   // StatusOperacional: se archivedAt definido, garantir ARCHIVED
   if (doc.archivedAt && doc.statusOperacional !== 'ARCHIVED') {

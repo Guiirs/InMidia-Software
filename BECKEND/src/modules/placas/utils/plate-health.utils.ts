@@ -6,7 +6,6 @@
  */
 
 import type { PlateHealthResult, PlateHealthStatus } from '../dtos/placa.dto';
-import { resolvePlacaImageReference } from '@modules/media/placa-image-reference.resolver';
 
 interface PlateHealthInput {
   numero_placa?: string;
@@ -16,9 +15,8 @@ interface PlateHealthInput {
   latitude?: number | null;
   longitude?: number | null;
   coordenadas?: string | null;
-  imagemPrincipal?: string | null;
-  imagem?: string | null;
-  imagens?: Array<unknown>;
+  /** Injetado pelo caller após consulta ao PlateMediaService. Fonte canônica: PlateMedia.activeKey. */
+  plateMediaResolved?: boolean;
   regiaoId?: unknown;
   regionId?: unknown;
   statusOperacional?: string | null;
@@ -42,7 +40,7 @@ function hasCoordinates(input: PlateHealthInput): boolean {
 }
 
 function hasMainImage(input: PlateHealthInput): boolean {
-  return resolvePlacaImageReference(input as any).hasImage;
+  return input.plateMediaResolved === true;
 }
 
 function hasRegion(input: PlateHealthInput): boolean {

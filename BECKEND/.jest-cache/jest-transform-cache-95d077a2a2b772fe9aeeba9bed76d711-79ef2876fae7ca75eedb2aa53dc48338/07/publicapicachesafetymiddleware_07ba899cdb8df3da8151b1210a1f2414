@@ -1,0 +1,63 @@
+4a43864d4ed275650ee08f106dd0f9bb
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.publicApiCacheSafetyMiddleware = publicApiCacheSafetyMiddleware;
+const logger_1 = __importDefault(require("@shared/container/logger"));
+/**
+ * Query param names that should never carry API keys.
+ * If found, the request is rejected with 400 — credentials in URLs get
+ * logged by servers, CDNs, and browser history.
+ */
+const BLOCKED_API_KEY_PARAMS = ['apiKey', 'api_key', 'x-api-key', 'key', 'token'];
+/**
+ * Central safety middleware for public API routes authenticated by x-api-key.
+ *
+ * Enforces three invariants before the request reaches any handler:
+ *
+ *   1. Vary: x-api-key is set unconditionally — guarantees that every
+ *      downstream CDN/proxy cache key includes the API key, so tenant A's
+ *      response can never be served to tenant B even if Cache-Control is public.
+ *
+ *   2. Vary: Origin is appended when an Origin header is present — ensures
+ *      CORS-preflight caching is keyed per origin.
+ *
+ *   3. apiKey via query string is rejected with HTTP 400 — credentials in
+ *      the URL are logged by proxies, CDNs, access logs, and browser history.
+ *      Clients must use the x-api-key header instead.
+ *
+ * Place this middleware BEFORE authentication and cache middlewares on any
+ * router that serves authenticated, tenant-scoped data.
+ */
+function publicApiCacheSafetyMiddleware(req, res, next) {
+    // ── 1. Block API key in query string ────────────────────────────────────────
+    for (const param of BLOCKED_API_KEY_PARAMS) {
+        if (req.query[param] !== undefined) {
+            logger_1.default.warn('[CacheSafety] apiKey via query string rejected', {
+                param,
+                path: req.path,
+                method: req.method,
+                ip: req.ip,
+            });
+            res.status(400).json({
+                success: false,
+                error: {
+                    code: 'DEPRECATED_AUTH_METHOD',
+                    message: `Authentication via query parameter "${param}" is not supported. Use the x-api-key header.`,
+                },
+            });
+            return;
+        }
+    }
+    // ── 2. Vary: x-api-key — every authenticated response must include this ────
+    // res.vary() appends without duplicating; safe to call multiple times.
+    res.vary('x-api-key');
+    // ── 3. Vary: Origin — when request carries an Origin (CORS context) ─────────
+    if (req.header('origin')) {
+        res.vary('Origin');
+    }
+    next();
+}
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiRzpcXElubWlkaWEgVjRcXEJFQ0tFTkRcXHNyY1xcbW9kdWxlc1xccHVibGljLWFwaVxcbWlkZGxld2FyZXNcXHB1YmxpYy1hcGktY2FjaGUtc2FmZXR5Lm1pZGRsZXdhcmUudHMiLCJtYXBwaW5ncyI6Ijs7Ozs7QUE2QkEsd0VBbUNDO0FBL0RELHNFQUE4QztBQUU5Qzs7OztHQUlHO0FBQ0gsTUFBTSxzQkFBc0IsR0FBRyxDQUFDLFFBQVEsRUFBRSxTQUFTLEVBQUUsV0FBVyxFQUFFLEtBQUssRUFBRSxPQUFPLENBQUMsQ0FBQztBQUVsRjs7Ozs7Ozs7Ozs7Ozs7Ozs7O0dBa0JHO0FBQ0gsU0FBZ0IsOEJBQThCLENBQzVDLEdBQVksRUFDWixHQUFhLEVBQ2IsSUFBa0I7SUFFbEIsK0VBQStFO0lBQy9FLEtBQUssTUFBTSxLQUFLLElBQUksc0JBQXNCLEVBQUUsQ0FBQztRQUMzQyxJQUFJLEdBQUcsQ0FBQyxLQUFLLENBQUMsS0FBSyxDQUFDLEtBQUssU0FBUyxFQUFFLENBQUM7WUFDbkMsZ0JBQU0sQ0FBQyxJQUFJLENBQUMsZ0RBQWdELEVBQUU7Z0JBQzVELEtBQUs7Z0JBQ0wsSUFBSSxFQUFFLEdBQUcsQ0FBQyxJQUFJO2dCQUNkLE1BQU0sRUFBRSxHQUFHLENBQUMsTUFBTTtnQkFDbEIsRUFBRSxFQUFFLEdBQUcsQ0FBQyxFQUFFO2FBQ1gsQ0FBQyxDQUFDO1lBQ0gsR0FBRyxDQUFDLE1BQU0sQ0FBQyxHQUFHLENBQUMsQ0FBQyxJQUFJLENBQUM7Z0JBQ25CLE9BQU8sRUFBRSxLQUFLO2dCQUNkLEtBQUssRUFBRTtvQkFDTCxJQUFJLEVBQUUsd0JBQXdCO29CQUM5QixPQUFPLEVBQUUsdUNBQXVDLEtBQUssK0NBQStDO2lCQUNyRzthQUNGLENBQUMsQ0FBQztZQUNILE9BQU87UUFDVCxDQUFDO0lBQ0gsQ0FBQztJQUVELDhFQUE4RTtJQUM5RSx1RUFBdUU7SUFDdkUsR0FBRyxDQUFDLElBQUksQ0FBQyxXQUFXLENBQUMsQ0FBQztJQUV0QiwrRUFBK0U7SUFDL0UsSUFBSSxHQUFHLENBQUMsTUFBTSxDQUFDLFFBQVEsQ0FBQyxFQUFFLENBQUM7UUFDekIsR0FBRyxDQUFDLElBQUksQ0FBQyxRQUFRLENBQUMsQ0FBQztJQUNyQixDQUFDO0lBRUQsSUFBSSxFQUFFLENBQUM7QUFDVCxDQUFDIiwibmFtZXMiOltdLCJzb3VyY2VzIjpbIkc6XFxJbm1pZGlhIFY0XFxCRUNLRU5EXFxzcmNcXG1vZHVsZXNcXHB1YmxpYy1hcGlcXG1pZGRsZXdhcmVzXFxwdWJsaWMtYXBpLWNhY2hlLXNhZmV0eS5taWRkbGV3YXJlLnRzIl0sInNvdXJjZXNDb250ZW50IjpbImltcG9ydCB0eXBlIHsgUmVxdWVzdCwgUmVzcG9uc2UsIE5leHRGdW5jdGlvbiB9IGZyb20gJ2V4cHJlc3MnO1xyXG5pbXBvcnQgbG9nZ2VyIGZyb20gJ0BzaGFyZWQvY29udGFpbmVyL2xvZ2dlcic7XHJcblxyXG4vKipcclxuICogUXVlcnkgcGFyYW0gbmFtZXMgdGhhdCBzaG91bGQgbmV2ZXIgY2FycnkgQVBJIGtleXMuXHJcbiAqIElmIGZvdW5kLCB0aGUgcmVxdWVzdCBpcyByZWplY3RlZCB3aXRoIDQwMCDigJQgY3JlZGVudGlhbHMgaW4gVVJMcyBnZXRcclxuICogbG9nZ2VkIGJ5IHNlcnZlcnMsIENETnMsIGFuZCBicm93c2VyIGhpc3RvcnkuXHJcbiAqL1xyXG5jb25zdCBCTE9DS0VEX0FQSV9LRVlfUEFSQU1TID0gWydhcGlLZXknLCAnYXBpX2tleScsICd4LWFwaS1rZXknLCAna2V5JywgJ3Rva2VuJ107XHJcblxyXG4vKipcclxuICogQ2VudHJhbCBzYWZldHkgbWlkZGxld2FyZSBmb3IgcHVibGljIEFQSSByb3V0ZXMgYXV0aGVudGljYXRlZCBieSB4LWFwaS1rZXkuXHJcbiAqXHJcbiAqIEVuZm9yY2VzIHRocmVlIGludmFyaWFudHMgYmVmb3JlIHRoZSByZXF1ZXN0IHJlYWNoZXMgYW55IGhhbmRsZXI6XHJcbiAqXHJcbiAqICAgMS4gVmFyeTogeC1hcGkta2V5IGlzIHNldCB1bmNvbmRpdGlvbmFsbHkg4oCUIGd1YXJhbnRlZXMgdGhhdCBldmVyeVxyXG4gKiAgICAgIGRvd25zdHJlYW0gQ0ROL3Byb3h5IGNhY2hlIGtleSBpbmNsdWRlcyB0aGUgQVBJIGtleSwgc28gdGVuYW50IEEnc1xyXG4gKiAgICAgIHJlc3BvbnNlIGNhbiBuZXZlciBiZSBzZXJ2ZWQgdG8gdGVuYW50IEIgZXZlbiBpZiBDYWNoZS1Db250cm9sIGlzIHB1YmxpYy5cclxuICpcclxuICogICAyLiBWYXJ5OiBPcmlnaW4gaXMgYXBwZW5kZWQgd2hlbiBhbiBPcmlnaW4gaGVhZGVyIGlzIHByZXNlbnQg4oCUIGVuc3VyZXNcclxuICogICAgICBDT1JTLXByZWZsaWdodCBjYWNoaW5nIGlzIGtleWVkIHBlciBvcmlnaW4uXHJcbiAqXHJcbiAqICAgMy4gYXBpS2V5IHZpYSBxdWVyeSBzdHJpbmcgaXMgcmVqZWN0ZWQgd2l0aCBIVFRQIDQwMCDigJQgY3JlZGVudGlhbHMgaW5cclxuICogICAgICB0aGUgVVJMIGFyZSBsb2dnZWQgYnkgcHJveGllcywgQ0ROcywgYWNjZXNzIGxvZ3MsIGFuZCBicm93c2VyIGhpc3RvcnkuXHJcbiAqICAgICAgQ2xpZW50cyBtdXN0IHVzZSB0aGUgeC1hcGkta2V5IGhlYWRlciBpbnN0ZWFkLlxyXG4gKlxyXG4gKiBQbGFjZSB0aGlzIG1pZGRsZXdhcmUgQkVGT1JFIGF1dGhlbnRpY2F0aW9uIGFuZCBjYWNoZSBtaWRkbGV3YXJlcyBvbiBhbnlcclxuICogcm91dGVyIHRoYXQgc2VydmVzIGF1dGhlbnRpY2F0ZWQsIHRlbmFudC1zY29wZWQgZGF0YS5cclxuICovXHJcbmV4cG9ydCBmdW5jdGlvbiBwdWJsaWNBcGlDYWNoZVNhZmV0eU1pZGRsZXdhcmUoXHJcbiAgcmVxOiBSZXF1ZXN0LFxyXG4gIHJlczogUmVzcG9uc2UsXHJcbiAgbmV4dDogTmV4dEZ1bmN0aW9uLFxyXG4pOiB2b2lkIHtcclxuICAvLyDilIDilIAgMS4gQmxvY2sgQVBJIGtleSBpbiBxdWVyeSBzdHJpbmcg4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSAXHJcbiAgZm9yIChjb25zdCBwYXJhbSBvZiBCTE9DS0VEX0FQSV9LRVlfUEFSQU1TKSB7XHJcbiAgICBpZiAocmVxLnF1ZXJ5W3BhcmFtXSAhPT0gdW5kZWZpbmVkKSB7XHJcbiAgICAgIGxvZ2dlci53YXJuKCdbQ2FjaGVTYWZldHldIGFwaUtleSB2aWEgcXVlcnkgc3RyaW5nIHJlamVjdGVkJywge1xyXG4gICAgICAgIHBhcmFtLFxyXG4gICAgICAgIHBhdGg6IHJlcS5wYXRoLFxyXG4gICAgICAgIG1ldGhvZDogcmVxLm1ldGhvZCxcclxuICAgICAgICBpcDogcmVxLmlwLFxyXG4gICAgICB9KTtcclxuICAgICAgcmVzLnN0YXR1cyg0MDApLmpzb24oe1xyXG4gICAgICAgIHN1Y2Nlc3M6IGZhbHNlLFxyXG4gICAgICAgIGVycm9yOiB7XHJcbiAgICAgICAgICBjb2RlOiAnREVQUkVDQVRFRF9BVVRIX01FVEhPRCcsXHJcbiAgICAgICAgICBtZXNzYWdlOiBgQXV0aGVudGljYXRpb24gdmlhIHF1ZXJ5IHBhcmFtZXRlciBcIiR7cGFyYW19XCIgaXMgbm90IHN1cHBvcnRlZC4gVXNlIHRoZSB4LWFwaS1rZXkgaGVhZGVyLmAsXHJcbiAgICAgICAgfSxcclxuICAgICAgfSk7XHJcbiAgICAgIHJldHVybjtcclxuICAgIH1cclxuICB9XHJcblxyXG4gIC8vIOKUgOKUgCAyLiBWYXJ5OiB4LWFwaS1rZXkg4oCUIGV2ZXJ5IGF1dGhlbnRpY2F0ZWQgcmVzcG9uc2UgbXVzdCBpbmNsdWRlIHRoaXMg4pSA4pSA4pSA4pSAXHJcbiAgLy8gcmVzLnZhcnkoKSBhcHBlbmRzIHdpdGhvdXQgZHVwbGljYXRpbmc7IHNhZmUgdG8gY2FsbCBtdWx0aXBsZSB0aW1lcy5cclxuICByZXMudmFyeSgneC1hcGkta2V5Jyk7XHJcblxyXG4gIC8vIOKUgOKUgCAzLiBWYXJ5OiBPcmlnaW4g4oCUIHdoZW4gcmVxdWVzdCBjYXJyaWVzIGFuIE9yaWdpbiAoQ09SUyBjb250ZXh0KSDilIDilIDilIDilIDilIDilIDilIDilIDilIBcclxuICBpZiAocmVxLmhlYWRlcignb3JpZ2luJykpIHtcclxuICAgIHJlcy52YXJ5KCdPcmlnaW4nKTtcclxuICB9XHJcblxyXG4gIG5leHQoKTtcclxufVxyXG4iXSwidmVyc2lvbiI6M30=

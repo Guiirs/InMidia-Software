@@ -95,6 +95,31 @@ export interface JwtPayload {
     | 'visualizador';
   username: string;
   email: string;
+  // Campos multi-tenant opcionais (presentes quando bootstrap habilitado)
+  organizationId?: string;
+  membershipId?: string;
+  membershipRole?: string;
+  tenantMode?: 'organization' | 'legacy';
+}
+
+/**
+ * Dados resumidos de organização na resposta de login
+ */
+export interface LoginOrganizationData {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  plan: string;
+}
+
+/**
+ * Dados resumidos de membership na resposta de login
+ */
+export interface LoginMembershipData {
+  id: string;
+  role: string;
+  status: string;
 }
 
 /**
@@ -120,6 +145,9 @@ export interface LoginResponse {
     empresaId: string;
     createdAt: Date;
   };
+  // Campos multi-tenant opcionais (presentes quando bootstrap habilitado)
+  organization?: LoginOrganizationData;
+  membership?: LoginMembershipData;
 }
 
 /**

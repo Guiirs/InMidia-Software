@@ -39,6 +39,12 @@ jest.mock('@modules/regions/region.service', () => ({
   regionService: { getRegions: jest.fn() },
 }));
 
+jest.mock('@modules/media/plate-media.service', () => ({
+  plateMediaService: {
+    batchResolvePlateMedia: jest.fn().mockResolvedValue(new Map()),
+  },
+}));
+
 // ── Imports ───────────────────────────────────────────────────────────────────
 
 import { InventoryBoardsService } from '../services/inventory-boards.service';

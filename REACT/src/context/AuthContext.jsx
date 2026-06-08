@@ -28,11 +28,17 @@ export function clearAuthSessionStorage(storage = localStorage) {
   storage.removeItem('token');
   storage.removeItem('permissions');
   storage.removeItem('session');
+  storage.removeItem('organization');
+  storage.removeItem('membership');
+  storage.removeItem('tenantMode');
 }
 
 export function AuthProvider({ children }) {
   const [user, setUserState] = useState(null);
   const [token, setTokenState] = useState(null);
+  const [organization, setOrganization] = useState(null);
+  const [membership, setMembership] = useState(null);
+  const [tenantMode, setTenantMode] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionWarning, setSessionWarning] = useState(false);
@@ -59,6 +65,14 @@ export function AuthProvider({ children }) {
         setUserState(storedUser);
         setTokenState(storedToken);
         setIsAuthenticated(true);
+
+        const storedOrg = localStorage.getItem('organization');
+        const storedMembership = localStorage.getItem('membership');
+        const storedTenantMode = localStorage.getItem('tenantMode');
+        if (storedOrg) setOrganization(JSON.parse(storedOrg));
+        if (storedMembership) setMembership(JSON.parse(storedMembership));
+        if (storedTenantMode) setTenantMode(storedTenantMode);
+
         syncService.boot().catch(err => {
           console.warn('[AuthContext] Sync boot (sessao restaurada) falhou:', err?.message);
         });
@@ -83,6 +97,9 @@ export function AuthProvider({ children }) {
     clearSessionStorage();
     setUserState(null);
     setTokenState(null);
+    setOrganization(null);
+    setMembership(null);
+    setTenantMode(null);
     setIsAuthenticated(false);
     setSessionWarning(false);
   }, [clearSessionStorage]);
@@ -159,7 +176,7 @@ export function AuthProvider({ children }) {
     return () => clearInterval(interval);
   }, [logout, token]);
 
-  const login = useCallback((userData, userToken) => {
+  const login = useCallback((userData, userToken, options = {}) => {
     try {
       const normalizedUser = normalizeAuthUser(userData);
       localStorage.setItem('user', JSON.stringify(normalizedUser));
@@ -168,6 +185,21 @@ export function AuthProvider({ children }) {
       setTokenState(userToken);
       setIsAuthenticated(true);
       setSessionExpired(false);
+
+      const { organization: org, membership: mem, tenantMode: mode } = options;
+      if (org) {
+        localStorage.setItem('organization', JSON.stringify(org));
+        setOrganization(org);
+      }
+      if (mem) {
+        localStorage.setItem('membership', JSON.stringify(mem));
+        setMembership(mem);
+      }
+      if (mode) {
+        localStorage.setItem('tenantMode', mode);
+        setTenantMode(mode);
+      }
+
       syncService.boot().catch(err => {
         console.warn('[AuthContext] Sync boot falhou (nao critico):', err?.message);
       });
@@ -193,6 +225,12 @@ export function AuthProvider({ children }) {
   const empresaId = user?.empresaId || null;
   const userId = user?.userId || null;
 
+  const hasOrganization = Boolean(organization);
+  const isOrganizationMode = hasOrganization && tenantMode !== 'legacy';
+  const isLegacyTenantMode = !hasOrganization || tenantMode === 'legacy';
+  const currentOrganizationId = organization?.id ?? null;
+  const currentMembershipRole = membership?.role ?? null;
+
   const value = useMemo(() => ({
     user,
     token,
@@ -200,6 +238,14 @@ export function AuthProvider({ children }) {
     permissions,
     empresaId,
     userId,
+    organization,
+    membership,
+    tenantMode,
+    hasOrganization,
+    isOrganizationMode,
+    isLegacyTenantMode,
+    currentOrganizationId,
+    currentMembershipRole,
     isAuthenticated,
     isLoading,
     sessionWarning,
@@ -220,6 +266,14 @@ export function AuthProvider({ children }) {
     permissions,
     empresaId,
     userId,
+    organization,
+    membership,
+    tenantMode,
+    hasOrganization,
+    isOrganizationMode,
+    isLegacyTenantMode,
+    currentOrganizationId,
+    currentMembershipRole,
     isAuthenticated,
     isLoading,
     sessionWarning,

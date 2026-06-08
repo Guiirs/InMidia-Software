@@ -55,11 +55,16 @@ export type CreateCheckingInput = z.infer<typeof CreateCheckingSchema>;
 export type UpdateCheckingInput = z.infer<typeof UpdateCheckingSchema>;
 export type ListCheckingsQuery = z.infer<typeof ListCheckingsQuerySchema>;
 
+export type TenantCheckingInput<T> = T & {
+  empresaId: string;
+};
+
 /**
  * Entidade de Checking para retorno
  */
 export interface CheckingEntity {
   _id: Types.ObjectId;
+  empresaId: Types.ObjectId;
   aluguelId: Types.ObjectId | { _id: Types.ObjectId; numero_contrato?: string };
   placaId: Types.ObjectId | { _id: Types.ObjectId; numero_placa: string };
   installerId: Types.ObjectId | { _id: Types.ObjectId; nome: string; email: string };
@@ -69,4 +74,6 @@ export interface CheckingEntity {
     longitude: number;
   } | string;
   installedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
