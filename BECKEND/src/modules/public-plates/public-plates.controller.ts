@@ -61,7 +61,8 @@ export async function getPlacas(
 
     const filters: service.PlacasFilter = {
       cidade: strParam(req.query.cidade),
-      regiao: strParam(req.query.regiao),
+      regiao: strParam(req.query.regiao) ?? strParam(req.query.region),
+      regiaoId: strParam(req.query.regiaoId) ?? strParam(req.query.regionId),
       categoria: strParam(req.query.categoria),
       disponibilidade: strParam(req.query.disponibilidade),
     };
@@ -194,7 +195,8 @@ export async function getPlacasExport(
 
     const filters: service.PlacasFilter = {
       cidade: strParam(req.query.cidade),
-      regiao: strParam(req.query.regiao),
+      regiao: strParam(req.query.regiao) ?? strParam(req.query.region),
+      regiaoId: strParam(req.query.regiaoId) ?? strParam(req.query.regionId),
       categoria: strParam(req.query.categoria),
       disponibilidade: strParam(req.query.disponibilidade),
     };

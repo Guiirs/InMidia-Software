@@ -335,4 +335,152 @@ describe('Public plates integration', () => {
     expect(res.body.success).toBe(false);
     expect(res.body.error.code).toBe('PUBLIC_API_NOT_FOUND');
   });
+
+  // ── Filtro por região ─────────────────────────────────────────────────────
+
+  describe('Filtro por região — ?regiao / ?region / ?regiaoId / ?regionId', () => {
+    async function seedTwoRegions() {
+      const empresa = await createPublicEmpresa();
+      const caucaia = await createTestRegiao({ empresaId: empresa._id, nome: 'Caucaia', codigo: 'CAU', city: 'Caucaia' });
+      const fortaleza = await createTestRegiao({ empresaId: empresa._id, nome: 'Fortaleza', codigo: 'FOR', city: 'Fortaleza' });
+
+      await createTestPlaca(caucaia._id.toString(), { empresaId: empresa._id, numero_placa: 'CAU-001', statusComercial: 'AVAILABLE' });
+      await createTestPlaca(caucaia._id.toString(), { empresaId: empresa._id, numero_placa: 'CAU-002', statusComercial: 'AVAILABLE' });
+      await createTestPlaca(fortaleza._id.toString(), { empresaId: empresa._id, numero_placa: 'FOR-001', statusComercial: 'AVAILABLE' });
+
+      return { empresa, caucaia, fortaleza };
+    }
+
+    it('sem query retorna todas as placas', async () => {
+      await seedTwoRegions();
+      const res = await request(app).get('/api/v1/public/placas').set('x-api-key', API_KEY_VALUE);
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(3);
+    });
+
+    it('?regiao=Caucaia retorna apenas placas da região Caucaia', async () => {
+      await seedTwoRegions();
+      const res = await request(app).get('/api/v1/public/placas?regiao=Caucaia').set('x-api-key', API_KEY_VALUE);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toHaveLength(2);
+      expect(res.body.data.every((p: any) => p.regiao === 'Caucaia')).toBe(true);
+    });
+
+    it('?regiao=caucaia funciona case-insensitive', async () => {
+      await seedTwoRegions();
+      const res = await request(app).get('/api/v1/public/placas?regiao=caucaia').set('x-api-key', API_KEY_VALUE);
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(2);
+      expect(res.body.data.every((p: any) => p.regiao === 'Caucaia')).toBe(true);
+    });
+
+    it('?region=Caucaia funciona como alias de ?regiao=', async () => {
+      await seedTwoRegions();
+      const res = await request(app).get('/api/v1/public/placas?region=Caucaia').set('x-api-key', API_KEY_VALUE);
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(2);
+      expect(res.body.data.every((p: any) => p.regiao === 'Caucaia')).toBe(true);
+    });
+
+    it('?regiaoId=<id> filtra por ObjectId da região', async () => {
+      const { caucaia } = await seedTwoRegions();
+      const res = await request(app)
+        .get(`/api/v1/public/placas?regiaoId=${caucaia._id.toString()}`)
+        .set('x-api-key', API_KEY_VALUE);
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(2);
+      expect(res.body.data.every((p: any) => p.regiao === 'Caucaia')).toBe(true);
+    });
+
+    it('?regionId=<id> funciona como alias de ?regiaoId=', async () => {
+      const { fortaleza } = await seedTwoRegions();
+      const res = await request(app)
+        .get(`/api/v1/public/placas?regionId=${fortaleza._id.toString()}`)
+        .set('x-api-key', API_KEY_VALUE);
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(1);
+      expect(res.body.data[0].regiao).toBe('Fortaleza');
+    });
+
+    it('região inexistente retorna success true com data []', async () => {
+      await seedTwoRegions();
+      const res = await request(app).get('/api/v1/public/placas?regiao=RegiaoInexistente').set('x-api-key', API_KEY_VALUE);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toHaveLength(0);
+    });
+
+    it('?regiaoId com ObjectId inválido retorna success true com data []', async () => {
+      await seedTwoRegions();
+      const res = await request(app).get('/api/v1/public/placas?regiaoId=nao-e-um-objectid').set('x-api-key', API_KEY_VALUE);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toHaveLength(0);
+    });
+
+    it('parâmetro regiao vazio não filtra (retorna todas)', async () => {
+      await seedTwoRegions();
+      const res = await request(app).get('/api/v1/public/placas?regiao=').set('x-api-key', API_KEY_VALUE);
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(3);
+    });
+
+    it('placas de outras regiões não aparecem no resultado filtrado', async () => {
+      await seedTwoRegions();
+      const res = await request(app).get('/api/v1/public/placas?regiao=Fortaleza').set('x-api-key', API_KEY_VALUE);
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(1);
+      const codigos = res.body.data.map((p: any) => p.codigo);
+      expect(codigos).not.toContain('CAU-001');
+      expect(codigos).not.toContain('CAU-002');
+    });
+
+    it('resposta filtrada preserva campos JetEngine obrigatórios', async () => {
+      process.env.PUBLIC_API_BASE_URL = PUBLIC_API_BASE_URL;
+      await seedTwoRegions();
+      const res = await request(app).get('/api/v1/public/placas?regiao=Caucaia').set('x-api-key', API_KEY_VALUE);
+      expect(res.status).toBe(200);
+      const placa = res.body.data[0];
+      expect(placa).toHaveProperty('id');
+      expect(placa).toHaveProperty('slug');
+      expect(placa).toHaveProperty('codigo');
+      expect(placa).toHaveProperty('nome');
+      expect(placa).toHaveProperty('regiao');
+      expect(placa).toHaveProperty('disponibilidade');
+      expect(placa).toHaveProperty('imagemUrl');
+      expect(placa).toHaveProperty('jetImageUrl');
+      expect(placa).toHaveProperty('jet_image_url');
+      expect(placa).toHaveProperty('jetImage');
+      expect(placa).toHaveProperty('image');
+      expect(placa).toHaveProperty('hasImage');
+      expect(placa).toHaveProperty('updatedAt');
+    });
+
+    it('export ?regiao=Caucaia retorna apenas placas da região Caucaia', async () => {
+      await seedTwoRegions();
+      const res = await request(app).get('/api/v1/public/placas/export?regiao=Caucaia').set('x-api-key', API_KEY_VALUE);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toHaveLength(2);
+      expect(res.body.data.every((p: any) => p.regiao === 'Caucaia')).toBe(true);
+    });
+
+    it('export ?region=Caucaia funciona como alias', async () => {
+      await seedTwoRegions();
+      const res = await request(app).get('/api/v1/public/placas/export?region=Caucaia').set('x-api-key', API_KEY_VALUE);
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(2);
+    });
+
+    it('export ?regiaoId=<id> filtra por ObjectId no endpoint de export', async () => {
+      const { fortaleza } = await seedTwoRegions();
+      const res = await request(app)
+        .get(`/api/v1/public/placas/export?regiaoId=${fortaleza._id.toString()}`)
+        .set('x-api-key', API_KEY_VALUE);
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(1);
+      expect(res.body.data[0].regiao).toBe('Fortaleza');
+    });
+  });
 });

@@ -34,6 +34,7 @@ const REGIAO_POPULATE = {
 export interface PlacasFilter {
   cidade?: string;
   regiao?: string;
+  regiaoId?: string;
   categoria?: string;
   disponibilidade?: string;
 }
@@ -102,18 +103,33 @@ export function comparePublicPlacasNaturally(
   return naturalCompare(left.nome, right.nome);
 }
 
-async function resolveRegiaoIds(empresaId: string, regiaoNome?: string, cidade?: string): Promise<string[] | null> {
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+async function resolveRegiaoIds(
+  empresaId: string,
+  regiaoNome?: string,
+  cidade?: string,
+  regiaoId?: string,
+): Promise<string[] | null> {
+  if (regiaoId) {
+    if (!Types.ObjectId.isValid(regiaoId)) return [];
+    return [regiaoId];
+  }
+
   if (!regiaoNome && !cidade) return null;
 
   const regiaoFilter: Record<string, unknown> = { empresaId };
   if (regiaoNome) {
+    const escaped = escapeRegex(regiaoNome);
     regiaoFilter.$or = [
-      { nome: { $regex: new RegExp(regiaoNome, 'i') } },
-      { name: { $regex: new RegExp(regiaoNome, 'i') } },
+      { nome: { $regex: new RegExp(escaped, 'i') } },
+      { name: { $regex: new RegExp(escaped, 'i') } },
     ];
   }
   if (cidade) {
-    regiaoFilter.city = { $regex: new RegExp(cidade, 'i') };
+    regiaoFilter.city = { $regex: new RegExp(escapeRegex(cidade), 'i') };
   }
 
   const regioes = await Regiao.find(regiaoFilter).select('_id').lean();
@@ -139,7 +155,7 @@ export async function listPlacas(
     statusOperacional: { $ne: 'ARCHIVED' },
   };
 
-  const regiaoIds = await resolveRegiaoIds(empresaId, filters.regiao, filters.cidade);
+  const regiaoIds = await resolveRegiaoIds(empresaId, filters.regiao, filters.cidade, filters.regiaoId);
   if (regiaoIds !== null) {
     if (regiaoIds.length === 0) {
       return { data: [], pagination: { page, limit, total: 0, pages: 0 } };
@@ -148,7 +164,7 @@ export async function listPlacas(
   }
 
   if (filters.categoria) {
-    query.tipo = { $regex: new RegExp(filters.categoria, 'i') };
+    query.tipo = { $regex: new RegExp(escapeRegex(filters.categoria), 'i') };
   }
 
   const docs = await Placa.find(query)
@@ -254,7 +270,7 @@ export async function listAllPlacas(
     statusOperacional: { $ne: 'ARCHIVED' },
   };
 
-  const regiaoIds = await resolveRegiaoIds(empresaId, filters.regiao, filters.cidade);
+  const regiaoIds = await resolveRegiaoIds(empresaId, filters.regiao, filters.cidade, filters.regiaoId);
   if (regiaoIds !== null) {
     if (regiaoIds.length === 0) {
       return { data: [], meta: { total: 0, cacheHit: false, source: 'projection', exportedAt: new Date().toISOString() } };
@@ -263,7 +279,7 @@ export async function listAllPlacas(
   }
 
   if (filters.categoria) {
-    query.tipo = { $regex: new RegExp(filters.categoria, 'i') };
+    query.tipo = { $regex: new RegExp(escapeRegex(filters.categoria), 'i') };
   }
 
   const docs = await Placa.find(query)
