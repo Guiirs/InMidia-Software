@@ -296,13 +296,16 @@ export async function getPlacaImagem(
     return;
   }
 
-  const r2Key = pmResolution.activeKey;
+  // Usa effectiveKey (WebP otimizado quando webpEnabled=true, senão original).
+  // O Content-Type correto é definido pelo objeto R2 via HeadObject/GetObject.
+  const r2Key = pmResolution.effectiveKey ?? pmResolution.activeKey;
   // version é um timestamp ms string — serve como proxy de updatedAt para ETag fallback
   const version = pmResolution.version || String(Date.now());
 
   logger.info('[ImageProxy] resolução via PlateMedia', {
     placaId: idParam,
     tentativaR2: `${bucket}/${r2Key}`,
+    webpEnabled: pmResolution.effectiveKey !== pmResolution.activeKey,
   });
 
   // ── 6. Com conditional headers: HeadObject primeiro (barato) ─────────────

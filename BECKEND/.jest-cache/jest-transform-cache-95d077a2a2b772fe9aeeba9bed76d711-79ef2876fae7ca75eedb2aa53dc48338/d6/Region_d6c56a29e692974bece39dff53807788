@@ -1,9 +1,0 @@
-a89faa1d49923a449e0a1f9f13fe21dc
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const Regiao_1 = __importDefault(require("@modules/regioes/Regiao"));
-exports.default = Regiao_1.default;
-//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiRzpcXElubWlkaWEgVjRcXEJFQ0tFTkRcXHNyY1xcbW9kdWxlc1xccmVnaW9uc1xcUmVnaW9uLnRzIiwibWFwcGluZ3MiOiI7Ozs7O0FBQUEscUVBQTZDO0FBRTdDLGtCQUFlLGdCQUFNLENBQUMiLCJuYW1lcyI6W10sInNvdXJjZXMiOlsiRzpcXElubWlkaWEgVjRcXEJFQ0tFTkRcXHNyY1xcbW9kdWxlc1xccmVnaW9uc1xcUmVnaW9uLnRzIl0sInNvdXJjZXNDb250ZW50IjpbImltcG9ydCBSZWdpYW8gZnJvbSAnQG1vZHVsZXMvcmVnaW9lcy9SZWdpYW8nO1xuXG5leHBvcnQgZGVmYXVsdCBSZWdpYW87XG4iXSwidmVyc2lvbiI6M30=

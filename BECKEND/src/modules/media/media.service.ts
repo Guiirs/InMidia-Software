@@ -7,6 +7,7 @@ import type { IMediaAsset, MediaCategory, MediaOwnerType } from '@database/schem
 import { mediaRepository, MediaRepository } from './media.repository';
 import { parseJsonLike, UploadMediaDTO, validateUploadFile } from './media.dto';
 import { plateMediaService } from './plate-media.service';
+import { convertBufferToWebP, deriveOptimizedKey, uploadWebPToR2 } from './webp-optimizer.service';
 
 type PublicMediaAsset = Omit<IMediaAsset, 'r2Key'> & {
   _id?: unknown;
@@ -126,6 +127,15 @@ export class MediaService {
 
     if (dto.ownerType === 'PLATE') {
       await this.syncPlateMedia(asset);
+    }
+
+    // Geração WebP automática para novas imagens principais de placas.
+    // Ativada por MEDIA_WEBP_AUTO=true. Não bloqueia o upload — falha é silenciosa.
+    // O original permanece intacto; apenas o optimizedKey é persistido.
+    if (isMain && dto.ownerType === 'PLATE' && process.env.MEDIA_WEBP_AUTO === 'true' && file.buffer) {
+      void this.autoGenerateWebP(dto.ownerId, empresaId, r2Key, file.buffer).catch(err => {
+        Log.warn('[MediaService] autoGenerateWebP falhou (original preservado)', { error: err instanceof Error ? err.message : String(err) });
+      });
     }
 
     Log.info('[MediaService] MEDIA_UPLOADED', { mediaId: String(asset._id), ownerType: dto.ownerType, ownerId: dto.ownerId, empresaId });
@@ -277,6 +287,32 @@ export class MediaService {
     } else {
       await plateMediaService.clearActivePlateImage(String(asset.ownerId), String(asset.empresaId));
     }
+  }
+
+  /**
+   * Gera WebP otimizado para um upload recente de forma assíncrona (fire-and-forget).
+   * Nunca apaga o original. Se falhar, o original continua sendo servido.
+   * Ativado por MEDIA_WEBP_AUTO=true.
+   */
+  private async autoGenerateWebP(
+    plateId: string,
+    empresaId: string,
+    originalKey: string,
+    buffer: Buffer,
+  ): Promise<void> {
+    const webpKey = deriveOptimizedKey(originalKey);
+    const result = await convertBufferToWebP(buffer);
+    await uploadWebPToR2(result.buffer, webpKey);
+    await plateMediaService.setWebPOptimized(plateId, empresaId, webpKey, result.sizeBytes, {
+      width: result.width,
+      height: result.height,
+    });
+
+    if (process.env.MEDIA_WEBP_AUTO_ACTIVATE === 'true') {
+      await plateMediaService.activateWebP(plateId, empresaId);
+    }
+
+    Log.info('[MediaService] autoGenerateWebP concluído', { plateId, webpKey, savedBytes: result.sizeBytes });
   }
 }
 

@@ -22,6 +22,15 @@ export interface PlateImageResolution {
   mimeType: string | null;
   /** 'plate-media' quando resolvido pela fonte canônica; 'none' em fallback. */
   source: 'plate-media' | 'none';
+  /**
+   * Chave R2 efetiva a servir: optimizedKey quando webpEnabled=true, senão activeKey.
+   * O endpoint deve usar effectiveKey em vez de activeKey para respeitar o estado WebP.
+   */
+  effectiveKey: string | null;
+  /**
+   * MIME type efetivo: 'image/webp' quando webpEnabled=true e optimizedKey existe.
+   */
+  effectiveMimeType: string | null;
 }
 
 // ─── Service ───────────────────────────────────────────────────────────────────
@@ -64,6 +73,9 @@ export class PlateMediaService {
    * Cria o documento se ainda não existir (upsert).
    * Move a entrada anterior para history (isActive=false).
    * Mantém no máximo 50 entradas no history.
+   *
+   * NOTA: limpa os campos WebP (optimizedKey/webpEnabled) porque o original mudou.
+   * Chame setWebPOptimized() após este método se já gerou WebP para a nova imagem.
    */
   async setActivePlateImage(
     plateId: string,
@@ -89,15 +101,20 @@ export class PlateMediaService {
         { plateId: plateObjectId, empresaId: empresaObjectId },
         {
           $set: {
-            plateId:   plateObjectId,
-            empresaId: empresaObjectId,
-            activeKey: options.key,
-            status:    'active',
+            plateId:       plateObjectId,
+            empresaId:     empresaObjectId,
+            activeKey:     options.key,
+            status:        'active',
             version,
-            mimeType:  options.mimeType ?? null,
-            size:      options.size ?? null,
-            width:     options.width ?? null,
-            height:    options.height ?? null,
+            mimeType:      options.mimeType ?? null,
+            size:          options.size ?? null,
+            width:         options.width ?? null,
+            height:        options.height ?? null,
+            // Limpa WebP ao trocar imagem original — novo WebP deve ser gerado para esta key
+            optimizedKey:  null,
+            webpEnabled:   false,
+            optimizedAt:   null,
+            optimizedSize: null,
           },
           $push: {
             history: {
@@ -132,9 +149,13 @@ export class PlateMediaService {
         { plateId: new Types.ObjectId(plateId), empresaId: new Types.ObjectId(empresaId) },
         {
           $set: {
-            activeKey: null,
-            status:    'missing',
-            version:   String(Date.now()),
+            activeKey:     null,
+            status:        'missing',
+            version:       String(Date.now()),
+            optimizedKey:  null,
+            webpEnabled:   false,
+            optimizedAt:   null,
+            optimizedSize: null,
           },
         },
         { upsert: false },
@@ -152,28 +173,30 @@ export class PlateMediaService {
 
   /**
    * Resolve a imagem principal de uma placa via PlateMedia (fonte canônica exclusiva).
+   * Retorna effectiveKey = optimizedKey quando webpEnabled, senão activeKey.
    */
   async resolvePlateMainImage(plateId: string, empresaId?: string): Promise<PlateImageResolution> {
     try {
       if (!Types.ObjectId.isValid(plateId)) {
-        return { hasImage: false, activeKey: null, version: '', mimeType: null, source: 'none' };
+        return this._emptyResolution();
       }
       const filter: Record<string, Types.ObjectId> = { plateId: new Types.ObjectId(plateId) };
       if (empresaId) {
-        if (!Types.ObjectId.isValid(empresaId)) {
-          return { hasImage: false, activeKey: null, version: '', mimeType: null, source: 'none' };
-        }
+        if (!Types.ObjectId.isValid(empresaId)) return this._emptyResolution();
         filter.empresaId = new Types.ObjectId(empresaId);
       }
 
       const pm = await PlateMedia.findOne(filter).lean();
       if (pm?.activeKey) {
+        const useWebP = Boolean(pm.webpEnabled && pm.optimizedKey);
         return {
-          hasImage:  true,
-          activeKey: pm.activeKey,
-          version:   pm.version,
-          mimeType:  pm.mimeType,
-          source:    'plate-media',
+          hasImage:          true,
+          activeKey:         pm.activeKey,
+          version:           pm.version,
+          mimeType:          pm.mimeType,
+          source:            'plate-media',
+          effectiveKey:      useWebP ? (pm.optimizedKey ?? pm.activeKey) : pm.activeKey,
+          effectiveMimeType: useWebP ? 'image/webp' : pm.mimeType,
         };
       }
     } catch (err) {
@@ -183,7 +206,7 @@ export class PlateMediaService {
       });
     }
 
-    return { hasImage: false, activeKey: null, version: '', mimeType: null, source: 'none' };
+    return this._emptyResolution();
   }
 
   /**
@@ -209,6 +232,124 @@ export class PlateMediaService {
       });
       return new Map();
     }
+  }
+
+  // ─── WebP otimização ────────────────────────────────────────────────────────
+
+  /**
+   * Persiste o optimizedKey gerado após conversão WebP bem-sucedida.
+   * Não ativa o WebP (webpEnabled permanece false até activateWebP() ser chamado).
+   * Não altera activeKey nem o original.
+   */
+  async setWebPOptimized(
+    plateId: string,
+    empresaId: string,
+    optimizedKey: string,
+    optimizedSize: number | null,
+    dimensions?: { width: number; height: number },
+  ): Promise<void> {
+    try {
+      if (!Types.ObjectId.isValid(plateId) || !Types.ObjectId.isValid(empresaId)) return;
+
+      const update: Record<string, unknown> = {
+        optimizedKey,
+        optimizedAt:   new Date(),
+        optimizedSize: optimizedSize ?? null,
+        // webpEnabled deve ser false explícito — documentos antigos não têm o campo,
+        // e a query do activate usa { webpEnabled: false } que não combina com ausente.
+        webpEnabled:   false,
+      };
+      if (dimensions) {
+        update.width  = dimensions.width;
+        update.height = dimensions.height;
+      }
+
+      await PlateMedia.findOneAndUpdate(
+        { plateId: new Types.ObjectId(plateId), empresaId: new Types.ObjectId(empresaId) },
+        { $set: update },
+        { upsert: false },
+      );
+
+      logger.info('[PlateMedia] setWebPOptimized', { plateId, optimizedKey });
+    } catch (err) {
+      logger.warn('[PlateMedia] setWebPOptimized failed', {
+        plateId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  /**
+   * Ativa a entrega WebP para esta placa.
+   * O endpoint público passa a servir optimizedKey com Content-Type: image/webp.
+   * O original (activeKey) permanece intacto no R2.
+   */
+  async activateWebP(plateId: string, empresaId: string): Promise<boolean> {
+    try {
+      if (!Types.ObjectId.isValid(plateId) || !Types.ObjectId.isValid(empresaId)) return false;
+
+      const pm = await PlateMedia.findOne({
+        plateId:   new Types.ObjectId(plateId),
+        empresaId: new Types.ObjectId(empresaId),
+      }).lean();
+
+      if (!pm?.optimizedKey) {
+        logger.warn('[PlateMedia] activateWebP: sem optimizedKey', { plateId });
+        return false;
+      }
+
+      await PlateMedia.findOneAndUpdate(
+        { plateId: new Types.ObjectId(plateId), empresaId: new Types.ObjectId(empresaId) },
+        { $set: { webpEnabled: true, version: String(Date.now()) } },
+        { upsert: false },
+      );
+
+      logger.info('[PlateMedia] activateWebP', { plateId });
+      return true;
+    } catch (err) {
+      logger.warn('[PlateMedia] activateWebP failed', {
+        plateId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return false;
+    }
+  }
+
+  /**
+   * Desativa a entrega WebP — endpoint volta a servir activeKey (original).
+   * O WebP (optimizedKey) permanece no R2 para eventual reativação.
+   */
+  async rollbackWebP(plateId: string, empresaId: string): Promise<void> {
+    try {
+      if (!Types.ObjectId.isValid(plateId) || !Types.ObjectId.isValid(empresaId)) return;
+
+      await PlateMedia.findOneAndUpdate(
+        { plateId: new Types.ObjectId(plateId), empresaId: new Types.ObjectId(empresaId) },
+        { $set: { webpEnabled: false, version: String(Date.now()) } },
+        { upsert: false },
+      );
+
+      logger.info('[PlateMedia] rollbackWebP', { plateId });
+    } catch (err) {
+      logger.warn('[PlateMedia] rollbackWebP failed', {
+        plateId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  // ─── Helpers privados ────────────────────────────────────────────────────────
+
+  private _emptyResolution(): PlateImageResolution {
+    return {
+      hasImage:          false,
+      activeKey:         null,
+      version:           '',
+      mimeType:          null,
+      source:            'none',
+      effectiveKey:      null,
+      effectiveMimeType: null,
+    };
   }
 }
 

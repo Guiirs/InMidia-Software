@@ -28,18 +28,28 @@ export interface IPlateMediaHistoryEntry {
  * activeKey é a R2 storage key atualmente ativa.
  * version é um string monotônico (timestamp ms) usado para cache-busting de URL.
  * history mantém as últimas 50 imagens para diagnóstico e rollback.
+ *
+ * Campos WebP (otimização segura):
+ *   optimizedKey — R2 key do WebP gerado (original nunca é sobrescrito)
+ *   webpEnabled  — se true, o endpoint público serve optimizedKey em vez de activeKey
+ *   optimizedAt  — quando a conversão foi concluída
+ *   optimizedSize — tamanho do WebP em bytes
  */
 export interface IPlateMedia {
-  plateId:   Schema.Types.ObjectId;
-  empresaId: Schema.Types.ObjectId;
-  activeKey: string | null;
-  status:    PlateMediaStatus;
-  version:   string;
-  mimeType:  string | null;
-  size:      number | null;
-  width:     number | null;
-  height:    number | null;
-  history:   IPlateMediaHistoryEntry[];
+  plateId:       Schema.Types.ObjectId;
+  empresaId:     Schema.Types.ObjectId;
+  activeKey:     string | null;
+  status:        PlateMediaStatus;
+  version:       string;
+  mimeType:      string | null;
+  size:          number | null;
+  width:         number | null;
+  height:        number | null;
+  history:       IPlateMediaHistoryEntry[];
+  optimizedKey:  string | null;
+  webpEnabled:   boolean;
+  optimizedAt:   Date | null;
+  optimizedSize: number | null;
 }
 
 // ─── Schemas ───────────────────────────────────────────────────────────────────
@@ -60,14 +70,18 @@ export const plateMediaSchema = new Schema<IPlateMedia>(
   {
     plateId:   { type: Schema.Types.ObjectId, ref: 'Placa',  required: true },
     empresaId: { type: Schema.Types.ObjectId, ref: 'Empresa', required: true },
-    activeKey: { type: String, default: null, trim: true },
-    status:    { type: String, enum: PlateMediaStatuses, default: 'missing' },
-    version:   { type: String, default: '' },
-    mimeType:  { type: String, default: null },
-    size:      { type: Number, default: null },
-    width:     { type: Number, default: null },
-    height:    { type: Number, default: null },
-    history:   { type: [plateMediaHistorySchema], default: [] },
+    activeKey:     { type: String, default: null, trim: true },
+    status:        { type: String, enum: PlateMediaStatuses, default: 'missing' },
+    version:       { type: String, default: '' },
+    mimeType:      { type: String, default: null },
+    size:          { type: Number, default: null },
+    width:         { type: Number, default: null },
+    height:        { type: Number, default: null },
+    history:       { type: [plateMediaHistorySchema], default: [] },
+    optimizedKey:  { type: String, default: null, trim: true },
+    webpEnabled:   { type: Boolean, default: false },
+    optimizedAt:   { type: Date, default: null },
+    optimizedSize: { type: Number, default: null },
   },
   { timestamps: true },
 );
