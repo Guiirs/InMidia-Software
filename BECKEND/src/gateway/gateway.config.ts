@@ -234,6 +234,18 @@ export const gatewayConfig: GatewayConfig = {
         max: 1000,
       },
     },
+    // Public media (plate images) — must precede '/api/v1/public/*' below so that
+    // findRoute() does not match image requests against the 100 req/15min JSON
+    // policy of the 'public-api' module. No rateLimit here: the dedicated
+    // publicMediaRateLimiter (5000 req/15min, separate keyspace) already applied
+    // in app.ts to '/api/v1/public/media' covers this route.
+    {
+      path: '/api/v1/public/media/*',
+      target: 'local',
+      module: 'public-media',
+      requiresAuth: false,
+      requiresApiKey: false,
+    },
     {
       path: '/api/v1/public/*',
       target: 'local',
