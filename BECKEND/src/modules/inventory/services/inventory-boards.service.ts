@@ -46,7 +46,7 @@ function toNumber(input: unknown): number {
 
 function toFiniteNumber(input: unknown): number | null {
   if (input === null || input === undefined || input === '') return null;
-  const value = Number(input);
+  const value = Number(typeof input === 'string' ? input.trim().replace(',', '.') : input);
   return Number.isFinite(value) ? value : null;
 }
 
@@ -92,6 +92,25 @@ export function normalizeInventoryBoardCoordinates(input: Record<string, unknown
   }
 
   return null;
+}
+
+function hasCoordinateValue(value: unknown): boolean {
+  return value !== null && value !== undefined && String(value).trim() !== '';
+}
+
+export function validateInventoryBoardCoordinateInput(input: Record<string, unknown>): { latitude: number; longitude: number } | null {
+  const hasLatitude = hasCoordinateValue(input.latitude);
+  const hasLongitude = hasCoordinateValue(input.longitude);
+  if (hasLatitude !== hasLongitude) {
+    throw new AppError('Latitude e longitude devem ser informados juntos.', 400);
+  }
+
+  const hasExplicitCoordinates = hasLatitude || hasLongitude || hasCoordinateValue(input.coordenadas) || input.coordinates != null;
+  const coordinates = normalizeInventoryBoardCoordinates(input);
+  if (hasExplicitCoordinates && !coordinates) {
+    throw new AppError('Coordenadas invalidas.', 400);
+  }
+  return coordinates;
 }
 
 function toId(input: unknown): string {
@@ -467,13 +486,11 @@ export class InventoryBoardsService {
       allowed.nomeDaRua = address;
       allowed.localizacao = address;
     }
-    const coordinates = normalizeInventoryBoardCoordinates(payload);
+    const coordinates = validateInventoryBoardCoordinateInput(payload);
     if (coordinates) {
       allowed.latitude = coordinates.latitude;
       allowed.longitude = coordinates.longitude;
       allowed.coordenadas = `${coordinates.latitude},${coordinates.longitude}`;
-    } else if (typeof payload.coordenadas === 'string') {
-      allowed.coordenadas = payload.coordenadas.trim();
     }
     if (typeof payload.tamanho === 'string') allowed.tamanho = payload.tamanho.trim();
     if (typeof payload.tipo === 'string') allowed.tipo = payload.tipo.trim();
@@ -519,7 +536,7 @@ export class InventoryBoardsService {
       throw new AppError('regiaoId valido e obrigatorio.', 400);
     }
     const address = payload.endereco?.trim() || payload.nomeDaRua?.trim() || payload.localizacao?.trim() || undefined;
-    const coordinates = normalizeInventoryBoardCoordinates(payload as Record<string, unknown>);
+    const coordinates = validateInventoryBoardCoordinateInput(payload as Record<string, unknown>);
 
     const doc = await Placa.create({
       numero_placa: codigo,
@@ -528,7 +545,7 @@ export class InventoryBoardsService {
       localizacao: address,
       latitude: coordinates?.latitude,
       longitude: coordinates?.longitude,
-      coordenadas: coordinates ? `${coordinates.latitude},${coordinates.longitude}` : (typeof payload.coordenadas === 'string' ? payload.coordenadas.trim() : undefined),
+      coordenadas: coordinates ? `${coordinates.latitude},${coordinates.longitude}` : undefined,
       tamanho: payload.tamanho?.trim() || undefined,
       tipo: payload.tipo?.trim() || undefined,
       regiaoId: new mongoose.Types.ObjectId(regionId),

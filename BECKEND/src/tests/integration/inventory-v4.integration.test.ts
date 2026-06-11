@@ -162,6 +162,34 @@ describe('Inventory V4 integration', () => {
     expect(db?.nomeDaRua).toBe('Rua Editada');
   });
 
+  it('PATCH /api/v4/inventory/boards/:id normaliza coordenadas e bloqueia par parcial', async () => {
+    const { boardA } = await seedInventory();
+
+    const updated = await request(app)
+      .patch(`/api/v4/inventory/boards/${boardA._id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ latitude: '-3,742352', longitude: '-38,608361' });
+
+    expect(updated.status).toBe(200);
+    expect(updated.body.data).toEqual(expect.objectContaining({
+      latitude: -3.742352,
+      longitude: -38.608361,
+      coordenadas: '-3.742352,-38.608361',
+    }));
+    expect(await Placa.findById(boardA._id).lean()).toEqual(expect.objectContaining({
+      latitude: -3.742352,
+      longitude: -38.608361,
+      coordenadas: '-3.742352,-38.608361',
+    }));
+
+    const partial = await request(app)
+      .patch(`/api/v4/inventory/boards/${boardA._id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ latitude: '-4.0' });
+    expect(partial.status).toBe(400);
+    expect(partial.body.message).toContain('Latitude e longitude devem ser informados juntos');
+  });
+
   it('PATCH /api/v4/inventory/boards/:id/availability alterna disponibilidade', async () => {
     const { boardA } = await seedInventory();
 

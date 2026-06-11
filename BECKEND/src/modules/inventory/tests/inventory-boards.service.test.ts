@@ -1,4 +1,7 @@
-import { normalizeInventoryBoardCoordinates } from '../services/inventory-boards.service';
+import {
+  normalizeInventoryBoardCoordinates,
+  validateInventoryBoardCoordinateInput,
+} from '../services/inventory-boards.service';
 
 describe('InventoryBoardsService coordinates', () => {
   it('normaliza latitude/longitude canonicos', () => {
@@ -24,5 +27,23 @@ describe('InventoryBoardsService coordinates', () => {
 
   it('rejeita valores invalidos', () => {
     expect(normalizeInventoryBoardCoordinates({ latitude: 999, longitude: -46 })).toBeNull();
+  });
+
+  it('normaliza virgula decimal', () => {
+    expect(validateInventoryBoardCoordinateInput({ latitude: '-3,742352', longitude: '-38,608361' })).toEqual({
+      latitude: -3.742352,
+      longitude: -38.608361,
+    });
+  });
+
+  it('bloqueia update parcial e coordenadas invalidas', () => {
+    expect(() => validateInventoryBoardCoordinateInput({ latitude: '-3.742352' }))
+      .toThrow('Latitude e longitude devem ser informados juntos.');
+    expect(() => validateInventoryBoardCoordinateInput({ latitude: '999', longitude: '-38.608361' }))
+      .toThrow('Coordenadas invalidas.');
+  });
+
+  it('nao transforma campos vazios em zero', () => {
+    expect(validateInventoryBoardCoordinateInput({ latitude: '', longitude: '' })).toBeNull();
   });
 });

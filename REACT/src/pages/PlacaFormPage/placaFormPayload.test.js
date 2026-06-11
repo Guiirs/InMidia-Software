@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 
 import {
   buildPlacaFormData,
+  getPlateCoordinateFormValues,
+  invalidatePlacaCoordinateQueries,
   normalizePlateCoordinatePair,
 } from './placaFormPayload.js';
 
@@ -72,10 +74,31 @@ describe('placaFormPayload', () => {
       .toThrow('Longitude deve estar entre -180 e 180.');
   });
 
-  it('PlacaFormPage invalida placas e localizacoes do mapa apos create/update', () => {
+  it('preenche edicao a partir de coordenadas canonicas ou string legada', () => {
+    const expected = {
+      latitude: '-3.742352',
+      longitude: '-38.608361',
+      coordenadas: '-3.742352,-38.608361',
+    };
+    expect(getPlateCoordinateFormValues({ latitude: -3.742352, longitude: -38.608361 })).toEqual(expected);
+    expect(getPlateCoordinateFormValues({ coordenadas: '-3.742352,-38.608361' })).toEqual(expected);
+  });
+
+  it('invalida placas, mapa e inventario apos salvar', () => {
+    const queryClient = { invalidateQueries: vi.fn() };
+    invalidatePlacaCoordinateQueries(queryClient, 'placa-1');
+
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['placas'] });
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['placaLocations'] });
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['inventory'] });
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['inventory-v4'] });
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['placa', 'placa-1'] });
+  });
+
+  it('PlacaFormPage usa o builder testado para create/update', () => {
     const source = readFileSync(new URL('./PlacaFormPage.jsx', import.meta.url), 'utf8');
 
-    expect(source.match(/queryKey:\s*\['placas'\]/g)).toHaveLength(2);
-    expect(source.match(/queryKey:\s*\['placaLocations'\]/g)).toHaveLength(2);
+    expect(source).toContain('buildPlacaFormData(data');
+    expect(source.match(/invalidatePlacaCoordinateQueries\(queryClient/g)).toHaveLength(2);
   });
 });

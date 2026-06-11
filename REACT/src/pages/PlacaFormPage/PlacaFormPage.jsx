@@ -9,7 +9,11 @@ import { listRegions } from '../../services/regionService';
 import { useToast } from '../../components/ToastNotification/ToastNotification';
 import Spinner from '../../components/Spinner/Spinner';
 import { getImageUrl } from '../../utils/helpers';
-import { normalizePlateCoordinatePair } from './placaFormPayload';
+import {
+  buildPlacaFormData,
+  getPlateCoordinateFormValues,
+  invalidatePlacaCoordinateQueries,
+} from './placaFormPayload';
 import './PlacaFormPage.css';
 
 // ─── Health Score Badge ────────────────────────────────────────────────────────
@@ -193,6 +197,7 @@ function PlacaFormPage() {
   // ── Preencher formulário ao carregar placa ────────────────────────────────
   useEffect(() => {
     if (isEditMode && placaData) {
+      const coordinateValues = getPlateCoordinateFormValues(placaData);
       const currentImageUrl = placaData.imagemPrincipal || placaData.imagem
         ? getImageUrl(placaData.imagemPrincipal || placaData.imagem, '/assets/img/placeholder.png')
         : null;
@@ -201,9 +206,7 @@ function PlacaFormPage() {
         numero_placa: placaData.numero_placa || '',
         endereco: placaData.endereco || placaData.nomeDaRua || '',
         nomeDaRua: placaData.nomeDaRua || placaData.endereco || '',
-        latitude: placaData.latitude ?? '',
-        longitude: placaData.longitude ?? '',
-        coordenadas: placaData.coordenadas || '',
+        ...coordinateValues,
         tamanho: placaData.tamanho || '',
         regiaoId: placaData.regiao?._id || placaData.regiaoId || '',
         regionalLot: placaData.regionalLot || placaData.loteRegional || '',
@@ -257,8 +260,7 @@ function PlacaFormPage() {
     mutationFn: addPlaca,
     onSuccess: () => {
       showToast('Placa adicionada com sucesso!', 'success');
-      queryClient.invalidateQueries({ queryKey: ['placas'] });
-      queryClient.invalidateQueries({ queryKey: ['placaLocations'] });
+      invalidatePlacaCoordinateQueries(queryClient);
       navigate('/placas');
     },
     onError: (error) => {
@@ -277,9 +279,7 @@ function PlacaFormPage() {
     mutationFn: (variables) => updatePlaca(variables.id, variables.formData),
     onSuccess: () => {
       showToast('Placa atualizada com sucesso!', 'success');
-      queryClient.invalidateQueries({ queryKey: ['placas'] });
-      queryClient.invalidateQueries({ queryKey: ['placaLocations'] });
-      queryClient.invalidateQueries({ queryKey: ['placa', placaId] });
+      invalidatePlacaCoordinateQueries(queryClient, placaId);
       navigate('/placas');
     },
     onError: (error) => {
@@ -302,35 +302,15 @@ function PlacaFormPage() {
   };
 
   const onSubmit = (data) => {
-    const coords = normalizePlateCoordinatePair(data.latitude, data.longitude);
-    if (coords.error) {
-      setFormError('latitude', { type: 'validate', message: coords.error });
-      setFormError('longitude', { type: 'validate', message: coords.error });
-      showToast(coords.error, 'error');
+    let formData;
+    try {
+      formData = buildPlacaFormData(data, { isEditMode, imagePreview, initialImageUrl });
+    } catch (error) {
+      const message = error.message || 'Coordenadas invalidas.';
+      setFormError('latitude', { type: 'validate', message });
+      setFormError('longitude', { type: 'validate', message });
+      showToast(message, 'error');
       return;
-    }
-
-    const formData = new FormData();
-
-    // Campos texto
-    const textFields = ['numero_placa', 'endereco', 'nomeDaRua', 'tamanho', 'regiaoId', 'regionalLot', 'notes', 'statusOperacional'];
-    textFields.forEach((key) => {
-      if (data[key] != null && data[key] !== '') formData.append(key, data[key]);
-    });
-
-    // Coordenadas numéricas
-    if (coords.hasCoordinates) {
-      formData.append('latitude', String(coords.latitude));
-      formData.append('longitude', String(coords.longitude));
-      formData.append('coordenadas', `${coords.latitude},${coords.longitude}`);
-    }
-
-    // Imagem
-    const imageFile = data.imagem?.[0];
-    if (imageFile instanceof File) {
-      formData.append('imagem', imageFile);
-    } else if (isEditMode && !imagePreview && initialImageUrl) {
-      formData.append('imagem', '');
     }
 
     if (isEditMode) {

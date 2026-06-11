@@ -462,6 +462,17 @@ function coerceCoordinate(val: unknown): number | undefined | null {
   return Number.isFinite(n) ? n : (val as any);
 }
 
+function normalizeCoordinateFields(data: Record<string, any>): void {
+  data.latitude = coerceCoordinate(data.latitude);
+  data.longitude = coerceCoordinate(data.longitude);
+  if (typeof data.coordenadas === 'string' && data.coordenadas.trim() === '') {
+    data.coordenadas = undefined;
+  }
+  if (typeof data.latitude === 'number' && typeof data.longitude === 'number') {
+    data.coordenadas = `${data.latitude},${data.longitude}`;
+  }
+}
+
 export function validateCreatePlaca(data: unknown): CreatePlacaDTO {
   const normalized = stripCommercialPlateFields(data);
   if (normalized.ativa !== undefined && normalized.disponivel === undefined) {
@@ -474,12 +485,7 @@ export function validateCreatePlaca(data: unknown): CreatePlacaDTO {
   if (!normalized.endereco && normalized.nomeDaRua) normalized.endereco = normalized.nomeDaRua;
   if (!normalized.endereco && normalized.localizacao) normalized.endereco = normalized.localizacao;
   // Coerce lat/lng strings from multipart/FormData to numbers before Zod validates
-  normalized.latitude = coerceCoordinate(normalized.latitude);
-  normalized.longitude = coerceCoordinate(normalized.longitude);
-  // Treat empty coordenadas string as absent
-  if (typeof normalized.coordenadas === 'string' && normalized.coordenadas.trim() === '') {
-    normalized.coordenadas = undefined;
-  }
+  normalizeCoordinateFields(normalized);
   return CreatePlacaSchema.parse(normalized);
 }
 
@@ -493,12 +499,7 @@ export function validateUpdatePlaca(data: unknown): UpdatePlacaDTO {
   if (!normalized.endereco && normalized.localizacao) normalized.endereco = normalized.localizacao;
   normalizeImageMutationFields(normalized);
   // Coerce lat/lng strings from multipart/FormData to numbers before Zod validates
-  normalized.latitude = coerceCoordinate(normalized.latitude);
-  normalized.longitude = coerceCoordinate(normalized.longitude);
-  // Treat empty coordenadas string as absent
-  if (typeof normalized.coordenadas === 'string' && normalized.coordenadas.trim() === '') {
-    normalized.coordenadas = undefined;
-  }
+  normalizeCoordinateFields(normalized);
   return UpdatePlacaSchema.parse(normalized);
 }
 

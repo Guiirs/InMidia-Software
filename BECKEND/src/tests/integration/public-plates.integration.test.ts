@@ -289,6 +289,84 @@ describe('Public plates integration', () => {
     expect(serialized).toContain('/api/v1/public/media/plates/');
   });
 
+  it('GET /api/v1/public/placas sem limit retorna mais de 24 placas', async () => {
+    const empresa = await createPublicEmpresa();
+    const regiao = await createTestRegiao({
+      empresaId: empresa._id,
+      nome: 'Caucaia',
+      codigo: 'CAU-LIMIT',
+      city: 'Caucaia',
+    });
+
+    await Promise.all(Array.from({ length: 30 }, (_, index) =>
+      createTestPlaca(regiao._id.toString(), {
+        empresaId: empresa._id,
+        numero_placa: `CAU-LIMIT-${String(index + 1).padStart(2, '0')}`,
+        statusComercial: 'AVAILABLE',
+        tipo: 'Outdoor',
+      }),
+    ));
+
+    const all = await request(app)
+      .get('/api/v1/public/placas')
+      .set('x-api-key', API_KEY_VALUE);
+    expect(all.status).toBe(200);
+    expect(all.body.success).toBe(true);
+    expect(all.body.data).toHaveLength(30);
+    expect(all.body.pagination.limit).toBe(1000);
+
+    const region = await request(app)
+      .get('/api/v1/public/placas?regiao=Caucaia')
+      .set('x-api-key', API_KEY_VALUE);
+    expect(region.status).toBe(200);
+    expect(region.body.data).toHaveLength(30);
+
+    const alias = await request(app)
+      .get('/api/public/placas?region=Caucaia')
+      .set('x-api-key', API_KEY_VALUE);
+    expect(alias.status).toBe(200);
+    expect(alias.body.data).toHaveLength(30);
+
+    const city = await request(app)
+      .get('/api/v1/public/placas?cidade=Caucaia')
+      .set('x-api-key', API_KEY_VALUE);
+    expect(city.status).toBe(200);
+    expect(city.body.data).toHaveLength(30);
+
+    const category = await request(app)
+      .get('/api/v1/public/placas?categoria=Outdoor')
+      .set('x-api-key', API_KEY_VALUE);
+    expect(category.status).toBe(200);
+    expect(category.body.data).toHaveLength(30);
+
+    const availability = await request(app)
+      .get('/api/v1/public/placas?disponibilidade=disponivel')
+      .set('x-api-key', API_KEY_VALUE);
+    expect(availability.status).toBe(200);
+    expect(availability.body.data).toHaveLength(30);
+
+    const limited = await request(app)
+      .get('/api/v1/public/placas?limit=10')
+      .set('x-api-key', API_KEY_VALUE);
+    expect(limited.status).toBe(200);
+    expect(limited.body.data).toHaveLength(10);
+    expect(limited.body.pagination.limit).toBe(10);
+
+    const invalid = await request(app)
+      .get('/api/v1/public/placas?limit=invalido')
+      .set('x-api-key', API_KEY_VALUE);
+    expect(invalid.status).toBe(200);
+    expect(invalid.body.data).toHaveLength(30);
+    expect(invalid.body.pagination.limit).toBe(1000);
+
+    const exportResult = await request(app)
+      .get('/api/v1/public/placas/export?regiao=Caucaia')
+      .set('x-api-key', API_KEY_VALUE);
+    expect(exportResult.status).toBe(200);
+    expect(exportResult.body.success).toBe(true);
+    expect(exportResult.body.data).toHaveLength(30);
+  });
+
   it('GET /api/v1/public/placas/:id retorna a placa por id com chave valida', async () => {
     const empresa = await createPublicEmpresa();
     const regiao = await createTestRegiao({

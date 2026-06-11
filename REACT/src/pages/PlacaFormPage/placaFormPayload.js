@@ -49,6 +49,31 @@ export function normalizePlateCoordinatePair(latitude, longitude) {
   return { latitude: lat, longitude: lng, hasCoordinates: true, error: null };
 }
 
+export function getPlateCoordinateFormValues(plate = {}) {
+  const direct = normalizePlateCoordinatePair(plate.latitude, plate.longitude);
+  if (direct.hasCoordinates) {
+    return {
+      latitude: String(direct.latitude),
+      longitude: String(direct.longitude),
+      coordenadas: `${direct.latitude},${direct.longitude}`,
+    };
+  }
+
+  if (typeof plate.coordenadas === 'string' && plate.coordenadas.includes(',')) {
+    const [latitude, longitude] = plate.coordenadas.split(',').map((part) => part.trim());
+    const legacy = normalizePlateCoordinatePair(latitude, longitude);
+    if (legacy.hasCoordinates) {
+      return {
+        latitude: String(legacy.latitude),
+        longitude: String(legacy.longitude),
+        coordenadas: `${legacy.latitude},${legacy.longitude}`,
+      };
+    }
+  }
+
+  return { latitude: '', longitude: '', coordenadas: '' };
+}
+
 export function appendPlateCoordinatesToFormData(formData, data) {
   const coords = normalizePlateCoordinatePair(data?.latitude, data?.longitude);
   if (coords.error) {
@@ -81,4 +106,12 @@ export function buildPlacaFormData(data, options = {}) {
   }
 
   return formData;
+}
+
+export function invalidatePlacaCoordinateQueries(queryClient, placaId) {
+  queryClient.invalidateQueries({ queryKey: ['placas'] });
+  queryClient.invalidateQueries({ queryKey: ['placaLocations'] });
+  queryClient.invalidateQueries({ queryKey: ['inventory'] });
+  queryClient.invalidateQueries({ queryKey: ['inventory-v4'] });
+  if (placaId) queryClient.invalidateQueries({ queryKey: ['placa', placaId] });
 }

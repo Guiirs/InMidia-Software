@@ -112,21 +112,29 @@ describe('listPlacas — mantém paginação', () => {
     setupFind(docs);
     const result = await listPlacas(EMPRESAID, {}, {});
     expect(result).toHaveProperty('pagination');
-    expect(result.pagination).toMatchObject({ page: 1, limit: 24, total: 37 });
+    expect(result.pagination).toMatchObject({ page: 1, limit: 1000, total: 37 });
   });
 
-  it('default limit é 24 (não retorna todos os 37 docs na primeira página)', async () => {
+  it('sem limit retorna todos os docs compatíveis quando existem mais de 24', async () => {
     const docs = makeDocs(37);
     setupFind(docs);
     const result = await listPlacas(EMPRESAID, {}, {});
-    expect(result.data).toHaveLength(24);
+    expect(result.data).toHaveLength(37);
   });
 
-  it('aceita limit customizado até MAX_LIMIT (100)', async () => {
+  it('respeita limit customizado', async () => {
     const docs = makeDocs(37);
     setupFind(docs);
-    const result = await listPlacas(EMPRESAID, {}, { limit: 50 });
-    expect(result.data).toHaveLength(37); // fewer than 50, returns all
+    const result = await listPlacas(EMPRESAID, {}, { limit: 10 });
+    expect(result.data).toHaveLength(10);
+  });
+
+  it('aplica teto seguro quando limit está acima do máximo', async () => {
+    const docs = makeDocs(1005);
+    setupFind(docs);
+    const result = await listPlacas(EMPRESAID, {}, { limit: 5000 });
+    expect(result.data).toHaveLength(1000);
+    expect(result.pagination.limit).toBe(1000);
   });
 });
 

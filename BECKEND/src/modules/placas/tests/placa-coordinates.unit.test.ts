@@ -156,7 +156,7 @@ describe('validateCreatePlaca — coordinate coercion', () => {
 
     expect(dto.latitude).toBe(-10.0);
     expect(dto.longitude).toBe(45.0);
-    expect(dto.coordenadas).toBe('-10.0,45.0');
+    expect(dto.coordenadas).toBe('-10,45');
   });
 });
 

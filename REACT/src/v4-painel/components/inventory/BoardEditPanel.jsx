@@ -2,6 +2,7 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { listRegions } from '../../../services/regionService.js';
 import { normalizeBoardCoordinates } from '../../integration/adapters/boardCoordinates.js';
+import { normalizePlateCoordinatePair } from '../../../pages/PlacaFormPage/placaFormPayload.js';
 import { resolveSafePlateImageUrl } from './normalizePlateCardData.js';
 import PlateImageManager from '../media/PlateImageManager.jsx';
 import './BoardEditPanel.css';
@@ -35,10 +36,11 @@ function validate(form) {
   const errors = {};
   if (!form.codigo.trim()) errors.codigo = 'Numero da placa obrigatorio.';
   if (!form.endereco.trim()) errors.endereco = 'Endereco obrigatorio.';
-  const hasLat = form.latitude !== '' && form.latitude != null;
-  const hasLng = form.longitude !== '' && form.longitude != null;
-  if (hasLat && !hasLng) errors.longitude = 'Informe a longitude.';
-  if (hasLng && !hasLat) errors.latitude = 'Informe a latitude.';
+  const coords = normalizePlateCoordinatePair(form.latitude, form.longitude);
+  if (coords.error) {
+    errors.latitude = coords.error;
+    errors.longitude = coords.error;
+  }
   return errors;
 }
 
@@ -146,11 +148,18 @@ function BoardEditPanel({ board, onSave, onClose, saving = false, onImageChange 
 
     setLocalSaving(true);
     try {
+      const coords = normalizePlateCoordinatePair(form.latitude, form.longitude);
       await onSave({
         ...board,
         ...form,
-        latitude: form.latitude !== '' ? Number(form.latitude) : undefined,
-        longitude: form.longitude !== '' ? Number(form.longitude) : undefined,
+        // Coordinate fields — nulled out on both canonical and alias keys so
+        // normalizeBoardCoordinates doesn't fall back to stale board.lat/board.lng
+        latitude:    coords.hasCoordinates ? coords.latitude    : undefined,
+        longitude:   coords.hasCoordinates ? coords.longitude   : undefined,
+        lat:         coords.hasCoordinates ? coords.latitude    : undefined,
+        lng:         coords.hasCoordinates ? coords.longitude   : undefined,
+        coordinates: coords.hasCoordinates ? { latitude: coords.latitude, longitude: coords.longitude } : undefined,
+        coordenadas: coords.hasCoordinates ? `${coords.latitude},${coords.longitude}` : undefined,
       });
       onClose();
     } finally {
@@ -238,8 +247,8 @@ function BoardEditPanel({ board, onSave, onClose, saving = false, onImageChange 
             <Field label="Latitude">
               <input
                 className={`v4p-edit-panel__input${errors.latitude ? ' v4p-edit-panel__input--error' : ''}`}
-                type="number"
-                step="any"
+                type="text"
+                inputMode="decimal"
                 placeholder="-23.5505"
                 value={form.latitude}
                 onChange={(e) => set('latitude', e.target.value)}
@@ -251,8 +260,8 @@ function BoardEditPanel({ board, onSave, onClose, saving = false, onImageChange 
             <Field label="Longitude">
               <input
                 className={`v4p-edit-panel__input${errors.longitude ? ' v4p-edit-panel__input--error' : ''}`}
-                type="number"
-                step="any"
+                type="text"
+                inputMode="decimal"
                 placeholder="-46.6333"
                 value={form.longitude}
                 onChange={(e) => set('longitude', e.target.value)}

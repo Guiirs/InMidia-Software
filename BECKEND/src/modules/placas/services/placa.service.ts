@@ -72,6 +72,14 @@ const BLOCKING_COMMERCIAL_STATUSES: readonly string[] = [
   'UNKNOWN',
 ];
 
+function validationErrorFromZod(error: unknown): ValidationError {
+  const issues = Array.isArray((error as any)?.issues) ? (error as any).issues : [];
+  const first = issues[0];
+  const field = Array.isArray(first?.path) && first.path.length > 0 ? String(first.path[0]) : 'data';
+  const message = typeof first?.message === 'string' ? first.message : 'Dados de entrada invalidos';
+  return new ValidationError([{ field, message }], message);
+}
+
 export class PlacaService {
   constructor(private readonly repository: IPlacaRepository) {}
 
@@ -147,7 +155,7 @@ export class PlacaService {
       return Result.ok(createdPlate);
     } catch (error) {
       if (error instanceof Error && error.name === 'ZodError') {
-        return Result.fail(new ValidationError([{ field: 'data', message: 'Dados de entrada inválidos' }]));
+        return Result.fail(validationErrorFromZod(error));
       }
       const domainError = toDomainError(error);
       Log.error('[PlacaService] Erro ao criar placa', { error: domainError.message, empresaId });
@@ -241,7 +249,7 @@ export class PlacaService {
       return Result.ok(result.value);
     } catch (error) {
       if (error instanceof Error && error.name === 'ZodError') {
-        return Result.fail(new ValidationError([{ field: 'data', message: 'Dados de entrada inválidos' }]));
+        return Result.fail(validationErrorFromZod(error));
       }
       const domainError = toDomainError(error);
       Log.error('[PlacaService] Erro ao atualizar placa', { error: domainError.message, placaId: id, empresaId });

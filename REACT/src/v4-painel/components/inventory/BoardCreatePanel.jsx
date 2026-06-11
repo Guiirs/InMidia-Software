@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { listRegions } from '../../../services/regionService.js';
+import { normalizePlateCoordinatePair } from '../../../pages/PlacaFormPage/placaFormPayload.js';
 import './BoardEditPanel.css';
 
 const EMPTY_FORM = {
@@ -32,10 +33,11 @@ function validate(form) {
   if (!form.codigo.trim()) errors.codigo = 'Numero da placa obrigatorio.';
   if (!form.endereco.trim()) errors.endereco = 'Endereco obrigatorio.';
   if (!form.regiaoId) errors.regiaoId = 'Selecione uma regiao.';
-  const hasLat = form.latitude !== '' && form.latitude != null;
-  const hasLng = form.longitude !== '' && form.longitude != null;
-  if (hasLat && !hasLng) errors.longitude = 'Informe a longitude.';
-  if (hasLng && !hasLat) errors.latitude = 'Informe a latitude.';
+  const coords = normalizePlateCoordinatePair(form.latitude, form.longitude);
+  if (coords.error) {
+    errors.latitude = coords.error;
+    errors.longitude = coords.error;
+  }
   return errors;
 }
 
@@ -90,10 +92,11 @@ function BoardCreatePanel({ onSave, onClose, saving = false }) {
 
     setLocalSaving(true);
     try {
+      const coords = normalizePlateCoordinatePair(form.latitude, form.longitude);
       await onSave({
         ...form,
-        latitude: form.latitude !== '' ? Number(form.latitude) : undefined,
-        longitude: form.longitude !== '' ? Number(form.longitude) : undefined,
+        latitude: coords.hasCoordinates ? coords.latitude : undefined,
+        longitude: coords.hasCoordinates ? coords.longitude : undefined,
       });
       onClose();
     } finally {

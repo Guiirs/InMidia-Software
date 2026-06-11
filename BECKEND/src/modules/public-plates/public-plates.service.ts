@@ -16,9 +16,9 @@ import {
   type PublicRegiaoPayload,
 } from './public-plates.presenter';
 
-const MAX_LIMIT = 100;
-const DEFAULT_LIMIT = 24;
-const AVAILABILITY_FILTER_CANDIDATE_LIMIT = 500;
+const MAX_LIMIT = 1000;
+const DEFAULT_LIMIT = MAX_LIMIT;
+const AVAILABILITY_FILTER_CANDIDATE_LIMIT = MAX_LIMIT;
 const EXPORT_DEFAULT_MAX = 1000;
 
 // Seleciona apenas campos de identidade, localização e status — sem campos de imagem

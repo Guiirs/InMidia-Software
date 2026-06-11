@@ -178,6 +178,81 @@ describe('PUT /api/v1/placas/:id — coordinate update', () => {
     expect(placa!.longitude).toBeCloseTo(-43.111, 3);
     expect(placa!.coordenadas).toBe('-20.999,-43.111');
   });
+
+  it('normalizes comma decimals and exposes the update on response, Mongo, and locations', async () => {
+    const createRes = await request(app)
+      .post('/api/v1/placas')
+      .set('Authorization', `Bearer ${token}`)
+      .field('numero_placa', 'COORD-UPD-COMMA')
+      .field('regiaoId', regiaoId)
+      .field('latitude', '-3.7')
+      .field('longitude', '-38.5');
+    const placaId = createRes.body.data?._id || createRes.body.data?.id;
+
+    const updateRes = await request(app)
+      .put(`/api/v1/placas/${placaId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .field('latitude', '-3,742352')
+      .field('longitude', '-38,608361');
+
+    expect(updateRes.status).toBe(200);
+    expect(updateRes.body.data).toEqual(expect.objectContaining({
+      latitude: -3.742352,
+      longitude: -38.608361,
+      coordenadas: '-3.742352,-38.608361',
+    }));
+    expect(await Placa.findById(placaId).lean()).toEqual(expect.objectContaining({
+      latitude: -3.742352,
+      longitude: -38.608361,
+      coordenadas: '-3.742352,-38.608361',
+    }));
+
+    const locations = await request(app)
+      .get('/api/v1/placas/locations?force=true')
+      .set('Authorization', `Bearer ${token}`);
+    expect(locations.body.data).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: placaId, coordenadas: '-3.742352,-38.608361' }),
+    ]));
+  });
+
+  it('does not turn empty coordinate fields into zero on update', async () => {
+    const createRes = await request(app)
+      .post('/api/v1/placas')
+      .set('Authorization', `Bearer ${token}`)
+      .field('numero_placa', 'COORD-UPD-EMPTY')
+      .field('regiaoId', regiaoId)
+      .field('latitude', '-3.7')
+      .field('longitude', '-38.5');
+    const placaId = createRes.body.data?._id || createRes.body.data?.id;
+
+    const updateRes = await request(app)
+      .put(`/api/v1/placas/${placaId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .field('latitude', '')
+      .field('longitude', '');
+
+    expect(updateRes.status).toBe(200);
+    const placa = await Placa.findById(placaId).lean();
+    expect(placa?.latitude).toBe(-3.7);
+    expect(placa?.longitude).toBe(-38.5);
+  });
+
+  it('rejects a partial coordinate update with a clear error', async () => {
+    const createRes = await request(app)
+      .post('/api/v1/placas')
+      .set('Authorization', `Bearer ${token}`)
+      .field('numero_placa', 'COORD-UPD-PARTIAL')
+      .field('regiaoId', regiaoId);
+    const placaId = createRes.body.data?._id || createRes.body.data?.id;
+
+    const updateRes = await request(app)
+      .put(`/api/v1/placas/${placaId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .field('latitude', '-3.742352');
+
+    expect(updateRes.status).toBe(400);
+    expect(updateRes.body.error).toContain('Latitude e longitude devem ser informados juntos');
+  });
 });
 
 // ─── GET /api/v1/placas/locations — map endpoint ─────────────────────────────
