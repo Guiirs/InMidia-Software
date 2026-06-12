@@ -44,6 +44,7 @@ import commercialV4Routes from '@modules/commercial/commercial-v4.routes';
 import reportsV4Routes from '@modules/relatorios/reports-v4.routes';
 import alertsV4Routes from '@modules/alerts/alerts-v4.routes';
 import operationsV4Routes from '@modules/operations/operations-v4.routes';
+import operationTeamsV4Routes from '@modules/operations/operation-teams/operation-team.routes';
 import featuresV4Routes from '@modules/features/features-v4.routes';
 import activityV4Routes from '@modules/activity/activity-v4.routes';
 import campaignsV4Routes from '@modules/campaigns/campaigns-v4.routes';
@@ -402,6 +403,15 @@ export const modules: ModuleDefinition[] = [
     basePath: '/api/v4/operations',
     router: operationsV4Routes,
     description: 'Operações V4: timeline, summary, tasks, pending, by-domain (stub real)',
+    domain: 'operations',
+    version: '4.0.0',
+    enabled: true,
+  },
+  {
+    name: 'operation-teams-v4',
+    basePath: '/api/v4/operation-teams',
+    router: operationTeamsV4Routes,
+    description: 'Equipes operacionais V4: cadastro e vínculo com operações',
     domain: 'operations',
     version: '4.0.0',
     enabled: true,

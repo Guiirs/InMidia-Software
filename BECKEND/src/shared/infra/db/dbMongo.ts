@@ -23,7 +23,11 @@ function resolveOptionalPath(value: string | undefined): string | undefined {
 }
 
 export function buildMongoConnectOptions(env = process.env): mongoose.ConnectOptions {
-  const options: mongoose.ConnectOptions = {};
+  const options: mongoose.ConnectOptions = {
+    minPoolSize: config.mongoMinPoolSize,
+    maxPoolSize: config.mongoMaxPoolSize,
+    serverSelectionTimeoutMS: config.mongoServerSelectionTimeoutMs,
+  };
   const explicitTls = parseEnvToggle(env.DB_SSL ?? env.MONGODB_TLS);
   const tlsEnabled = explicitTls ?? isAtlasMongoUri(config.mongoUri);
 

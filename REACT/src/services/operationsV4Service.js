@@ -4,6 +4,14 @@ function safeList(payload) {
   return Array.isArray(payload) ? payload : (payload?.tasks ?? payload?.events ?? payload?.items ?? []);
 }
 
+function requireOperationId(id) {
+  const normalized = typeof id === 'string' ? id.trim() : '';
+  if (!normalized || normalized === 'undefined' || normalized === 'null') {
+    throw new Error('Não foi possível identificar a operação. Atualize a página e tente novamente.');
+  }
+  return normalized;
+}
+
 // ── Read ──────────────────────────────────────────────────────────────────────
 
 export async function getOperationsTimeline(params = {}) {
@@ -88,7 +96,8 @@ export async function createOperationTask(payload) {
 }
 
 export async function updateOperationTask(id, payload) {
-  const result = await requestFirstAvailable('patch', [v4Base(`/operations/tasks/${id}`)], {
+  const operationId = requireOperationId(id);
+  const result = await requestFirstAvailable('patch', [v4Base(`/operations/tasks/${operationId}`)], {
     operation: 'operations.task.update',
     data: payload,
   });
@@ -96,7 +105,8 @@ export async function updateOperationTask(id, payload) {
 }
 
 export async function startOperationTask(id, payload = {}) {
-  const result = await requestFirstAvailable('post', [v4Base(`/operations/${id}/start`)], {
+  const operationId = requireOperationId(id);
+  const result = await requestFirstAvailable('post', [v4Base(`/operations/${operationId}/start`)], {
     operation: 'operations.task.start',
     data: payload,
   });
@@ -104,7 +114,8 @@ export async function startOperationTask(id, payload = {}) {
 }
 
 export async function completeOperationTask(id, payload = {}) {
-  const result = await requestFirstAvailable('post', [v4Base(`/operations/${id}/complete`)], {
+  const operationId = requireOperationId(id);
+  const result = await requestFirstAvailable('post', [v4Base(`/operations/${operationId}/complete`)], {
     operation: 'operations.task.complete',
     data: payload,
   });
@@ -112,7 +123,8 @@ export async function completeOperationTask(id, payload = {}) {
 }
 
 export async function cancelOperationTask(id, payload = {}) {
-  const result = await requestFirstAvailable('post', [v4Base(`/operations/${id}/cancel`)], {
+  const operationId = requireOperationId(id);
+  const result = await requestFirstAvailable('post', [v4Base(`/operations/${operationId}/cancel`)], {
     operation: 'operations.task.cancel',
     data: payload,
   });
@@ -120,7 +132,8 @@ export async function cancelOperationTask(id, payload = {}) {
 }
 
 export async function assignOperationTask(id, payload = {}) {
-  const result = await requestFirstAvailable('patch', [v4Base(`/operations/tasks/${id}/assign`)], {
+  const operationId = requireOperationId(id);
+  const result = await requestFirstAvailable('patch', [v4Base(`/operations/tasks/${operationId}/assign`)], {
     operation: 'operations.task.assign',
     data: payload,
   });

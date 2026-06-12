@@ -32,6 +32,9 @@ function normalizeHttpError(error, operation, requestPath) {
     500: 'Falha interna ao acessar recurso v4.',
   };
 
+  const data = error?.response?.data;
+  const apiError = data?.error;
+
   const wrapped = new Error(
     error?.message
     || messageByStatus[status]
@@ -40,6 +43,12 @@ function normalizeHttpError(error, operation, requestPath) {
   wrapped.statusCode = status;
   wrapped.operation = operation;
   wrapped.requestPath = requestPath;
+  // code/field/requestId: contrato estruturado da API v4 para mapeamento de
+  // mensagens amigaveis no frontend (ver operationErrorMessages.js)
+  wrapped.code = apiError?.code ?? data?.code ?? null;
+  wrapped.field = apiError?.field ?? data?.field ?? null;
+  wrapped.requestId = data?.requestId ?? null;
+  wrapped.response = error?.response;
   wrapped.cause = error;
   return wrapped;
 }

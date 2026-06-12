@@ -141,6 +141,8 @@ class QueueService {
   // ─── Public API ────────────────────────────────────────────────────────────
 
   async addPDFJob(entityId: string, empresaId: string, user: any, options: any = {}): Promise<string> {
+    if (!empresaId) throw new Error('[QueueService] empresaId é obrigatório para addPDFJob');
+
     const jobId      = `job_${Date.now()}_${Math.floor(Math.random() * 10_000)}`;
     const entityType = options.type || 'contrato';
 
@@ -148,7 +150,7 @@ class QueueService {
       jobId,
       type:       'generate_pdf',
       contratoId: entityType === 'contrato' ? entityId : null,
-      empresaId:  empresaId || null,
+      empresaId,
       status:     'queued',
     });
     await jobDoc.save();

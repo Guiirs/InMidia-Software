@@ -235,6 +235,16 @@ export class DuplicateKeyError extends DomainError {
   }
 }
 
+export class PlateNameConflictError extends DomainError {
+  readonly code = 'PLATE_NAME_CONFLICT';
+  readonly statusCode = 409;
+  readonly field = 'numero_placa';
+
+  constructor() {
+    super('Já existe uma placa cadastrada com esse nome.');
+  }
+}
+
 // ============================================
 // ERROS DE BUSINESS LOGIC (422)
 // ============================================

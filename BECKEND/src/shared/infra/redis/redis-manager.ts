@@ -13,6 +13,7 @@
 import { EventEmitter } from 'events';
 import { createClient, RedisClientType } from 'redis';
 import logger from '@shared/container/logger';
+import config from '@config/config';
 
 export type RedisState = 'disconnected' | 'connecting' | 'connected' | 'degraded';
 
@@ -156,7 +157,7 @@ class RedisManager extends EventEmitter {
       const client = createClient({
         url: this.url,
         socket: {
-          connectTimeout: 5_000,
+          connectTimeout: config.redisConnectTimeoutMs,
           reconnectStrategy: false, // We own the retry loop
         },
       }) as RedisClientType;
@@ -220,7 +221,7 @@ class RedisManager extends EventEmitter {
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       void this._connect();
-    }, delay);
+    }, delay).unref();
   }
 
   private _clearReconnectTimer(): void {

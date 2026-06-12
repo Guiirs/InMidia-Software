@@ -26,6 +26,8 @@ export interface IEnvironment {
   
   // WhatsApp
   WHATSAPP_SESSION_PATH?: string;
+  WHATSAPP_GROUP_NAME?: string;
+  WHATSAPP_GROUP_ID_FALLBACK?: string;
   
   // API Keys
   API_KEY?: string;

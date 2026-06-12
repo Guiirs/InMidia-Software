@@ -43,6 +43,7 @@ export {
   ConflictError,
   ResourceAlreadyExistsError,
   DuplicateKeyError,
+  PlateNameConflictError,
   
   // Business Rules (422)
   BusinessRuleViolationError,

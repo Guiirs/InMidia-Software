@@ -14,8 +14,14 @@ function dataList(payload) {
 function boardToCanonical(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const regiao = raw.regiao && typeof raw.regiao === 'object'
-    ? { _id: raw.regiao.id ?? raw.regiao._id ?? '', id: raw.regiao.id ?? raw.regiao._id ?? '', nome: raw.regiao.nome ?? 'Sem regiao' }
-    : { _id: '', id: '', nome: 'Sem regiao' };
+    ? {
+        _id: raw.regiao.id ?? raw.regiao._id ?? '',
+        id: raw.regiao.id ?? raw.regiao._id ?? '',
+        nome: raw.regiao.nome ?? 'Sem regiao',
+        city: raw.regiao.city ?? raw.regiao.cidade ?? null,
+        state: raw.regiao.state ?? raw.regiao.estado ?? null,
+      }
+    : { _id: '', id: '', nome: 'Sem regiao', city: null, state: null };
   const active = raw.aluguelAtivo ?? null;
   const coords = normalizeBoardCoordinates(raw);
   const endereco = raw.endereco ?? raw.nomeDaRua ?? (typeof raw.localizacao === 'string' ? raw.localizacao : '');
@@ -94,6 +100,14 @@ function boardToCanonical(raw) {
     temporalStatus: raw.commercialStatus ?? undefined,
     aluguel_data_inicio: active?.startDate ?? undefined,
     aluguel_data_fim: active?.endDate ?? undefined,
+    // ── Commercial data from CP Engine (read-only; never persisted on plate) ──────
+    cliente_nome: raw.cliente_nome ?? null,
+    valor_mensal: typeof raw.valorMensal === 'number'
+      ? raw.valorMensal
+      : (typeof raw.valor_mensal === 'number' ? raw.valor_mensal : null),
+    commercialProjection: (raw.commercialProjection != null && typeof raw.commercialProjection === 'object')
+      ? raw.commercialProjection
+      : null,
   };
 }
 

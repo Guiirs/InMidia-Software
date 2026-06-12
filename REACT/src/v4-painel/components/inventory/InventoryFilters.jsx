@@ -7,21 +7,16 @@ const DEFAULT_FILTER_OPTIONS = {
   prioridade: ['Todas', 'Urgente', 'Alta', 'Normal', 'Baixa'],
 };
 
-const EMPTY_SUMMARY = { total: 0, ocupadas: 0, disponiveis: 0, manutencao: 0 };
+const DEFAULT_FILTERS = { regiao: 'Todas', status: 'Todos', categoria: 'Todas', prioridade: 'Todas' };
 
-function formatMetric(value) {
-  const parsed = Number(value ?? 0);
-  return Number.isFinite(parsed) ? parsed.toLocaleString('pt-BR') : '0';
-}
-
-function FilterSelect({ label, options, value, onChange }) {
+function FilterSelect({ ariaLabel, options, value, onChange }) {
   return (
-    <div className="v4p-inventory-filters__field">
-      <label className="v4p-inventory-filters__label">{label}</label>
+    <div className="inv-toolbar__select-wrap">
       <select
+        aria-label={ariaLabel}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="v4p-inventory-filters__select"
+        className="inv-toolbar__select"
       >
         {options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
       </select>
@@ -35,87 +30,89 @@ function InventoryFilters({
   onClear,
   onSearch,
   searchValue,
-  options         = DEFAULT_FILTER_OPTIONS,
-  summary         = EMPTY_SUMMARY,
+  options          = DEFAULT_FILTER_OPTIONS,
+  summary,         // kept for API compat (not displayed)
   hideStatusField  = false,
-  hideSummaryStrip = false,
+  hideSummaryStrip = false, // kept for API compat
 }) {
   const filterOptions = { ...DEFAULT_FILTER_OPTIONS, ...options };
-  const compact       = { ...EMPTY_SUMMARY, ...summary };
+
+  const activeFilterCount = [
+    !!searchValue,
+    filters.regiao    !== (DEFAULT_FILTERS.regiao),
+    filters.status    !== (DEFAULT_FILTERS.status),
+    filters.categoria !== (DEFAULT_FILTERS.categoria),
+    filters.prioridade !== (DEFAULT_FILTERS.prioridade),
+  ].filter(Boolean).length;
 
   return (
-    <div className={`v4p-surface-card v4p-inventory-filters${hideStatusField ? ' v4p-inventory-filters--compact' : ''}`}>
-      <div className="v4p-inventory-filters__layout">
-        <div className="v4p-inventory-filters__controls">
-          <div className="v4p-inventory-filters__field v4p-inventory-filters__field--search">
-            <label className="v4p-inventory-filters__label">Buscar</label>
-            <div className="v4p-inventory-filters__search">
-              <span className="v4p-inventory-filters__search-icon material-symbols-rounded" aria-hidden="true">search</span>
-              <input
-                className="v4p-inventory-filters__search-input"
-                type="text"
-                placeholder="Código ou localização…"
-                value={searchValue}
-                onChange={(e) => onSearch(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <FilterSelect
-            label="Região"
-            options={filterOptions.regiao}
-            value={filters.regiao}
-            onChange={(v) => onFilterChange('regiao', v)}
-          />
-          {!hideStatusField && (
-            <FilterSelect
-              label="Status"
-              options={filterOptions.status}
-              value={filters.status}
-              onChange={(v) => onFilterChange('status', v)}
-            />
-          )}
-          <FilterSelect
-            label="Categoria"
-            options={filterOptions.categoria}
-            value={filters.categoria}
-            onChange={(v) => onFilterChange('categoria', v)}
-          />
-          <FilterSelect
-            label="Prioridade"
-            options={filterOptions.prioridade}
-            value={filters.prioridade}
-            onChange={(v) => onFilterChange('prioridade', v)}
-          />
-
+    <div className="inv-toolbar" role="search" aria-label="Filtros de inventário">
+      <div className="inv-toolbar__search-wrap">
+        <span className="material-symbols-rounded inv-toolbar__search-icon" aria-hidden="true">search</span>
+        <input
+          className="inv-toolbar__search-input"
+          type="search"
+          placeholder="Buscar código ou localização…"
+          value={searchValue}
+          onChange={(e) => onSearch(e.target.value)}
+          aria-label="Buscar placas por código ou localização"
+        />
+        {searchValue && (
           <button
             type="button"
-            onClick={onClear}
-            className="v4p-inventory-filters__clear"
+            className="inv-toolbar__search-clear material-symbols-rounded"
+            onClick={() => onSearch('')}
+            aria-label="Limpar busca"
           >
-            Limpar filtros
+            close
           </button>
-        </div>
-
-        {!hideSummaryStrip && (
-          <div className="v4p-inventory-filters__summary" aria-label="Resumo de ocupação">
-            {[
-              { l: 'Ocupadas',    v: compact.ocupadas,    c: 'var(--v4p-success)' },
-              { l: 'Disponíveis', v: compact.disponiveis, c: 'var(--v4p-accent)'  },
-              { l: 'Manutenção',  v: compact.manutencao,  c: 'var(--v4p-warning)' },
-            ].map((s) => (
-              <div key={s.l} className="v4p-inventory-filters__metric">
-                <div className="v4p-inventory-filters__metric-value" style={{ color: s.c }}>{formatMetric(s.v)}</div>
-                <div className="v4p-inventory-filters__metric-label">{s.l}</div>
-              </div>
-            ))}
-            <div className="v4p-inventory-filters__divider" aria-hidden="true" />
-            <div className="v4p-inventory-filters__metric v4p-inventory-filters__metric--total">
-              <div className="v4p-inventory-filters__metric-value">{formatMetric(compact.total)}</div>
-              <div className="v4p-inventory-filters__metric-label">Total</div>
-            </div>
-          </div>
         )}
+      </div>
+
+      <div className="inv-toolbar__divider" aria-hidden="true" />
+
+      <div className="inv-toolbar__filters">
+        <FilterSelect
+          ariaLabel="Filtrar por região"
+          options={filterOptions.regiao}
+          value={filters.regiao}
+          onChange={(v) => onFilterChange('regiao', v)}
+        />
+        {!hideStatusField && (
+          <FilterSelect
+            ariaLabel="Filtrar por status"
+            options={filterOptions.status}
+            value={filters.status}
+            onChange={(v) => onFilterChange('status', v)}
+          />
+        )}
+        <FilterSelect
+          ariaLabel="Filtrar por categoria"
+          options={filterOptions.categoria}
+          value={filters.categoria}
+          onChange={(v) => onFilterChange('categoria', v)}
+        />
+        <FilterSelect
+          ariaLabel="Filtrar por prioridade"
+          options={filterOptions.prioridade}
+          value={filters.prioridade}
+          onChange={(v) => onFilterChange('prioridade', v)}
+        />
+
+        <button
+          type="button"
+          onClick={onClear}
+          className={`inv-toolbar__clear${activeFilterCount > 0 ? ' inv-toolbar__clear--active' : ''}`}
+          aria-label={`Limpar filtros${activeFilterCount > 0 ? ` (${activeFilterCount} ativos)` : ''}`}
+        >
+          <span className="material-symbols-rounded" aria-hidden="true">
+            {activeFilterCount > 0 ? 'filter_alt_off' : 'filter_alt'}
+          </span>
+          Limpar
+          {activeFilterCount > 0 && (
+            <span className="inv-toolbar__clear-badge" aria-hidden="true">{activeFilterCount}</span>
+          )}
+        </button>
       </div>
     </div>
   );

@@ -22,6 +22,7 @@ export const piGenJobSchema = new Schema<IPiGenJob>(
     empresaId: {
       type: Schema.Types.ObjectId,
       ref: 'Empresa',
+      required: true,
       index: true,
     },
     status: {

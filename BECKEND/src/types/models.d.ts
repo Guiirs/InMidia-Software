@@ -77,6 +77,7 @@ export interface IPlateImage {
 export interface IPlaca extends IBaseDocument {
   // ── Número e identificação ─────────────────────────────────────────────
   numero_placa: string;
+  numeroPlacaNormalizado?: string;
   numeroOperacional?: number;
 
   // ── Endereço e localização ─────────────────────────────────────────────
@@ -371,7 +372,7 @@ export interface IPiGenJob extends IBaseDocument {
   jobId: string;
   type: string;
   contratoId?: Types.ObjectId | IContrato;
-  empresaId?: Types.ObjectId | IEmpresa;
+  empresaId: Types.ObjectId | IEmpresa;
   status: 'queued' | 'running' | 'done' | 'failed';
   resultPath?: string;
   resultUrl?: string;

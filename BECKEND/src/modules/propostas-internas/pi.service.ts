@@ -8,6 +8,7 @@ import Cliente from '../clientes/Cliente';
 import User from '../users/User';
 import Empresa from '../empresas/Empresa';
 import Aluguel from '../alugueis/Aluguel';
+import { syncAluguelFields } from '../alugueis/utils/aluguel-field-sync';
 import AppError from '../../shared/container/AppError';
 import logger from '../../shared/container/logger';
 import pdfService from '../../shared/container/pdf.service';
@@ -524,6 +525,7 @@ class PIService {
 
             // [PERÍODO UNIFICADO] Se as datas mudaram, atualiza todos os aluguéis usando pi_code
             if (period) {
+                const biWeeksIds = period.biWeeks ? period.biWeeks.map(bw => bw._id) : [];
                 const updated = await Aluguel.updateMany(
                     {
                         pi_code: piAtualizada.pi_code,
@@ -531,17 +533,14 @@ class PIService {
                     },
                     {
                         $set: {
-                            // Novos campos
-                            periodType: period.periodType,
-                            startDate: period.startDate,
-                            endDate: period.endDate,
-                            biWeekIds: period.biWeekIds,
-                            biWeeks: period.biWeeks ? period.biWeeks.map(bw => bw._id) : [],
-                            // Legado
-                            data_inicio: period.startDate,
-                            data_fim: period.endDate,
-                            bi_week_ids: period.biWeekIds,
-                            bi_weeks: period.biWeeks ? period.biWeeks.map(bw => bw._id) : []
+                            ...syncAluguelFields({
+                                periodType: period.periodType,
+                                startDate: period.startDate,
+                                endDate: period.endDate,
+                                biWeekIds: period.biWeekIds,
+                            }),
+                            biWeeks: biWeeksIds,
+                            bi_weeks: biWeeksIds,
                         }
                     }
                 );

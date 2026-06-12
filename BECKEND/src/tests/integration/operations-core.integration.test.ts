@@ -3,7 +3,7 @@
  *
  * Contratos verificados:
  *  1. Criar instalação com plateId válido
- *  2. Bloquear instalação sem plateId
+ *  2. Permitir instalação sem plateId
  *  3. Criar raspagem com plateId
  *  4. Criar manutenção com plateId + motivo
  *  5. Criar bloqueio com plateId + motivo
@@ -98,10 +98,11 @@ describe('Operation Area Core V4.1 integration', () => {
     expect(payload.slaStatus).toBeDefined();
   });
 
-  it('2. bloqueia instalação sem plateId', async () => {
+  it('2. permite instalação sem plateId sem bloquear placa', async () => {
     const res = await createOp({ operationType: 'INSTALLATION', priority: 'MEDIUM' });
-    expect(res.status).toBe(400);
-    expect(res.body.success).toBe(false);
+    expect(res.status).toBe(201);
+    expect(res.body.data.task.payload.plateId).toBeNull();
+    expect(res.body.data.task.openPlateKey).toBeUndefined();
   });
 
   it('3. cria raspagem com plateId', async () => {
@@ -289,7 +290,12 @@ describe('Operation Area Core V4.1 integration', () => {
 
   it('13. GET /by-plate/:plateId retorna operações da placa e respeita tenant', async () => {
     const plate = await seedPlate();
-    await createOp({ operationType: 'MAINTENANCE', plateId: String(plate._id), priority: 'MEDIUM' });
+    const first = await createOp({ operationType: 'MAINTENANCE', plateId: String(plate._id), priority: 'MEDIUM' });
+    await request(app)
+      .post(`/api/v4/operations/${first.body.data.task.id}/cancel`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ reason: 'Liberar placa para validar historico' })
+      .expect(200);
     await createOp({ operationType: 'SCRAPING', plateId: String(plate._id), priority: 'LOW' });
 
     const res = await request(app)

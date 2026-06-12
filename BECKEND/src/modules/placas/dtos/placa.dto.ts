@@ -310,6 +310,7 @@ export interface PlateImageMeta {
 export interface PlacaEntity {
   _id: Types.ObjectId;
   numero_placa: string;
+  numeroPlacaNormalizado?: string;
   numeroOperacional?: number;
 
   // Endereço

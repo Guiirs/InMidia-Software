@@ -12,6 +12,12 @@ import {
   startOperationTask,
   updateOperationTask,
 } from '../../../services/operationsV4Service.js';
+import {
+  archiveOperationTeam,
+  createOperationTeam,
+  listOperationTeams,
+  updateOperationTeam,
+} from '../../../services/operationTeamsService.js';
 
 const OPERATIONS_TTL_MS = 45_000;
 const OPERATIONS_STALE_MS = 3 * 60_000;
@@ -19,7 +25,7 @@ const OPERATIONS_READ = ['operations.read'];
 const OPERATIONS_FALLBACK_POLICY = 'keep-last-valid';
 
 function getEntityId(payload = {}) {
-  return payload.id ?? payload.taskId ?? payload.eventId ?? payload.realId;
+  return payload.id ?? payload._id ?? payload.operationId ?? payload.taskId ?? payload.eventId ?? payload.realId;
 }
 
 function stableKey(item = {}) {
@@ -79,6 +85,14 @@ function cancelTask(tasks = [], payload = {}) {
 function prependEvent(timeline = [], payload = {}) {
   const id = getEntityId(payload) ?? `event-${Date.now()}`;
   return [{ id, ...payload }, ...timeline].slice(0, 100);
+}
+
+function upsertTeam(teams = [], payload = {}) {
+  const id = getEntityId(payload);
+  if (!id) return teams;
+  const exists = teams.some((team) => stableKey(team) === id);
+  if (!exists) return [{ id, ...payload }, ...teams];
+  return teams.map((team) => (stableKey(team) === id ? { ...team, ...payload } : team));
 }
 
 const allOperationInvalidations = [
@@ -149,6 +163,14 @@ export const operationsAdapter = {
       realtimeEvents: ['operations.updated', 'operations.event.created', 'operations.task.updated'],
       debugLabel: 'Operations by domain',
     }),
+    operationsResource({
+      key: 'operations.teams',
+      fetcher: listOperationTeams,
+      dependents: ['operations.tasks'],
+      domainEvents: ['operations.team.created', 'operations.team.updated', 'operations.team.archived'],
+      realtimeEvents: ['operations.team.created', 'operations.team.updated', 'operations.team.archived'],
+      debugLabel: 'Operational teams',
+    }),
   ],
 
   mutations: [
@@ -163,7 +185,7 @@ export const operationsAdapter = {
       rollbackPolicy: 'snapshot',
       reconcilePolicy: 'server-wins',
       reconcile: [{ resourceKey: 'operations.tasks' }],
-      invalidate: ['operations.tasks', 'operations.pending', 'operations.summary'],
+      invalidate: ['operations.tasks', 'operations.pending', 'operations.summary', 'inventory.boards', 'inventory.summary', 'inventory.regions'],
       invalidateDependents: true,
       conflictPolicy: 'server-wins',
       queueKey: () => 'operations.task.create',
@@ -200,7 +222,7 @@ export const operationsAdapter = {
       rollbackPolicy: 'snapshot',
       reconcilePolicy: 'server-wins',
       reconcile: [{ resourceKey: 'operations.tasks' }],
-      invalidate: ['operations.tasks', 'operations.pending', 'operations.summary'],
+      invalidate: ['operations.tasks', 'operations.pending', 'operations.summary', 'inventory.boards', 'inventory.summary', 'inventory.regions'],
       invalidateDependents: true,
       conflictPolicy: 'server-wins',
       queueKey: (payload) => `operations.task:${getEntityId(payload)}`,
@@ -237,7 +259,7 @@ export const operationsAdapter = {
       rollbackPolicy: 'snapshot',
       reconcilePolicy: 'server-wins',
       reconcile: [{ resourceKey: 'operations.tasks' }],
-      invalidate: ['operations.tasks', 'operations.pending', 'operations.summary'],
+      invalidate: ['operations.tasks', 'operations.pending', 'operations.summary', 'inventory.boards', 'inventory.summary', 'inventory.regions'],
       invalidateDependents: true,
       conflictPolicy: 'server-wins',
       queueKey: (payload) => `operations.task:${getEntityId(payload)}`,
@@ -257,7 +279,7 @@ export const operationsAdapter = {
       rollbackPolicy: 'snapshot',
       reconcilePolicy: 'server-wins',
       reconcile: [{ resourceKey: 'operations.tasks' }],
-      invalidate: ['operations.tasks', 'operations.pending', 'operations.summary'],
+      invalidate: ['operations.tasks', 'operations.pending', 'operations.summary', 'inventory.boards', 'inventory.summary', 'inventory.regions'],
       invalidateDependents: true,
       conflictPolicy: 'server-wins',
       queueKey: (payload) => `operations.task:${getEntityId(payload)}`,
@@ -280,6 +302,57 @@ export const operationsAdapter = {
       queueKey: () => 'operations.event.create',
       debugLabel: 'Criar evento operacional',
     },
+    {
+      key: 'operations.team.create',
+      domain: 'operations',
+      mutationFn: createOperationTeam,
+      permissions: ['operations.create'],
+      requiresAuth: true,
+      optimistic: true,
+      optimisticUpdates: [{ resourceKey: 'operations.teams', updater: upsertTeam }],
+      rollbackPolicy: 'snapshot',
+      reconcilePolicy: 'server-wins',
+      reconcile: [{ resourceKey: 'operations.teams' }],
+      invalidate: ['operations.teams'],
+      invalidateDependents: true,
+      conflictPolicy: 'server-wins',
+      queueKey: () => 'operations.team.create',
+      debugLabel: 'Criar equipe operacional',
+    },
+    {
+      key: 'operations.team.update',
+      domain: 'operations',
+      mutationFn: (payload) => updateOperationTeam(getEntityId(payload), payload),
+      permissions: ['operations.update'],
+      requiresAuth: true,
+      optimistic: true,
+      optimisticUpdates: [{ resourceKey: 'operations.teams', updater: upsertTeam }],
+      rollbackPolicy: 'snapshot',
+      reconcilePolicy: 'server-wins',
+      reconcile: [{ resourceKey: 'operations.teams' }],
+      invalidate: ['operations.teams'],
+      invalidateDependents: true,
+      conflictPolicy: 'server-wins',
+      queueKey: (payload) => `operations.team:${getEntityId(payload)}`,
+      debugLabel: 'Atualizar equipe operacional',
+    },
+    {
+      key: 'operations.team.archive',
+      domain: 'operations',
+      mutationFn: (payload) => archiveOperationTeam(getEntityId(payload)),
+      permissions: ['operations.update'],
+      requiresAuth: true,
+      optimistic: true,
+      optimisticUpdates: [{ resourceKey: 'operations.teams', updater: upsertTeam }],
+      rollbackPolicy: 'snapshot',
+      reconcilePolicy: 'server-wins',
+      reconcile: [{ resourceKey: 'operations.teams' }],
+      invalidate: ['operations.teams'],
+      invalidateDependents: true,
+      conflictPolicy: 'server-wins',
+      queueKey: (payload) => `operations.team:${getEntityId(payload)}`,
+      debugLabel: 'Arquivar equipe operacional',
+    },
   ],
 
   realtimeEvents: {
@@ -293,5 +366,8 @@ export const operationsAdapter = {
     'operations.inconsistency.detected': ['operations.timeline', 'operations.summary', 'alerts.byDomain'],
     'operations.summary.refreshed':      ['operations.summary', 'dashboard.activity'],
     'alerts.created':                    ['operations.timeline', 'operations.summary'],
+    'operations.team.created':           ['operations.teams'],
+    'operations.team.updated':           ['operations.teams'],
+    'operations.team.archived':          ['operations.teams'],
   },
 };

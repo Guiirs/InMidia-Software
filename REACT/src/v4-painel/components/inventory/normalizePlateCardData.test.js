@@ -154,3 +154,198 @@ describe('normalizePlateCardData — campo imagemUrl (legado da API de listagem)
     expect(card.imageUrl).toBeNull();
   });
 });
+
+describe('normalizePlateCardData — coordenadas', () => {
+  it('expõe latitude e longitude do campo canônico', () => {
+    const card = normalizePlateCardData({ id: '1', latitude: -3.742352, longitude: -38.608361 });
+    expect(card.latitude).toBe(-3.742352);
+    expect(card.longitude).toBe(-38.608361);
+    expect(card.lat).toBe(-3.742352);
+    expect(card.lng).toBe(-38.608361);
+    expect(card.hasCoordinates).toBe(true);
+  });
+
+  it('expõe lat/lng como alias de latitude/longitude', () => {
+    const card = normalizePlateCardData({ id: '1', lat: -3.742, lng: -38.608 });
+    expect(card.latitude).toBe(-3.742);
+    expect(card.longitude).toBe(-38.608);
+    expect(card.hasCoordinates).toBe(true);
+  });
+
+  it('prioriza latitude/longitude sobre lat/lng quando ambos presentes', () => {
+    const card = normalizePlateCardData({
+      id: '1',
+      latitude: -3.742352, longitude: -38.608361,
+      lat: -3.742, lng: -38.608,
+    });
+    expect(card.latitude).toBe(-3.742352);
+    expect(card.longitude).toBe(-38.608361);
+  });
+
+  it('hasCoordinates false quando campos ausentes', () => {
+    const card = normalizePlateCardData({ id: '1' });
+    expect(card.hasCoordinates).toBe(false);
+    expect(card.latitude).toBeNull();
+    expect(card.longitude).toBeNull();
+  });
+
+  it('hasCoordinates false quando lat/lng são NaN', () => {
+    const card = normalizePlateCardData({ id: '1', latitude: NaN, longitude: NaN });
+    expect(card.hasCoordinates).toBe(false);
+    expect(card.latitude).toBeNull();
+  });
+
+  it('coordenadas canônica derivada quando hasCoordinates true', () => {
+    const card = normalizePlateCardData({ id: '1', latitude: -23.5505, longitude: -46.6333 });
+    expect(card.coordenadas).toBe('-23.5505,-46.6333');
+    expect(card.coordinates).toEqual({ latitude: -23.5505, longitude: -46.6333 });
+  });
+});
+
+describe('normalizePlateCardData — commercialSnapshot e dados comerciais', () => {
+  it('passa commercialSnapshot quando presente no board', () => {
+    const snap = {
+      clientName: 'Fortaleza Shopping',
+      revenue: 3500,
+      commercialStatus: 'CONTRACTED_ACTIVE',
+      hasActiveContract: true,
+    };
+    const card = normalizePlateCardData({ id: '1', commercialSnapshot: snap });
+    expect(card.commercialSnapshot).toEqual(snap);
+  });
+
+  it('commercialSnapshot null quando ausente', () => {
+    const card = normalizePlateCardData({ id: '1' });
+    expect(card.commercialSnapshot).toBeNull();
+  });
+
+  it('commercialSnapshot null para valor nao-objeto', () => {
+    const card = normalizePlateCardData({ id: '1', commercialSnapshot: 'invalido' });
+    expect(card.commercialSnapshot).toBeNull();
+  });
+
+  it('cliente passado diretamente e exibido no card', () => {
+    const card = normalizePlateCardData({ id: '1', cliente: 'RioMar Shopping' });
+    expect(card.cliente).toBe('RioMar Shopping');
+  });
+
+  it('cliente null quando ausente — sem mock', () => {
+    const card = normalizePlateCardData({ id: '1' });
+    expect(card.cliente).toBeNull();
+  });
+
+  it('receitaFormatada real quando fornecida pelo adapter', () => {
+    const card = normalizePlateCardData({ id: '1', receitaFormatada: 'R$ 3.500/mês' });
+    expect(card.receitaFormatada).toBe('R$ 3.500/mês');
+  });
+
+  it('receitaFormatada usa fallback A negociar apenas quando campo ausente', () => {
+    const card = normalizePlateCardData({ id: '1' });
+    expect(card.receitaFormatada).toBe('A negociar');
+  });
+
+  it('receitaEstimada zero quando ausente', () => {
+    const card = normalizePlateCardData({ id: '1' });
+    expect(card.receitaEstimada).toBe(0);
+  });
+
+  it('receitaEstimada preserva valor real quando fornecido', () => {
+    const card = normalizePlateCardData({ id: '1', receitaEstimada: 4200 });
+    expect(card.receitaEstimada).toBe(4200);
+  });
+});
+
+describe('normalizePlateCardData — operationalBlock e isAllocationBlocked', () => {
+  it('operationalBlock null e isAllocationBlocked false quando ausente', () => {
+    const card = normalizePlateCardData({ id: '1' });
+    expect(card.operationalBlock).toBeNull();
+    expect(card.isAllocationBlocked).toBe(false);
+  });
+
+  it('operationalBlock null para valor nao-objeto', () => {
+    const card = normalizePlateCardData({ id: '1', operationalBlock: 'invalido' });
+    expect(card.operationalBlock).toBeNull();
+    expect(card.isAllocationBlocked).toBe(false);
+  });
+
+  it('normaliza operationalBlock completo (instalação) e marca isAllocationBlocked', () => {
+    const card = normalizePlateCardData({
+      id: '1',
+      operationalBlock: {
+        operationId: 'op-1',
+        operationType: 'INSTALLATION',
+        operationStatus: 'PENDING',
+        label: 'Pendente de instalação',
+        assignedTo: 'Equipe Norte',
+        notes: 'Aguardando liberação de acesso.',
+      },
+    });
+
+    expect(card.operationalBlock).toEqual({
+      blocked: true,
+      reason: 'Esta placa já possui uma operação em aberto.',
+      operationId: 'op-1',
+      operationType: 'INSTALLATION',
+      operationStatus: 'PENDING',
+      status: 'PENDING',
+      label: 'Pendente de instalação',
+      assignedTo: 'Equipe Norte',
+      notes: 'Aguardando liberação de acesso.',
+      teamSnapshot: null,
+    });
+    expect(card.isAllocationBlocked).toBe(true);
+  });
+
+  it('normaliza teamSnapshot do operationalBlock quando presente', () => {
+    const card = normalizePlateCardData({
+      id: '1',
+      operationalBlock: {
+        operationId: 'op-5',
+        operationType: 'SCRAPING',
+        operationStatus: 'IN_PROGRESS',
+        label: 'Raspagem em andamento',
+        teamSnapshot: { id: 'team-1', name: 'Equipe Fortaleza 01', memberCount: 3, members: [] },
+      },
+    });
+
+    expect(card.operationalBlock.teamSnapshot).toEqual({
+      id: 'team-1',
+      name: 'Equipe Fortaleza 01',
+      memberCount: 3,
+      members: [],
+    });
+  });
+
+  it('aplica fallbacks para operationType/operationStatus/label ausentes', () => {
+    const card = normalizePlateCardData({
+      id: '1',
+      operationalBlock: { operationId: 'op-2' },
+    });
+
+    expect(card.operationalBlock).toMatchObject({
+      operationId: 'op-2',
+      operationType: 'OTHER',
+      operationStatus: 'PENDING',
+      label: 'Operação em andamento',
+      assignedTo: null,
+      notes: null,
+    });
+    expect(card.isAllocationBlocked).toBe(true);
+  });
+
+  it('assignedTo e notes ficam null quando ausentes', () => {
+    const card = normalizePlateCardData({
+      id: '1',
+      operationalBlock: {
+        operationId: 'op-3',
+        operationType: 'SCRAPING',
+        operationStatus: 'IN_PROGRESS',
+        label: 'Raspagem em andamento',
+      },
+    });
+
+    expect(card.operationalBlock.assignedTo).toBeNull();
+    expect(card.operationalBlock.notes).toBeNull();
+    expect(card.isAllocationBlocked).toBe(true);
+  });
+});

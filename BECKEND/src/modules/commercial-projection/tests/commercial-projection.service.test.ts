@@ -19,6 +19,8 @@ const mockPiFindOne = jest.fn();
 const mockPiFind = jest.fn();
 const mockClienteFindOne = jest.fn();
 const mockClienteFind = jest.fn();
+const mockOperationFindOne = jest.fn();
+const mockOperationFind = jest.fn();
 
 jest.mock('@modules/placas/Placa', () => ({
   __esModule: true,
@@ -57,6 +59,14 @@ jest.mock('@modules/clientes/Cliente', () => ({
   default: {
     findOne: (...args: any[]) => mockClienteFindOne(...args),
     find: (...args: any[]) => mockClienteFind(...args),
+  },
+}));
+
+jest.mock('@modules/operations/services/operations-v4.service', () => ({
+  __esModule: true,
+  OperationRecord: {
+    findOne: (...args: any[]) => mockOperationFindOne(...args),
+    find: (...args: any[]) => mockOperationFind(...args),
   },
 }));
 
@@ -107,6 +117,18 @@ function makePlate(overrides: Partial<any> = {}): any {
   return { _id: new Types.ObjectId(PLACA_ID), disponivel: true, ativa: true, ...overrides };
 }
 
+function makeOperation(overrides: Partial<any> = {}): any {
+  const id = overrides._id ?? new Types.ObjectId();
+  return {
+    _id: id,
+    empresaId: new Types.ObjectId(EMPRESA_ID),
+    type: 'OPERATION',
+    status: 'PENDING',
+    payload: {},
+    ...overrides,
+  };
+}
+
 // ─── Test suite ───────────────────────────────────────────────────────────────
 
 describe('CommercialProjectionService', () => {
@@ -115,6 +137,7 @@ describe('CommercialProjectionService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers().setSystemTime(NOW);
+    mockOperationFind.mockReturnValue(chainLean([]));
     service = new CommercialProjectionService();
   });
 
@@ -279,6 +302,216 @@ describe('CommercialProjectionService', () => {
 
       expect(result.commercialStatus).toBe('MAINTENANCE');
       expect(result.activeContract).toBeUndefined();
+    });
+  });
+
+  // ── operationalBlock enrichment (OPERATION-sourced reservations) ─────────
+
+  describe('operationalBlock enrichment', () => {
+    const OPERATION_ID = new Types.ObjectId();
+
+    function setupActiveOperationReservation(payload: Record<string, any>) {
+      mockPlacaFindOne.mockReturnValue(chainLean(makePlate()));
+
+      const operationReservation = makeReservation({
+        sourceType: 'OPERATION',
+        sourceId: String(OPERATION_ID),
+        startDate: PAST,
+        endDate: FUTURE,
+        status: 'ACTIVE',
+      });
+
+      mockTemporalFind
+        .mockReturnValueOnce(chainLean([operationReservation]))
+        .mockReturnValueOnce(chainLean([]));
+
+      mockOperationFind.mockReturnValue(chainLean([
+        makeOperation({ _id: OPERATION_ID, payload: { plateId: PLACA_ID, ...payload } }),
+      ]));
+    }
+
+    it.each([
+      ['INSTALLATION', 'PENDING', 'Pendente de instalação'],
+      ['INSTALLATION', 'IN_PROGRESS', 'Instalação em andamento'],
+      ['SCRAPING', 'PENDING', 'Raspagem pendente'],
+      ['SCRAPING', 'IN_PROGRESS', 'Raspagem em andamento'],
+      ['MAINTENANCE', 'PENDING', 'Manutenção pendente'],
+      ['MAINTENANCE', 'IN_PROGRESS', 'Manutenção em andamento'],
+      ['BLOCK', 'PENDING', 'Bloqueio operacional'],
+      ['BLOCK', 'IN_PROGRESS', 'Bloqueio operacional'],
+    ])('resolve(): %s/%s -> "%s"', async (operationType, operationStatus, expectedLabel) => {
+      setupActiveOperationReservation({
+        operationType,
+        operationStatus,
+        assignedTo: 'Equipe Norte',
+        notes: 'Observacao do operador',
+      });
+
+      const result = await service.resolve(PLACA_ID, EMPRESA_ID);
+
+      expect(result.commercialStatus).toBe('MAINTENANCE');
+      expect(result.operationalBlock).toBeDefined();
+      expect(result.operationalBlock?.blocked).toBe(true);
+      expect(result.operationalBlock?.reason).toBe('Esta placa já possui uma operação em aberto.');
+      expect(result.operationalBlock?.operationId).toBe(String(OPERATION_ID));
+      expect(result.operationalBlock?.operationType).toBe(operationType);
+      expect(result.operationalBlock?.operationStatus).toBe(operationStatus);
+      expect(result.operationalBlock?.label).toBe(expectedLabel);
+      expect(result.operationalBlock?.assignedTo).toBe('Equipe Norte');
+      expect(result.operationalBlock?.notes).toBe('Observacao do operador');
+    });
+
+    it('resolve(): omits assignedTo/notes when not present on the operation', async () => {
+      setupActiveOperationReservation({ operationType: 'INSTALLATION', operationStatus: 'PENDING' });
+
+      const result = await service.resolve(PLACA_ID, EMPRESA_ID);
+
+      expect(result.operationalBlock).toBeDefined();
+      expect(result.operationalBlock?.assignedTo).toBeUndefined();
+      expect(result.operationalBlock?.notes).toBeUndefined();
+    });
+
+    it('resolve(): propagates teamSnapshot from the open operation payload', async () => {
+      const teamSnapshot = { id: 'team-1', name: 'Equipe Fortaleza 01', memberCount: 3, members: [] };
+      setupActiveOperationReservation({ operationType: 'SCRAPING', operationStatus: 'IN_PROGRESS', teamSnapshot });
+
+      const result = await service.resolve(PLACA_ID, EMPRESA_ID);
+
+      expect(result.operationalBlock?.teamSnapshot).toEqual(teamSnapshot);
+    });
+
+    it('resolve(): omits teamSnapshot when the open operation has no team assigned', async () => {
+      setupActiveOperationReservation({ operationType: 'INSTALLATION', operationStatus: 'PENDING' });
+
+      const result = await service.resolve(PLACA_ID, EMPRESA_ID);
+
+      expect(result.operationalBlock?.teamSnapshot).toBeUndefined();
+    });
+
+    it('resolve(): does not set operationalBlock when the active reservation is not OPERATION-sourced', async () => {
+      mockPlacaFindOne.mockReturnValue(chainLean(makePlate()));
+
+      const contractReservation = makeReservation({
+        sourceType: 'CONTRACT',
+        sourceId: CONTRACT_ID,
+        startDate: PAST,
+        endDate: FUTURE,
+        status: 'ACTIVE',
+      });
+
+      mockTemporalFind
+        .mockReturnValueOnce(chainLean([contractReservation]))
+        .mockReturnValueOnce(chainLean([]));
+
+      mockContratoFindOne.mockReturnValue(chainLean(null));
+
+      const result = await service.resolve(PLACA_ID, EMPRESA_ID);
+
+      expect(result.operationalBlock).toBeUndefined();
+      expect(mockOperationFindOne).not.toHaveBeenCalled();
+    });
+
+    describe('resolveMany / resolveBatch', () => {
+      beforeEach(() => {
+        mockContratoFind.mockReturnValue(chainLean([]));
+        mockPiFind.mockReturnValue(chainLean([]));
+        mockClienteFind.mockReturnValue(chainLean([]));
+      });
+
+      it('enriches operationalBlock for plates with an active OPERATION reservation', async () => {
+        mockPlacaFind.mockReturnValue(chainLean([makePlate()]));
+
+        const operationReservation = makeReservation({
+          sourceType: 'OPERATION',
+          sourceId: String(OPERATION_ID),
+          startDate: PAST,
+          endDate: FUTURE,
+          status: 'ACTIVE',
+        });
+
+        mockTemporalFind
+          .mockReturnValueOnce(chainLean([operationReservation]))
+          .mockReturnValueOnce(chainLean([]));
+
+        mockOperationFind.mockReturnValue(chainLean([
+          makeOperation({
+            _id: OPERATION_ID,
+            payload: {
+              plateId: PLACA_ID,
+              operationType: 'MAINTENANCE',
+              operationStatus: 'IN_PROGRESS',
+              assignedTo: 'Equipe Sul',
+              notes: 'Troca de lona',
+            },
+          }),
+        ]));
+
+        const [result] = await service.resolveMany([PLACA_ID], EMPRESA_ID);
+
+        expect(result.commercialStatus).toBe('MAINTENANCE');
+        expect(result.operationalBlock).toBeDefined();
+        expect(result.operationalBlock?.operationId).toBe(String(OPERATION_ID));
+        expect(result.operationalBlock?.operationType).toBe('MAINTENANCE');
+        expect(result.operationalBlock?.operationStatus).toBe('IN_PROGRESS');
+        expect(result.operationalBlock?.label).toBe('Manutenção em andamento');
+        expect(result.operationalBlock?.assignedTo).toBe('Equipe Sul');
+        expect(result.operationalBlock?.notes).toBe('Troca de lona');
+      });
+
+      it('does not set operationalBlock for plates without an active OPERATION reservation', async () => {
+        mockPlacaFind.mockReturnValue(chainLean([makePlate()]));
+        mockTemporalFind
+          .mockReturnValueOnce(chainLean([]))
+          .mockReturnValueOnce(chainLean([]));
+
+        const [result] = await service.resolveMany([PLACA_ID], EMPRESA_ID);
+
+        expect(result.operationalBlock).toBeUndefined();
+        expect(mockOperationFind).toHaveBeenCalled();
+      });
+
+      it('enriches operationalBlock from an open operation even without a temporal reservation', async () => {
+        mockPlacaFind.mockReturnValue(chainLean([makePlate()]));
+        mockTemporalFind
+          .mockReturnValueOnce(chainLean([]))
+          .mockReturnValueOnce(chainLean([]));
+        mockOperationFind.mockReturnValue(chainLean([
+          makeOperation({
+            payload: {
+              plateId: PLACA_ID,
+              operationType: 'SCRAPING',
+              operationStatus: 'SCHEDULED',
+            },
+          }),
+        ]));
+
+        const [result] = await service.resolveMany([PLACA_ID], EMPRESA_ID);
+
+        expect(result.operationalBlock).toMatchObject({
+          blocked: true,
+          operationType: 'SCRAPING',
+          operationStatus: 'SCHEDULED',
+          label: 'Raspagem pendente',
+        });
+      });
+
+      it.each(['DONE', 'CANCELLED', 'finalizado', 'cancelado'])(
+        'does not block the plate for final operation status %s',
+        async (operationStatus) => {
+          mockPlacaFind.mockReturnValue(chainLean([makePlate()]));
+          mockTemporalFind
+            .mockReturnValueOnce(chainLean([]))
+            .mockReturnValueOnce(chainLean([]));
+          mockOperationFind.mockReturnValue(chainLean([
+            makeOperation({
+              payload: { plateId: PLACA_ID, operationType: 'MAINTENANCE', operationStatus },
+            }),
+          ]));
+
+          const [result] = await service.resolveMany([PLACA_ID], EMPRESA_ID);
+          expect(result.operationalBlock).toBeUndefined();
+        },
+      );
     });
   });
 

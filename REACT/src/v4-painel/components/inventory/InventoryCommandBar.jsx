@@ -32,11 +32,8 @@ function SyncIndicator({ source, loading }) {
 function KpiChip({ label, value, accent, loading }) {
   return (
     <div className="inv-cmd__kpi">
-      <span
-        className="inv-cmd__kpi-value"
-        style={accent ? { color: accent } : undefined}
-      >
-        {loading ? '…' : value}
+      <span className="inv-cmd__kpi-value" style={accent ? { color: accent } : undefined}>
+        {loading ? '—' : (value ?? '—')}
       </span>
       <span className="inv-cmd__kpi-label">{label}</span>
     </div>
@@ -54,11 +51,11 @@ function InventoryCommandBar({
   mapSplitOpen  = false,
   onToggleMap,
 }) {
-  const total      = summary?.total ?? 0;
-  const ocupadas   = summary?.ocupadas ?? null;
-  const available  = summary?.disponiveis ?? null;
-  const critical   = summary?.criticas ?? null;
-  const occupancy  = summary?.taxaOcupacao != null
+  const total     = summary?.total ?? 0;
+  const ocupadas  = summary?.ocupadas ?? null;
+  const available = summary?.disponiveis ?? null;
+  const critical  = summary?.criticas ?? null;
+  const occupancy = summary?.taxaOcupacao != null
     ? `${Math.round(summary.taxaOcupacao * 100)}%`
     : null;
 
@@ -68,50 +65,55 @@ function InventoryCommandBar({
 
   return (
     <header className="inv-cmd">
-      <div className="inv-cmd__identity">
-        <span className="inv-cmd__eyebrow">Inventário OOH</span>
-        <h1 className="inv-cmd__title">Operação de placas</h1>
+      <div className="inv-cmd__top">
+        <div className="inv-cmd__identity">
+          <span className="inv-cmd__eyebrow">Inventário OOH</span>
+          <h1 className="inv-cmd__title">Inventário de Placas</h1>
+          <p className="inv-cmd__subtitle">
+            Gerencie ativos físicos, disponibilidade operacional e presença territorial.
+          </p>
+        </div>
+
+        <div className="inv-cmd__right">
+          <SyncIndicator source={source} loading={loading} />
+          <button
+            type="button"
+            className={`inv-cmd__map-toggle${mapSplitOpen ? ' inv-cmd__map-toggle--active' : ''}`}
+            onClick={onToggleMap}
+            title={mapSplitOpen ? 'Fechar mapa lateral' : 'Abrir mapa lateral'}
+            aria-pressed={mapSplitOpen}
+            aria-label="Alternar mapa lateral"
+          >
+            <span className="material-symbols-rounded" aria-hidden="true">
+              {mapSplitOpen ? 'close_fullscreen' : 'map'}
+            </span>
+            {mapSplitOpen ? 'Fechar mapa' : 'Mapa'}
+          </button>
+          {canCreate && (
+            <button
+              type="button"
+              className="inv-cmd__cta"
+              onClick={onCreateBoard}
+              disabled={actionLoading}
+              aria-label="Criar nova placa"
+            >
+              <span className="material-symbols-rounded" aria-hidden="true">add</span>
+              Nova placa
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="inv-cmd__kpis" aria-label="Indicadores operacionais">
         <KpiChip label="ativos" value={displayTotal} loading={loading} />
-        {occupancy && (
+        {occupancy != null && (
           <KpiChip label="ocupação" value={occupancy} loading={loading} />
         )}
         {available !== null && (
-          <KpiChip label="disponíveis" value={available} accent="#06b6d4" loading={loading} />
+          <KpiChip label="disponíveis" value={available} accent="var(--v4p-accent)" loading={loading} />
         )}
         {critical !== null && critical > 0 && (
-          <KpiChip label="críticas" value={critical} accent="#ef4444" loading={loading} />
-        )}
-      </div>
-
-      <div className="inv-cmd__right">
-        <SyncIndicator source={source} loading={loading} />
-        <button
-          type="button"
-          className={`inv-cmd__map-toggle${mapSplitOpen ? ' inv-cmd__map-toggle--active' : ''}`}
-          onClick={onToggleMap}
-          title={mapSplitOpen ? 'Fechar mapa lateral' : 'Abrir mapa lateral'}
-          aria-pressed={mapSplitOpen}
-          aria-label="Alternar mapa lateral"
-        >
-          <span className="material-symbols-rounded" aria-hidden="true">
-            {mapSplitOpen ? 'close_fullscreen' : 'map'}
-          </span>
-          {mapSplitOpen ? 'Fechar mapa' : 'Mapa lateral'}
-        </button>
-        {canCreate && (
-          <button
-            type="button"
-            className="inv-cmd__cta"
-            onClick={onCreateBoard}
-            disabled={actionLoading}
-            aria-label="Criar nova placa"
-          >
-            <span className="material-symbols-rounded" aria-hidden="true">add</span>
-            Nova placa
-          </button>
+          <KpiChip label="críticas" value={critical} accent="var(--v4p-danger)" loading={loading} />
         )}
       </div>
     </header>

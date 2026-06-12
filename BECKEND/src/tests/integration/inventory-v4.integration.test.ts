@@ -11,6 +11,7 @@ import {
   TEST_EMPRESA_ID,
 } from './setup';
 import Placa from '../../modules/placas/Placa';
+import { OperationRecord } from '../../modules/operations/services/operations-v4.service';
 
 const EMPRESA_B_ID = new Types.ObjectId().toString();
 
@@ -162,6 +163,25 @@ describe('Inventory V4 integration', () => {
     expect(db?.nomeDaRua).toBe('Rua Editada');
   });
 
+  it('PATCH /api/v4/inventory/boards/:id rejeita conflito normalizado e permite manter o proprio numero', async () => {
+    const { boardA, boardA2 } = await seedInventory();
+
+    const conflict = await request(app)
+      .patch(`/api/v4/inventory/boards/${boardA._id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ numero_placa: `  ${String(boardA2.numero_placa).toLowerCase()}  ` });
+
+    expect(conflict.status).toBe(409);
+    expect(conflict.body.code).toBe('PLATE_NAME_CONFLICT');
+
+    const same = await request(app)
+      .patch(`/api/v4/inventory/boards/${boardA._id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ numero_placa: `  ${String(boardA.numero_placa).toLowerCase()}  ` });
+
+    expect(same.status).toBe(200);
+  });
+
   it('PATCH /api/v4/inventory/boards/:id normaliza coordenadas e bloqueia par parcial', async () => {
     const { boardA } = await seedInventory();
 
@@ -253,5 +273,84 @@ describe('Inventory V4 integration', () => {
     expect(res.body.data.totals.totalBoards).toBe(2);
     expect(res.body.data.totals.availableBoards).toBe(1);
     expect(String(TEST_EMPRESA_ID)).toHaveLength(24);
+  });
+
+  // ── Raspagem (SCRAPING) → operationalBlock no board (suporte ao mapa) ──────
+
+  describe('Raspagem aberta reflete operationalBlock no board', () => {
+    it('placa com raspagem aberta retorna operationalBlock bloqueado com label de Raspagem', async () => {
+      const { boardA } = await seedInventory();
+
+      const createRes = await request(app)
+        .post('/api/v4/operations')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ operationType: 'SCRAPING', plateId: String(boardA._id), priority: 'MEDIUM' });
+
+      expect(createRes.status).toBe(201);
+      const operationId = createRes.body.data.task.id;
+      expect(createRes.body.data.task.payload.plateId).toBe(String(boardA._id));
+
+      const operationDoc = await OperationRecord.findById(operationId).lean<any>();
+      expect(operationDoc?.openPlateKey).toBe(`${TEST_EMPRESA_ID}:${String(boardA._id)}`);
+
+      const res = await request(app)
+        .get('/api/v4/inventory/boards')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      const board = res.body.data.boards.find((b: any) => b.id === String(boardA._id));
+      expect(board).toBeDefined();
+      expect(board.operationalBlock).toMatchObject({
+        blocked: true,
+        operationType: 'SCRAPING',
+        operationStatus: 'PENDING',
+        label: 'Raspagem pendente',
+      });
+      expect(board.commercialProjection.operationalBlock).toMatchObject({ blocked: true, operationType: 'SCRAPING' });
+    });
+
+    it('apos concluir a raspagem, o openPlateKey e o operationalBlock somem do board', async () => {
+      const { boardA } = await seedInventory();
+
+      const createRes = await request(app)
+        .post('/api/v4/operations')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ operationType: 'SCRAPING', plateId: String(boardA._id), priority: 'MEDIUM' });
+      const operationId = createRes.body.data.task.id;
+
+      await request(app)
+        .post(`/api/v4/operations/${operationId}/start`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({});
+
+      let res = await request(app)
+        .get('/api/v4/inventory/boards')
+        .set('Authorization', `Bearer ${token}`);
+      let board = res.body.data.boards.find((b: any) => b.id === String(boardA._id));
+      expect(board.operationalBlock).toMatchObject({
+        blocked: true,
+        operationType: 'SCRAPING',
+        operationStatus: 'IN_PROGRESS',
+        label: 'Raspagem em andamento',
+      });
+
+      const completeRes = await request(app)
+        .post(`/api/v4/operations/${operationId}/complete`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({});
+
+      expect(completeRes.status).toBe(200);
+      expect(completeRes.body.data.task.payload.operationStatus).toBe('DONE');
+
+      const operationDoc = await OperationRecord.findById(operationId).lean<any>();
+      expect(operationDoc?.openPlateKey).toBeUndefined();
+
+      res = await request(app)
+        .get('/api/v4/inventory/boards')
+        .set('Authorization', `Bearer ${token}`);
+      board = res.body.data.boards.find((b: any) => b.id === String(boardA._id));
+      expect(board.operationalBlock).toBeUndefined();
+      expect(board.commercialProjection.operationalBlock).toBeUndefined();
+    });
   });
 });

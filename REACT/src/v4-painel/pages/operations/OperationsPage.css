@@ -831,8 +831,6 @@
 
 .v4p-ops-header__actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--v4p-density-gap-sm);
   width: 100%;
   margin-top: var(--v4p-density-gap-sm);
 }
@@ -1081,9 +1079,6 @@
     grid-template-columns: repeat(2, minmax(150px, 1fr));
   }
 
-  .v4p-ops-header__actions {
-    flex-direction: column;
-  }
 }
 
 /* ── Operation card states ────────────────────────────────────────────────── */

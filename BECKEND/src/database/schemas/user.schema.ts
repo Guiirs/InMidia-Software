@@ -73,6 +73,10 @@ export const userSchema = new Schema<IUser>(
       type: Date,
       index: { expires: 0 },
     },
+    // ATENÇÃO: o alias 'empresaId' só é resolvido em getters/setters de documento
+    // (doc.empresaId), NÃO em filtros de query. Toda query (find/findOne/
+    // updateMany/etc.) em User DEVE usar `empresa`, nunca `empresaId` —
+    // ver guardrail em src/tests/guardrails/user-empresa-alias.guardrail.test.ts.
     empresa: {
       type: Schema.Types.ObjectId,
       ref: 'Empresa',

@@ -4,6 +4,7 @@ import { useSyncRefresh } from '../../core/sync-core/hooks/useSyncRefresh.js';
 import { useSyncResource } from '../../core/sync-core/hooks/useSyncResource.js';
 import { setInventoryBoardsQuery } from '../../core/sync-core/query/inventoryBoardQuery.js';
 import { deriveInventorySummary } from '../integration/adapters/inventorySummaryAdapter.js';
+import { getPlateErrorMessage } from '../utils/plateErrorMessages.js';
 
 const InventoryContext = createContext(null);
 
@@ -104,7 +105,7 @@ function InventoryProvider({ children }) {
       invalidateResource('inventory.summary', { reason: 'inventory-provider:update' });
       return saved;
     } catch (err) {
-      setActionError(err.message ?? 'Nao foi possivel salvar no servidor.');
+      setActionError(getPlateErrorMessage(err, 'Nao foi possivel salvar no servidor.'));
       throw err;
     }
   }, [invalidateResource, patchBoardLocally, updateMutation]);
@@ -133,7 +134,7 @@ function InventoryProvider({ children }) {
       invalidateResource('inventory.regions', { reason: 'inventory-provider:create' });
       return created;
     } catch (err) {
-      setActionError(err.message ?? 'Nao foi possivel criar a placa no servidor.');
+      setActionError(getPlateErrorMessage(err, 'Nao foi possivel criar a placa no servidor.'));
       throw err;
     }
   }, [createMutation, invalidateResource]);

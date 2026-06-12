@@ -1,7 +1,7 @@
 /** @type {import('jest').Config} */
 module.exports = {
   testEnvironment: 'node',
-  roots: ['<rootDir>/src'],
+  roots: ['<rootDir>/src', '<rootDir>/scripts'],
   testMatch: ['**/*.test.ts', '**/*.spec.ts'],
   maxWorkers: 2,
   workerIdleMemoryLimit: '768MB',

@@ -108,6 +108,30 @@ export function normalizePlateCardData(input = {}) {
   const cliente    = raw.cliente   != null  ? String(raw.cliente)    : null;
   const campanha   = raw.campanha  != null  ? String(raw.campanha)   : null;
   const vencimento = raw.vencimento != null ? String(raw.vencimento) : null;
+  // CP snapshot — passthrough somente leitura; nunca persiste em placa
+  const commercialSnapshot = (raw.commercialSnapshot != null && typeof raw.commercialSnapshot === 'object')
+    ? raw.commercialSnapshot
+    : null;
+
+  // ── Bloqueio operacional (instalação/raspagem/manutenção/bloqueio manual) ──
+  const rawOperationalBlock = (raw.operationalBlock != null && typeof raw.operationalBlock === 'object')
+    ? raw.operationalBlock
+    : null;
+  const operationalBlock = rawOperationalBlock && rawOperationalBlock.blocked !== false ? {
+    blocked:         true,
+    reason:          str(rawOperationalBlock.reason, 'Esta placa já possui uma operação em aberto.'),
+    operationId:     str(rawOperationalBlock.operationId, ''),
+    operationType:   str(rawOperationalBlock.operationType, 'OTHER'),
+    operationStatus: str(rawOperationalBlock.operationStatus ?? rawOperationalBlock.status, 'PENDING'),
+    status:          str(rawOperationalBlock.status ?? rawOperationalBlock.operationStatus, 'PENDING'),
+    label:           str(rawOperationalBlock.label, 'Operação em andamento'),
+    assignedTo:      rawOperationalBlock.assignedTo != null ? String(rawOperationalBlock.assignedTo) : null,
+    notes:           rawOperationalBlock.notes != null ? String(rawOperationalBlock.notes) : null,
+    teamSnapshot:    (rawOperationalBlock.teamSnapshot != null && typeof rawOperationalBlock.teamSnapshot === 'object')
+      ? rawOperationalBlock.teamSnapshot
+      : null,
+  } : null;
+  const isAllocationBlocked = Boolean(operationalBlock);
 
   // ── Operacional ───────────────────────────────────────────────────────────────
   const prioridade       = str(raw.prioridade,       'normal');
@@ -167,6 +191,11 @@ export function normalizePlateCardData(input = {}) {
     cliente,
     campanha,
     vencimento,
+    commercialSnapshot,
+
+    // Bloqueio operacional
+    operationalBlock,
+    isAllocationBlocked,
 
     // Operacional
     prioridade,

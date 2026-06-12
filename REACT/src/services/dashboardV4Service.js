@@ -27,43 +27,10 @@ function brl(value) {
   return `R$ ${num(value).toLocaleString('pt-BR')}`;
 }
 
-function statusFromBoardStatus(status) {
-  return status === 'ocupada' ? 'occupied' : 'available';
-}
-
 function severityToTone(severity) {
   if (severity === 'critical') return 'danger';
   if (severity === 'warning') return 'warning';
   return 'info';
-}
-
-function toBoard(row, index) {
-  const placa = row?.placa ?? row?.numero_placa ?? row?.codigo ?? `PL-${index + 1}`;
-  const revenue = num(row?.receitaGerada ?? row?.receitaEstimada);
-  return {
-    id: row?.placaId ?? placa,
-    codigo: placa,
-    nome: row?.localizacao ?? placa,
-    localizacao: row?.localizacao ?? 'Sem localizacao',
-    regiao: row?.regiao ?? 'Sem regiao',
-    siglaRegiao: String(row?.regiao ?? '--').slice(0, 2).toUpperCase(),
-    status: statusFromBoardStatus(row?.statusAtual ?? row?.status),
-    cliente: null,
-    campanha: row?.quantidadeAlugueisContratos ? `${row.quantidadeAlugueisContratos} contratos/alugueis` : null,
-    vencimento: null,
-    receita: revenue,
-    receitaFormatada: revenue > 0 ? brl(revenue) : 'R$ 0',
-  };
-}
-
-function toActivity(row, index) {
-  return {
-    id: row?.placaId ?? row?.id ?? `dashboard-activity-${index}`,
-    label: row?.titulo ?? row?.placa ?? row?.localizacao ?? 'Atividade operacional',
-    regiao: row?.regiao ?? row?.meta?.regiao ?? 'Sem regiao',
-    tempo: row?.ultimaLocacao ? new Date(row.ultimaLocacao).toLocaleDateString('pt-BR') : 'agora',
-    categoria: severityToTone(row?.severidade ?? row?.severity),
-  };
 }
 
 function toKpi(meta, value, { highlight = false } = {}) {
@@ -74,15 +41,33 @@ function toKpi(meta, value, { highlight = false } = {}) {
   };
 }
 
+function normalizeRegionRow(row, index) {
+  const occupancyRate = num(row?.occupancyRate);
+  return {
+    id: row?.regionId || `region-${index}`,
+    label: row?.name ?? 'Sem regiao',
+    sigla: String(row?.name ?? '--').slice(0, 2).toUpperCase(),
+    totalBoards: num(row?.total),
+    occupiedBoards: num(row?.occupied),
+    availableBoards: num(row?.available),
+    occupancyRate: occupancyRate / 100,
+    activeRevenue: 0,
+    proposalsOpen: 0,
+    contractsActive: 0,
+    state: occupancyRate >= 70 ? 'healthy' : 'warning',
+  };
+}
+
 function normalizeOverview(payload) {
-  const totalBoards = num(payload?.totalPlacas);
-  const availableBoards = num(payload?.placasDisponiveis);
-  const occupiedBoards = num(payload?.placasAlugadasOcupadas);
-  const occupancyRate = num(payload?.taxaOcupacao);
-  const activeRevenue = num(payload?.receitaEstimadaMensal);
-  const contractsActive = num(payload?.contratosAtivos);
-  const regionsActive = num(payload?.regioesAtivas);
-  const maintenanceBoards = Math.max(totalBoards - availableBoards - occupiedBoards, 0);
+  const totalBoards = num(payload?.totalBoards);
+  const availableBoards = num(payload?.availableBoards);
+  const occupiedBoards = num(payload?.occupiedBoards);
+  const occupancyRate = num(payload?.occupancyRate);
+  const activeRevenue = num(payload?.monthlyRevenue);
+  const contractsActive = num(payload?.activeContracts);
+  const criticalAlerts = num(payload?.criticalAlerts);
+  const operations = payload?.operations ?? {};
+  const maintenanceBoards = num(operations.maintenances) + num(operations.blocks);
 
   return {
     generatedAt: new Date().toISOString(),
@@ -107,17 +92,18 @@ function normalizeOverview(payload) {
       availableBoards,
       occupiedBoards,
       occupancyRate,
+      boardsWithoutCoordinates: num(payload?.boardsWithoutCoordinates),
       activeRevenue,
       contractsActive,
-      regionsActive,
-      criticalAlerts: 0,
+      regionsActive: 0,
+      criticalAlerts,
     },
     executive: {
       operationalHealth: occupancyRate >= 70 ? 'healthy' : occupancyRate >= 50 ? 'warning' : 'critical',
       revenueHealth: activeRevenue > 0 ? 'healthy' : 'warning',
       occupancyHealth: occupancyRate >= 70 ? 'healthy' : 'warning',
       contractsHealth: contractsActive > 0 ? 'healthy' : 'warning',
-      alertsHealth: 'healthy',
+      alertsHealth: criticalAlerts > 0 ? 'critical' : 'healthy',
     },
     operationMix: [
       { label: 'Ocupadas', value: occupiedBoards, color: MIX_COLORS.occupied },
@@ -128,77 +114,80 @@ function normalizeOverview(payload) {
 }
 
 function normalizeRegions(payload) {
-  const regions = arr(payload).map((row, index) => ({
-    id: row?.regiaoId ?? `region-${index}`,
-    label: row?.regiao ?? 'Sem regiao',
-    sigla: String(row?.regiao ?? '--').slice(0, 2).toUpperCase(),
-    totalBoards: num(row?.totalPlacas),
-    occupiedBoards: num(row?.placasAlugadas),
-    availableBoards: Math.max(num(row?.totalPlacas) - num(row?.placasAlugadas), 0),
-    occupancyRate: num(row?.taxaOcupacao) / 100,
-    activeRevenue: num(row?.receitaEstimada),
-    proposalsOpen: num(row?.propostasAbertas),
-    contractsActive: num(row?.contratosAtivos),
-    state: num(row?.taxaOcupacao) >= 70 ? 'healthy' : 'warning',
-  }));
-
-  return { regions };
+  return {
+    regions: arr(payload?.regions).map(normalizeRegionRow),
+    domains: payload?.domains ?? null,
+  };
 }
 
 function normalizeActivity(payload) {
-  const mostRentedBoards = arr(payload);
+  const items = arr(payload?.items);
+  const activityTimeline = items.map((item, index) => ({
+    id: item?.id ?? `dashboard-activity-${index}`,
+    label: item?.label ?? 'Atividade operacional',
+    regiao: item?.regionId ?? item?.domain ?? 'Sem regiao',
+    tempo: item?.occurredAt ? new Date(item.occurredAt).toLocaleDateString('pt-BR') : 'agora',
+    categoria: severityToTone(item?.severity),
+  }));
+
   return {
-    mostRentedBoards,
-    featuredBoards: mostRentedBoards.map(toBoard),
-    activityTimeline: mostRentedBoards.map(toActivity),
-    timeline: mostRentedBoards.map(toActivity),
+    activityTimeline,
+    timeline: activityTimeline,
+    cursor: payload?.cursor ?? null,
   };
 }
 
 function normalizePerformance(payload) {
-  const idleBoards = arr(payload);
+  const idleBoards = arr(payload?.idleBoards);
+  const regions = arr(payload?.regions).map(normalizeRegionRow);
+  const commercialRaw = payload?.commercial ?? {};
+  const lowOccupancyRegions = regions.filter((region) => region.occupancyRate < 0.5).length;
+  const availableInventoryPotential = num(commercialRaw.opportunities?.totalValue) + num(commercialRaw.proposals?.totalValue);
+
   return {
     idleBoards,
-    activityTimeline: idleBoards.map((row, index) => ({
-      ...toActivity(row, index),
-      label: row?.placa ? `Placa ${row.placa} ociosa` : 'Placa ociosa',
-      tempo: row?.diasSemAluguel == null ? 'sem historico' : `${row.diasSemAluguel} dias`,
-      categoria: row?.nuncaAlugada || num(row?.diasSemAluguel) >= 120 ? 'danger' : 'warning',
+    regions,
+    activityTimeline: idleBoards.map((board, index) => ({
+      id: board?.id ?? `idle-board-${index}`,
+      label: board?.numeroPlaca ? `Placa ${board.numeroPlaca} ociosa` : 'Placa ociosa',
+      regiao: board?.regionId ?? 'Sem regiao',
+      tempo: board?.since ? new Date(board.since).toLocaleDateString('pt-BR') : 'sem historico',
+      categoria: 'warning',
     })),
+    operations: {
+      maintenanceBoards: 0,
+      score: null,
+      dataQualityIssues: 0,
+    },
+    commercial: {
+      availableInventoryPotential,
+      lowOccupancyRegions,
+    },
+    expiringContracts: arr(payload?.expiringContracts),
   };
 }
 
 function normalizeAlerts(payload) {
-  const alerts = arr(payload);
-  const totals = alerts.reduce((acc, alert) => {
-    const severity = alert?.severidade ?? 'info';
-    acc[severity] = (acc[severity] ?? 0) + 1;
-    acc.total += 1;
-    return acc;
-  }, { total: 0, critical: 0, warning: 0, info: 0 });
+  const total = num(payload?.total);
+  const critical = num(payload?.critical);
+  const unread = num(payload?.unread);
+  const byDomain = arr(payload?.byDomain);
 
   return {
     alerts: {
-      ...totals,
-      topAlerts: alerts.slice(0, 5).map((alert) => ({
-        id: alert.id,
-        title: alert.titulo,
-        severity: alert.severidade,
-        region: alert.meta?.regiao ?? 'Todos',
+      total,
+      critical,
+      warning: Math.max(unread - critical, 0),
+      info: Math.max(total - unread, 0),
+      topAlerts: byDomain.slice(0, 5).map((domainRow) => ({
+        id: domainRow?.domain,
+        title: `${num(domainRow?.open)} alerta(s) em aberto`,
+        severity: num(domainRow?.open) > 0 ? 'warning' : 'info',
+        region: 'Todos',
       })),
     },
-    priorityActions: alerts.slice(0, 4).map((alert) => ({
-      label: alert.titulo,
-      value: alert.severidade === 'critical' ? 'critico' : alert.severidade,
-      detail: alert.acaoSugerida ?? alert.descricao,
-      tone: severityToTone(alert.severidade),
-    })),
-    recommendations: alerts.slice(0, 5).map((alert) => ({
-      id: alert.id,
-      title: alert.titulo,
-      detail: alert.acaoSugerida ?? alert.descricao,
-      priority: alert.severidade,
-    })),
+    priorityActions: [],
+    recommendations: [],
   };
 }
 

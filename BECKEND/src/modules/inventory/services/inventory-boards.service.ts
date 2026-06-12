@@ -8,6 +8,13 @@ import { buildProxyImageUrl } from '@modules/public-plates/public-plates.present
 import { plateMediaService } from '@modules/media/plate-media.service';
 import mongoose from 'mongoose';
 import AppError from '@shared/container/AppError';
+import {
+  isPlateNameDuplicateKeyError,
+  normalizePlateName,
+  PLATE_NAME_CONFLICT_CODE,
+  PLATE_NAME_CONFLICT_FIELD,
+  PLATE_NAME_CONFLICT_MESSAGE,
+} from '@modules/placas/utils/plate-name.utils';
 
 export interface CreateBoardPayload {
   numero_placa?: string;
@@ -188,8 +195,11 @@ export interface BoardListItem {
     activeContract?: CommercialProjection['activeContract'];
     reservation: CommercialProjection['reservation'];
     pricing?: CommercialProjection['pricing'];
+    operationalBlock?: CommercialProjection['operationalBlock'];
     resolvedAt: string;
   };
+  /** Shorthand from commercialProjection.operationalBlock — present when allocation is operationally blocked */
+  operationalBlock?: CommercialProjection['operationalBlock'];
   /** Shorthand from commercialProjection; kept for backward compat with v4/adapters */
   commercialStatus?: string;
   /** @deprecated kept for backward compat with commercial-availability projection consumers */
@@ -255,6 +265,16 @@ export interface InventoryRegionsResult {
 }
 
 export class InventoryBoardsService {
+  private plateNameConflictError(): AppError {
+    return new AppError(
+      PLATE_NAME_CONFLICT_MESSAGE,
+      409,
+      undefined,
+      PLATE_NAME_CONFLICT_CODE,
+      PLATE_NAME_CONFLICT_FIELD,
+    );
+  }
+
   private toEmpresaObjectId(empresaId: string): mongoose.Types.ObjectId {
     return new mongoose.Types.ObjectId(empresaId);
   }
@@ -396,11 +416,13 @@ export class InventoryBoardsService {
               activeContract: cp.activeContract,
               reservation: cp.reservation,
               pricing: cp.pricing,
+              operationalBlock: cp.operationalBlock,
               resolvedAt: cp.resolvedAt,
             }
           : undefined,
         // Shorthand + backward compat with v4/adapters
         commercialStatus: cp?.commercialStatus,
+        operationalBlock: cp?.operationalBlock,
         commercialAvailabilitySource: undefined,
         isCommerciallyAvailable: cp ? cp.commercialStatus === 'AVAILABLE' : undefined,
         isPhysicallyBlocked: cp ? cp.commercialStatus === 'MAINTENANCE' && !cp.reservation.active && !cp.reservation.future : undefined,
@@ -474,6 +496,15 @@ export class InventoryBoardsService {
     const allowed: Record<string, unknown> = {};
     if (typeof payload.numero_placa === 'string' && payload.numero_placa.trim()) allowed.numero_placa = payload.numero_placa.trim();
     if (typeof payload.codigo === 'string' && payload.codigo.trim()) allowed.numero_placa = payload.codigo.trim();
+    if (typeof allowed.numero_placa === 'string') {
+      allowed.numeroPlacaNormalizado = normalizePlateName(allowed.numero_placa);
+      const existing = await Placa.exists({
+        _id: { $ne: new mongoose.Types.ObjectId(boardId) },
+        empresaId: this.toEmpresaObjectId(empresaId),
+        numeroPlacaNormalizado: allowed.numeroPlacaNormalizado,
+      });
+      if (existing) throw this.plateNameConflictError();
+    }
     const address = typeof payload.endereco === 'string'
       ? payload.endereco.trim()
       : typeof payload.nomeDaRua === 'string'
@@ -505,11 +536,17 @@ export class InventoryBoardsService {
       allowed.regiaoId = new mongoose.Types.ObjectId(regionId);
     }
 
-    const updated = await Placa.findOneAndUpdate(
-      { _id: new mongoose.Types.ObjectId(boardId), empresaId: this.toEmpresaObjectId(empresaId) },
-      { $set: allowed },
-      { new: true, runValidators: true },
-    ).lean();
+    let updated;
+    try {
+      updated = await Placa.findOneAndUpdate(
+        { _id: new mongoose.Types.ObjectId(boardId), empresaId: this.toEmpresaObjectId(empresaId) },
+        { $set: allowed },
+        { new: true, runValidators: true },
+      ).lean();
+    } catch (error) {
+      if (isPlateNameDuplicateKeyError(error)) throw this.plateNameConflictError();
+      throw error;
+    }
 
     if (!updated) throw new AppError('Placa nao encontrada.', 404);
     return this.getBoardById(empresaId, boardId);
@@ -537,26 +574,39 @@ export class InventoryBoardsService {
     }
     const address = payload.endereco?.trim() || payload.nomeDaRua?.trim() || payload.localizacao?.trim() || undefined;
     const coordinates = validateInventoryBoardCoordinateInput(payload as Record<string, unknown>);
-
-    const doc = await Placa.create({
-      numero_placa: codigo,
-      endereco: address,
-      nomeDaRua: address,
-      localizacao: address,
-      latitude: coordinates?.latitude,
-      longitude: coordinates?.longitude,
-      coordenadas: coordinates ? `${coordinates.latitude},${coordinates.longitude}` : undefined,
-      tamanho: payload.tamanho?.trim() || undefined,
-      tipo: payload.tipo?.trim() || undefined,
-      regiaoId: new mongoose.Types.ObjectId(regionId),
+    const numeroPlacaNormalizado = normalizePlateName(codigo);
+    const existing = await Placa.exists({
       empresaId: this.toEmpresaObjectId(empresaId),
-      regionalLot: payload.regionalLot?.trim() || undefined,
-      loteRegional: payload.loteRegional?.trim() || payload.regionalLot?.trim() || undefined,
-      statusOperacional: payload.statusOperacional?.trim() || undefined,
-      notes: payload.notes?.trim() || undefined,
-      observacoes: payload.observacoes?.trim() || payload.notes?.trim() || undefined,
-      disponivel: payload.disponivel ?? true,
+      numeroPlacaNormalizado,
     });
+    if (existing) throw this.plateNameConflictError();
+
+    let doc;
+    try {
+      doc = await Placa.create({
+        numero_placa: codigo,
+        numeroPlacaNormalizado,
+        endereco: address,
+        nomeDaRua: address,
+        localizacao: address,
+        latitude: coordinates?.latitude,
+        longitude: coordinates?.longitude,
+        coordenadas: coordinates ? `${coordinates.latitude},${coordinates.longitude}` : undefined,
+        tamanho: payload.tamanho?.trim() || undefined,
+        tipo: payload.tipo?.trim() || undefined,
+        regiaoId: new mongoose.Types.ObjectId(regionId),
+        empresaId: this.toEmpresaObjectId(empresaId),
+        regionalLot: payload.regionalLot?.trim() || undefined,
+        loteRegional: payload.loteRegional?.trim() || payload.regionalLot?.trim() || undefined,
+        statusOperacional: payload.statusOperacional?.trim() || undefined,
+        notes: payload.notes?.trim() || undefined,
+        observacoes: payload.observacoes?.trim() || payload.notes?.trim() || undefined,
+        disponivel: payload.disponivel ?? true,
+      });
+    } catch (error) {
+      if (isPlateNameDuplicateKeyError(error)) throw this.plateNameConflictError();
+      throw error;
+    }
 
     return this.getBoardById(empresaId, String(doc._id));
   }

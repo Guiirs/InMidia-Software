@@ -59,6 +59,35 @@ function isActiveNow(item: Pick<ITemporalReservation, 'startDate' | 'endDate' | 
   return isBlockingStatus(item.status) && item.startDate <= now && item.endDate >= now;
 }
 
+/**
+ * Deriva o PlateTemporalStatus de uma reserva sourceType=OPERATION a partir do
+ * `reason`, no formato `"${operationType}:${operationStatus}"` (ex.:
+ * "MAINTENANCE:IN_PROGRESS"). Mantem fallback para reservas legadas cujo
+ * `reason` guarda apenas o tipo (sem ":").
+ */
+function operationPlateStatusFromReason(reason?: string): PlateTemporalStatus | null {
+  if (!reason) return null;
+  const [rawType, rawStatus] = reason.split(':');
+  const type = (rawType ?? '').trim().toUpperCase();
+  const status = (rawStatus ?? '').trim().toUpperCase();
+  const inProgress = status === 'IN_PROGRESS';
+
+  if (type === 'INSTALLATION' || /install/i.test(reason)) {
+    return inProgress ? 'INSTALLATION_IN_PROGRESS' : 'INSTALLATION_PENDING';
+  }
+  if (type === 'SCRAPING' || /rasp/i.test(reason)) {
+    return inProgress ? 'SCRAPING_IN_PROGRESS' : 'SCRAPING_PENDING';
+  }
+  if (type === 'MAINTENANCE') {
+    return inProgress ? 'MAINTENANCE_IN_PROGRESS' : 'MAINTENANCE_PENDING';
+  }
+  if (type === 'BLOCK') {
+    return 'OPERATIONAL_BLOCK';
+  }
+
+  return null;
+}
+
 function toConflict(reservation: ITemporalReservation, start: Date, end: Date): TemporalConflict {
   return {
     plateId: String(reservation.plateId),
@@ -316,6 +345,31 @@ class TemporalEngineService {
     return { cancelledCount: result.modifiedCount ?? 0 };
   }
 
+  /**
+   * Atualiza o `reason` das reservas bloqueantes ativas de uma fonte (ex.: ao
+   * mudar o status de uma operacao de PENDING para IN_PROGRESS), para que
+   * resolvePlateTemporalStatus reflita o novo status sem recriar a reserva.
+   */
+  async updateReservationReason(
+    sourceType: TemporalSourceType,
+    sourceId: string,
+    empresaId: string,
+    reason: string,
+  ): Promise<{ updatedCount: number }> {
+    if (!empresaId) throw new Error('[TemporalEngine] empresaId é obrigatório para updateReservationReason');
+    const result = await TemporalReservation.updateMany(
+      {
+        sourceType,
+        sourceId,
+        empresaId: toObjectId(empresaId),
+        status: { $in: TEMPORAL_BLOCKING_STATUSES },
+      },
+      { $set: { reason } },
+    );
+
+    return { updatedCount: result.modifiedCount ?? 0 };
+  }
+
   async replaceSourceReservations(input: {
     empresaId: string;
     sourceType: TemporalSourceType;
@@ -419,8 +473,10 @@ class TemporalEngineService {
     const active = reservations.find((reservation) => isActiveNow(reservation, now));
     if (active?.sourceType === 'MANUAL_BLOCK' || active?.status === 'BLOCKED') return 'BLOCKED';
     if (active?.sourceType === 'CONTRACT') return 'CONTRACTED_ACTIVE';
-    if (active?.sourceType === 'OPERATION' && /install/i.test(active.reason ?? '')) return 'INSTALLATION_PENDING';
-    if (active?.sourceType === 'OPERATION' && /rasp/i.test(active.reason ?? '')) return 'SCRAPING_PENDING';
+    if (active?.sourceType === 'OPERATION') {
+      const operationStatus = operationPlateStatusFromReason(active.reason);
+      if (operationStatus) return operationStatus;
+    }
     if (active) return 'RESERVED_FUTURE';
 
     const future = reservations.find((reservation) => isBlockingStatus(reservation.status) && reservation.startDate > now);

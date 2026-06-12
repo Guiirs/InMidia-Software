@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 
 import { renderWithV4Providers } from '../../test/test-utils.jsx';
 import OperationsPage from './OperationsPage.jsx';
@@ -9,6 +9,7 @@ import OperationsPage from './OperationsPage.jsx';
 const testState = vi.hoisted(() => ({
   operations: null,
   authPermissions: [],
+  boardsResource: null,
 }));
 
 vi.mock('../../providers/OperationsProvider.jsx', () => ({
@@ -21,6 +22,21 @@ vi.mock('../../../context/AuthContext.jsx', () => ({
     permissions: testState.authPermissions,
     user: { permissions: testState.authPermissions },
     hasPermission: (perm) => testState.authPermissions.includes(perm),
+  }),
+}));
+
+vi.mock('../../../core/sync-core/hooks/useSyncResource.js', () => ({
+  useSyncResource: () => testState.boardsResource,
+}));
+
+vi.mock('../../../core/sync-core/hooks/useSyncMutation.js', () => ({
+  useSyncMutation: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({}),
+    mutate: vi.fn(),
+    status: 'idle',
+    error: null,
+    data: null,
+    isLoading: false,
   }),
 }));
 
@@ -130,6 +146,14 @@ describe('OperationsPage smoke', () => {
   beforeEach(() => {
     testState.authPermissions = [];
     testState.operations = operationsContext();
+    testState.boardsResource = {
+      data: [{ id: 'board-07', codigo: '07', endereco: 'Av. Central', cidade: 'Caucaia', regiao: 'Ceará Norte', status: 'available' }],
+      status: 'success',
+      error: null,
+      isStale: false,
+      isRefreshing: false,
+      refresh: vi.fn(),
+    };
   });
 
   // ── Núcleo operacional ──────────────────────────────────────────────────
@@ -168,13 +192,92 @@ describe('OperationsPage smoke', () => {
     expect(screen.getByText('O que mudou')).toBeInTheDocument();
   });
 
-  it('renderiza botões de criação rápida no header', () => {
+  it('renderiza apenas a ação genérica de nova operação no header', () => {
     renderOperations();
 
-    expect(screen.getByRole('button', { name: /Nova instalação/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Raspagem/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Manutenção/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Bloqueio/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Nova operação/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Nova instalação/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Raspagem$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Manutenção$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Bloqueio$/i })).not.toBeInTheDocument();
+  });
+
+  it('abre o modal redesenhado e oferece a escolha de tipo dentro dele', () => {
+    testState.authPermissions = ['operations.create'];
+    renderOperations();
+
+    expect(screen.queryByTestId('operation-form-modal-redesigned')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Nova operação/i }));
+
+    const modal = screen.getByTestId('operation-form-modal-redesigned');
+    expect(modal).toBeInTheDocument();
+    expect(within(modal).getByText('Tipo de operação')).toBeInTheDocument();
+    expect(within(modal).getByText('Identificação')).toBeInTheDocument();
+    expect(within(modal).getByText('Agendamento')).toBeInTheDocument();
+    expect(within(modal).getByText('Detalhes específicos')).toBeInTheDocument();
+    expect(within(modal).getAllByText('Observações').length).toBeGreaterThan(0);
+    expect(within(modal).getByRole('radio', { name: /^Instalação$/i })).toBeChecked();
+    expect(within(modal).getByRole('radio', { name: /^Raspagem$/i })).toBeInTheDocument();
+    expect(within(modal).getByRole('radio', { name: /^Manutenção$/i })).toBeInTheDocument();
+    expect(within(modal).getByRole('radio', { name: /^Bloqueio operacional$/i })).toBeInTheDocument();
+  });
+
+  it('cancela usando payload objeto com o id canonico da operacao', async () => {
+    const cancelTask = vi.fn().mockResolvedValue({});
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    testState.operations = operationsContext({
+      cancelTask,
+      operations: {
+        ...operationsContext().operations,
+        tasks: [{ id: 'op-123', title: 'Raspagem 07', status: 'PENDING', operationType: 'SCRAPING', payload: {} }],
+      },
+    });
+
+    renderOperations();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+    expect(cancelTask).toHaveBeenCalledWith({
+      id: 'op-123',
+      reason: 'Cancelado pelo usuário',
+    });
+  });
+
+  it('inicia usando payload objeto com o id canonico da operacao', async () => {
+    const startTask = vi.fn().mockResolvedValue({});
+    testState.operations = operationsContext({
+      startTask,
+      operations: {
+        ...operationsContext().operations,
+        tasks: [{ id: 'op-123', title: 'Raspagem 07', status: 'PENDING', operationType: 'SCRAPING', payload: {} }],
+      },
+    });
+
+    renderOperations();
+    fireEvent.click(screen.getByRole('button', { name: /Iniciar/i }));
+
+    expect(startTask).toHaveBeenCalledTimes(1);
+    const [payload] = startTask.mock.calls[0];
+    expect(typeof payload).toBe('object');
+    expect(payload).toMatchObject({ id: 'op-123' });
+  });
+
+  it('nao chama a API ao tentar iniciar operacao sem id e mostra erro amigavel', async () => {
+    const startTask = vi.fn().mockResolvedValue({});
+    testState.operations = operationsContext({
+      startTask,
+      operations: {
+        ...operationsContext().operations,
+        tasks: [{ id: '', title: 'Raspagem sem id', status: 'PENDING', operationType: 'SCRAPING', payload: {} }],
+      },
+    });
+
+    renderOperations();
+    fireEvent.click(screen.getByRole('button', { name: /Iniciar/i }));
+
+    expect(startTask).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Não foi possível iniciar esta operação porque o identificador está ausente.',
+    );
   });
 
   // ── Separação admin / operacional ──────────────────────────────────────
@@ -254,6 +357,237 @@ describe('OperationsPage smoke', () => {
     // Ações corretas por status
     expect(screen.getAllByRole('button', { name: /Iniciar/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: /Concluir/i }).length).toBeGreaterThan(0);
+  });
+
+  it('exibe a equipe responsável e o total de integrantes no card da operação', () => {
+    testState.operations = operationsContext({
+      operations: {
+        ...operationsContext().operations,
+        tasks: [
+          {
+            id: 'task-team-1',
+            title: 'Instalação SP-02',
+            payload: {
+              operationType: 'INSTALLATION',
+              operationStatus: 'PENDING',
+              priority: 'MEDIUM',
+              teamId: 'team-1',
+              teamSnapshot: { id: 'team-1', name: 'Equipe Instalação Norte', memberCount: 2, members: [] },
+            },
+            slaStatus: 'ON_TRACK',
+          },
+        ],
+      },
+    });
+
+    renderOperations();
+
+    expect(screen.getByText('Equipe: Equipe Instalação Norte · 2 integrantes')).toBeInTheDocument();
+  });
+
+  // ── Conclusão de manutenção (relatório final obrigatório) ────────────────
+
+  describe('Conclusão de manutenção', () => {
+    function renderWithMaintenanceTask() {
+      const completeTask = vi.fn().mockResolvedValue(undefined);
+      testState.operations = operationsContext({
+        operations: {
+          ...operationsContext().operations,
+          tasks: [
+            {
+              id: 'task-maint-1',
+              title: 'Manutenção preventiva PL-009',
+              payload: { operationType: 'MAINTENANCE', operationStatus: 'IN_PROGRESS', priority: 'MEDIUM', plateId: 'plate-009' },
+              slaStatus: 'ON_TRACK',
+            },
+          ],
+        },
+        completeTask,
+      });
+      renderOperations();
+      return { completeTask };
+    }
+
+    it('abre o modal de relatório final ao concluir uma manutenção em andamento', () => {
+      renderWithMaintenanceTask();
+
+      expect(screen.queryByTestId('maintenance-completion-modal')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /Concluir/i }));
+
+      expect(screen.getByTestId('maintenance-completion-modal')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Concluir manutenção' })).toBeInTheDocument();
+    });
+
+    it('bloqueia a conclusão sem relatório final preenchido', async () => {
+      const { completeTask } = renderWithMaintenanceTask();
+
+      fireEvent.click(screen.getByRole('button', { name: /Concluir/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Concluir manutenção/i }));
+
+      expect(await screen.findByText('Relatório final é obrigatório para concluir a manutenção.')).toBeInTheDocument();
+      expect(completeTask).not.toHaveBeenCalled();
+    });
+
+    it('conclui a manutenção enviando { id, finalReport } quando o relatório é preenchido', async () => {
+      const { completeTask } = renderWithMaintenanceTask();
+
+      fireEvent.click(screen.getByRole('button', { name: /Concluir/i }));
+
+      const textarea = screen.getByLabelText(/Relatório final/i);
+      fireEvent.change(textarea, { target: { value: 'Troca de lâmpadas e revisão da estrutura.' } });
+      fireEvent.click(screen.getByRole('button', { name: /Concluir manutenção/i }));
+
+      await vi.waitFor(() => {
+        expect(completeTask).toHaveBeenCalledWith({ id: 'task-maint-1', finalReport: 'Troca de lâmpadas e revisão da estrutura.' });
+      });
+    });
+  });
+
+  // ── Conclusão de operações não-manutenção (raspagem, instalação, etc.) ───
+
+  describe('Conclusão de operação não-manutenção', () => {
+    it('conclui uma raspagem em andamento enviando { id, completedAt }', async () => {
+      const completeTask = vi.fn().mockResolvedValue(undefined);
+      testState.operations = operationsContext({
+        operations: {
+          ...operationsContext().operations,
+          tasks: [
+            {
+              id: 'task-scrap-1',
+              title: 'Raspagem RJ-05',
+              payload: { operationType: 'SCRAPING', operationStatus: 'IN_PROGRESS', priority: 'MEDIUM', plateId: 'plate-rj-05' },
+              slaStatus: 'ON_TRACK',
+            },
+          ],
+        },
+        completeTask,
+      });
+      renderOperations();
+
+      fireEvent.click(screen.getByRole('button', { name: /Concluir/i }));
+
+      await vi.waitFor(() => {
+        expect(completeTask).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'task-scrap-1', completedAt: expect.any(String) }),
+        );
+      });
+      const [payload] = completeTask.mock.calls[0];
+      expect(typeof payload).toBe('object');
+      expect(payload.id).toBe('task-scrap-1');
+    });
+
+    it('exibe erro amigavel e nao chama completeTask quando o identificador da operacao esta ausente', async () => {
+      const completeTask = vi.fn().mockResolvedValue(undefined);
+      testState.operations = operationsContext({
+        operations: {
+          ...operationsContext().operations,
+          tasks: [
+            {
+              id: undefined,
+              title: 'Raspagem sem id',
+              payload: { operationType: 'SCRAPING', operationStatus: 'IN_PROGRESS', priority: 'MEDIUM', plateId: 'plate-rj-06' },
+              slaStatus: 'ON_TRACK',
+            },
+          ],
+        },
+        completeTask,
+      });
+      renderOperations();
+
+      fireEvent.click(screen.getByRole('button', { name: /Concluir/i }));
+
+      expect(await screen.findByText('Não foi possível concluir esta operação porque o identificador está ausente.')).toBeInTheDocument();
+      expect(completeTask).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Erros amigáveis de criação/conclusão ────────────────────────────────
+
+  describe('Tratamento de erros amigáveis', () => {
+    function apiError(code, field) {
+      const err = new Error('erro tecnico');
+      err.code = code;
+      err.field = field;
+      err.requestId = 'req-123';
+      return err;
+    }
+
+    it('exibe mensagem amigavel e destaca o campo Placa quando criação falha com OPERATION_BOARD_NOT_FOUND', async () => {
+      testState.authPermissions = ['operations.create'];
+      const createTask = vi.fn().mockRejectedValue(apiError('OPERATION_BOARD_NOT_FOUND', 'boardId'));
+      testState.operations = operationsContext({ createTask });
+      renderOperations();
+
+      fireEvent.click(screen.getByRole('button', { name: /Nova operação/i }));
+      const modal = screen.getByTestId('operation-form-modal-redesigned');
+
+      fireEvent.click(within(modal).getByRole('radio', { name: 'Raspagem' }));
+      fireEvent.focus(within(modal).getByRole('combobox', { name: /^Placa/ }));
+      fireEvent.click(within(modal).getByRole('button', { name: /Placa 07/ }));
+      fireEvent.click(within(modal).getByRole('button', { name: 'Criar operação' }));
+
+      expect(await screen.findByTestId('operation-form-error-banner')).toBeInTheDocument();
+      expect(screen.getByText('Não foi possível criar a operação.')).toBeInTheDocument();
+      expect(screen.getByText(/Não encontramos a placa selecionada/)).toBeInTheDocument();
+      expect(screen.getByText('Placa não encontrada.')).toBeInTheDocument();
+
+      // mensagem tecnica nunca aparece
+      const pageText = document.body.textContent;
+      expect(pageText).not.toContain('erro tecnico');
+      expect(pageText).not.toContain('empresaId');
+    });
+
+    it('limpa o erro de criação ao fechar e reabrir o modal', async () => {
+      testState.authPermissions = ['operations.create'];
+      const createTask = vi.fn().mockRejectedValue(apiError('OPERATION_BOARD_NOT_FOUND', 'boardId'));
+      testState.operations = operationsContext({ createTask });
+      renderOperations();
+
+      fireEvent.click(screen.getByRole('button', { name: /Nova operação/i }));
+      let modal = screen.getByTestId('operation-form-modal-redesigned');
+      fireEvent.click(within(modal).getByRole('radio', { name: 'Raspagem' }));
+      fireEvent.focus(within(modal).getByRole('combobox', { name: /^Placa/ }));
+      fireEvent.click(within(modal).getByRole('button', { name: /Placa 07/ }));
+      fireEvent.click(within(modal).getByRole('button', { name: 'Criar operação' }));
+
+      expect(await screen.findByTestId('operation-form-error-banner')).toBeInTheDocument();
+
+      fireEvent.click(within(modal).getByRole('button', { name: 'Cancelar' }));
+      expect(screen.queryByTestId('operation-form-modal-redesigned')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /Nova operação/i }));
+      modal = screen.getByTestId('operation-form-modal-redesigned');
+      expect(within(modal).queryByTestId('operation-form-error-banner')).not.toBeInTheDocument();
+    });
+
+    it('exibe mensagem amigavel e destaca o relatório final quando conclusão de manutenção falha com OPERATION_FINAL_REPORT_REQUIRED', async () => {
+      const completeTask = vi.fn().mockRejectedValue(apiError('OPERATION_FINAL_REPORT_REQUIRED', 'finalReport'));
+      testState.operations = operationsContext({
+        operations: {
+          ...operationsContext().operations,
+          tasks: [
+            {
+              id: 'task-maint-2',
+              title: 'Manutenção corretiva PL-010',
+              payload: { operationType: 'MAINTENANCE', operationStatus: 'IN_PROGRESS', priority: 'MEDIUM', plateId: 'plate-010' },
+              slaStatus: 'ON_TRACK',
+            },
+          ],
+        },
+        completeTask,
+      });
+      renderOperations();
+
+      fireEvent.click(screen.getByRole('button', { name: /Concluir/i }));
+      fireEvent.change(screen.getByLabelText(/Relatório final/i), { target: { value: 'Relatório qualquer' } });
+      fireEvent.click(screen.getByRole('button', { name: /Concluir manutenção/i }));
+
+      expect(await screen.findByTestId('maintenance-completion-error-banner')).toBeInTheDocument();
+      expect(screen.getByText('Não foi possível concluir a manutenção.')).toBeInTheDocument();
+      expect(screen.getByText(/Informe o relatório final da manutenção/)).toBeInTheDocument();
+      expect(screen.getByText('Relatório final é obrigatório.')).toBeInTheDocument();
+    });
   });
 
   // ── Estado de erro ──────────────────────────────────────────────────────

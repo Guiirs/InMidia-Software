@@ -9,11 +9,27 @@ const testState = vi.hoisted(() => ({
   auth: null,
   dashboard: null,
   realtime: null,
+  boardsResource: null,
 }));
+
+function defaultBoardsResource() {
+  return {
+    data: [],
+    status: 'success',
+    error: null,
+    isStale: false,
+    isRefreshing: false,
+    refresh: vi.fn(),
+  };
+}
 
 vi.mock('../../../context/AuthContext.jsx', () => ({
   useAuth: () => testState.auth,
   AuthProvider: ({ children }) => children,
+}));
+
+vi.mock('../../../core/sync-core/hooks/useSyncResource.js', () => ({
+  useSyncResource: () => testState.boardsResource,
 }));
 
 vi.mock('../../providers/DashboardProvider.jsx', () => ({
@@ -125,6 +141,7 @@ describe('DashboardPage smoke por role', () => {
       reconnecting: false,
       eventCount: 0,
     };
+    testState.boardsResource = defaultBoardsResource();
   });
 
   it('operador ve saude e operacao sem blocos financeiros de gestao', async () => {

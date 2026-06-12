@@ -10,11 +10,13 @@ import {
   DatabaseError, 
   PlacaNotFoundError,
   DuplicateKeyError,
+  PlateNameConflictError,
   ValidationError,
   toDomainError
 } from '@shared/core';
 import { Log } from '@shared/core';
 import { plateMediaService } from '@modules/media/plate-media.service';
+import { isPlateNameDuplicateKeyError, normalizePlateName } from '../utils/plate-name.utils';
 import type {
   PlacaEntity, 
   CreatePlacaDTO, 
@@ -56,18 +58,19 @@ export class PlacaRepository implements IPlacaRepository {
     try {
       const existing = await Placa.exists({
         empresaId,
-        numero_placa: data.numero_placa,
+        numeroPlacaNormalizado: normalizePlateName(data.numero_placa),
       });
       if (existing) {
         Log.warn('[PlacaRepository] Tentativa de criar placa duplicada', {
           field: 'numero_placa',
           empresaId,
         });
-        return Result.fail(new DuplicateKeyError('numero_placa'));
+        return Result.fail(new PlateNameConflictError());
       }
 
       const placa = new Placa({
         ...data,
+        numeroPlacaNormalizado: normalizePlateName(data.numero_placa),
         empresaId,
         ativa: data.ativa ?? true,
         ...(createdBy ? { createdBy } : {}),
@@ -86,6 +89,9 @@ export class PlacaRepository implements IPlacaRepository {
 
     } catch (error) {
       // Mongoose duplicate key error
+      if (isPlateNameDuplicateKeyError(error)) {
+        return Result.fail(new PlateNameConflictError());
+      }
       if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {
         const field = 'keyPattern' in error && error.keyPattern && typeof error.keyPattern === 'object'
           ? Object.keys(error.keyPattern)[0] || 'desconhecido'
@@ -229,6 +235,16 @@ export class PlacaRepository implements IPlacaRepository {
     try {
       const updatePayload: Record<string, unknown> = { ...data };
       if (updatedBy) updatePayload.updatedBy = updatedBy;
+      if (data.numero_placa) {
+        const numeroPlacaNormalizado = normalizePlateName(data.numero_placa);
+        const existing = await Placa.exists({
+          _id: { $ne: id },
+          empresaId,
+          numeroPlacaNormalizado,
+        });
+        if (existing) return Result.fail(new PlateNameConflictError());
+        updatePayload.numeroPlacaNormalizado = numeroPlacaNormalizado;
+      }
 
       const placa = await Placa.findOneAndUpdate(
         { _id: id, empresaId },
@@ -251,6 +267,9 @@ export class PlacaRepository implements IPlacaRepository {
 
     } catch (error) {
       // Duplicate key error
+      if (isPlateNameDuplicateKeyError(error)) {
+        return Result.fail(new PlateNameConflictError());
+      }
       if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {
         const field = 'keyPattern' in error && error.keyPattern && typeof error.keyPattern === 'object'
           ? Object.keys(error.keyPattern)[0] || 'desconhecido'

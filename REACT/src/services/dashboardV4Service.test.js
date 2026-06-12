@@ -34,14 +34,16 @@ describe('dashboardV4Service', () => {
 
   it('consome KPIs pelo endpoint V4 e normaliza para o contrato visual', async () => {
     mockData({
-      totalPlacas: 10,
-      placasDisponiveis: 4,
-      placasAlugadasOcupadas: 6,
-      taxaOcupacao: 60,
-      contratosAtivos: 3,
-      receitaEstimadaMensal: 12000,
-      regioesAtivas: 2,
-      propostasEmAberto: 1,
+      totalBoards: 10,
+      availableBoards: 4,
+      occupiedBoards: 6,
+      occupancyRate: 60,
+      activeContracts: 3,
+      monthlyRevenue: 12000,
+      commercialPipelineValue: 0,
+      criticalAlerts: 1,
+      pendingTasks: 2,
+      operations: { maintenances: 0, blocks: 0 },
     });
 
     const result = await getDashboardKpis();
@@ -51,24 +53,27 @@ describe('dashboardV4Service', () => {
       url: '/v4/dashboard/kpis',
     }));
     expect(result.hero).toMatchObject({ totalBoards: 10, occupiedBoards: 6, revenueLabel: 'R$ 12.000' });
+    expect(result.kpis).toMatchObject({ totalBoards: 10, availableBoards: 4, occupiedBoards: 6, occupancyRate: 60, criticalAlerts: 1 });
     expect(result.mainKpis).toHaveLength(4);
     expect(result.operationMix.map((item) => item.value)).toEqual([6, 4, 0]);
   });
 
   it('consome overview, activity, performance e alerts-summary somente por /api/v4/dashboard', async () => {
-    mockData([{ regiaoId: 'r1', regiao: 'Norte', totalPlacas: 2, placasAlugadas: 1, taxaOcupacao: 50 }]);
+    mockData({
+      regions: [{ regionId: 'r1', name: 'Norte', total: 2, available: 1, occupied: 1, occupancyRate: 50 }],
+      domains: { inventory: { total: 2 }, contracts: { total: 0 }, commercial: { total: 0 }, alerts: { total: 0 }, operations: { total: 0 }, reports: { total: 0 } },
+    });
     await expect(getDashboardOverview()).resolves.toMatchObject({ regions: [expect.objectContaining({ label: 'Norte' })] });
 
-    mockData([{ placaId: 'p1', placa: 'PL-1', localizacao: 'Centro', regiao: 'Norte', receitaGerada: 100 }]);
-    await expect(getDashboardActivity()).resolves.toMatchObject({ featuredBoards: [expect.objectContaining({ codigo: 'PL-1' })] });
+    mockData({ items: [{ id: 'p1', type: 'operation', domain: 'operations', label: 'Tarefa PL-1', severity: 'info', occurredAt: new Date().toISOString() }], cursor: null });
+    await expect(getDashboardActivity()).resolves.toMatchObject({ activityTimeline: [expect.objectContaining({ label: 'Tarefa PL-1' })] });
 
-    mockData([{ placaId: 'p2', placa: 'PL-2', diasSemAluguel: 70, regiao: 'Sul' }]);
-    await expect(getDashboardPerformance()).resolves.toMatchObject({ idleBoards: [expect.objectContaining({ placa: 'PL-2' })] });
+    mockData({ idleBoards: [{ id: 'p2', numeroPlaca: 'PL-2', regionId: 'Sul', since: new Date().toISOString() }], regions: [], expiringContracts: [], commercial: {}, reports: { recent: [] } });
+    await expect(getDashboardPerformance()).resolves.toMatchObject({ idleBoards: [expect.objectContaining({ numeroPlaca: 'PL-2' })] });
 
-    mockData([{ id: 'a1', titulo: 'Alerta', severidade: 'critical', acaoSugerida: 'Agir' }]);
+    mockData({ total: 1, critical: 1, unread: 1, byDomain: [{ domain: 'operations', count: 1, open: 1 }] });
     await expect(getDashboardAlertsSummary()).resolves.toMatchObject({
       alerts: expect.objectContaining({ total: 1, critical: 1 }),
-      priorityActions: [expect.objectContaining({ label: 'Alerta', tone: 'danger' })],
     });
 
     const urls = apiClient.request.mock.calls.map(([request]) => requestPath(request));

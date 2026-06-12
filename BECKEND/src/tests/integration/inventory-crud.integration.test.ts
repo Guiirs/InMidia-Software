@@ -58,6 +58,56 @@ describe('POST /api/v4/inventory/boards', () => {
     expect(res.body.data.id).toBeDefined();
   });
 
+  it('rejeita numero de placa equivalente normalizado com erro amigavel', async () => {
+    await createTestPlaca(regiaoId, { numero_placa: 'Pláca   São 07' });
+
+    const res = await request(app)
+      .post(BASE)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ codigo: '  placa sao 07 ', regiaoId });
+
+    expect(res.status).toBe(409);
+    expect(res.body).toEqual(expect.objectContaining({
+      success: false,
+      code: 'PLATE_NAME_CONFLICT',
+      message: 'Já existe uma placa cadastrada com esse nome.',
+    }));
+    expect(res.body.error).toEqual(expect.objectContaining({
+      code: 'PLATE_NAME_CONFLICT',
+      field: 'numero_placa',
+    }));
+  });
+
+  it('mantem numero de placa arquivada reservado', async () => {
+    await createTestPlaca(regiaoId, {
+      numero_placa: 'PLACA ARQUIVADA',
+      archivedAt: new Date(),
+      statusOperacional: 'ARCHIVED',
+    });
+
+    const res = await request(app)
+      .post(BASE)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ codigo: 'placa arquivada', regiaoId });
+
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('PLATE_NAME_CONFLICT');
+  });
+
+  it('permite o mesmo numero normalizado em empresas diferentes', async () => {
+    await createTestPlaca(regiaoId, { numero_placa: 'PLACA TENANT' });
+    const outroTenantId = new Types.ObjectId().toString();
+    await ensureTestEmpresa(outroTenantId);
+    const outroTenantToken = generateTestToken({ role: 'admin_empresa', empresaId: outroTenantId });
+
+    const res = await request(app)
+      .post(BASE)
+      .set('Authorization', `Bearer ${outroTenantToken}`)
+      .send({ codigo: ' placa tenant ', regiaoId });
+
+    expect(res.status).toBe(201);
+  });
+
   it('rejeita criação sem regiaoId com 400', async () => {
     const res = await request(app)
       .post(BASE)

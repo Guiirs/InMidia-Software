@@ -65,12 +65,16 @@
   flex-wrap: wrap;
 }
 .v4p-bdp__code { font-size: 0.9em; }
-.v4p-bdp__sep  { color: var(--v4p-text-4); font-weight: 300; }
 
 .v4p-bdp__subtitle {
   margin: 6px 0 0;
   color: var(--v4p-text-4);
   font-size: 12px;
+}
+.v4p-bdp__subtitle--aux {
+  margin-top: 2px;
+  font-size: 11px;
+  opacity: 0.72;
 }
 
 .v4p-bdp__header-right {
@@ -214,16 +218,6 @@
   justify-content: center;
 }
 
-.v4p-bdp__hero-img-badges {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  display: flex;
-  gap: 6px;
-  pointer-events: none;
-  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
-}
-
 .v4p-bdp__hero-summary {
   padding: 16px 18px;
   border: 1px solid rgba(148, 163, 184, 0.10);
@@ -328,16 +322,31 @@
   min-width: 0;
 }
 
-/* ── ROW 2: Geo + Technical ──────────────────────────────────── */
-.v4p-bdp__row2 {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-  gap: var(--v4p-density-gap);
-  align-items: start;
+/* ── Section header (compartilhado) ──────────────────────────── */
+.v4p-bdp__section-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.v4p-bdp__section-icon {
+  font-size: 18px;
+  color: var(--v4p-accent);
+  margin-top: 1px;
+}
+.v4p-bdp__section-head h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--v4p-text-1);
+}
+.v4p-bdp__section-head p {
+  margin: 3px 0 0;
+  font-size: 11px;
+  color: var(--v4p-text-4);
 }
 
-/* ── Geo panel (BoardGeoPanel) styles ────────────────────────── */
-.v4p-geo {
+/* ── LOCALIZAÇÃO ──────────────────────────────────────────────── */
+.v4p-bdp__location {
   padding: 16px 18px;
   border: 1px solid rgba(148, 163, 184, 0.10);
   border-radius: 14px;
@@ -346,59 +355,51 @@
   flex-direction: column;
   gap: 14px;
 }
-.v4p-geo__header {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-.v4p-geo__header-icon {
-  font-size: 18px;
-  color: var(--v4p-accent);
-  margin-top: 1px;
-}
-.v4p-geo__header h3 {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--v4p-text-1);
-}
-.v4p-geo__header p {
-  margin: 3px 0 0;
-  font-size: 11px;
-  color: var(--v4p-text-4);
+.v4p-bdp__location-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: var(--v4p-density-gap);
+  align-items: stretch;
 }
 
-/* Mini map */
-.v4p-geo__map {
+/* Mapa real (BoardLocationMap) */
+.v4p-locmap {
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid rgba(148, 163, 184, 0.10);
-  background: rgba(10, 16, 30, 0.85);
+  min-height: 220px;
 }
-.v4p-geo__map-svg {
+.v4p-locmap__map {
   width: 100%;
-  height: auto;
-  display: block;
+  height: 100%;
+  min-height: 220px;
 }
-.v4p-geo__map-footer {
+.v4p-locmap--empty,
+.v4p-locmap--loading {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 7px 10px;
-  border-top: 1px solid rgba(148, 163, 184, 0.08);
-  font-size: 11px;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(10, 16, 30, 0.85);
   color: var(--v4p-text-4);
-  background: rgba(0, 0, 0, 0.25);
+  font-size: 12px;
 }
-.v4p-geo__map-footer .material-symbols-rounded { color: var(--v4p-accent); }
-.v4p-geo__coords {
-  margin-left: auto;
-  font-family: var(--v4p-mono, monospace);
-  font-size: 10px;
-  color: var(--v4p-text-4);
+.v4p-locmap--loading { min-height: 220px; }
+.v4p-locmap__empty-icon { font-size: 28px; opacity: 0.6; }
+.v4p-locmap__pin {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--pin-color, var(--v4p-accent));
+  border: 2px solid rgba(255, 255, 255, 0.78);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--pin-color, var(--v4p-accent)) 28%, transparent),
+    0 4px 14px rgba(0, 0, 0, 0.46);
 }
 
-/* Geo rows */
+/* Dados de localização (BoardGeoPanel) */
 .v4p-geo__grid {
   display: flex;
   flex-direction: column;
@@ -431,72 +432,6 @@
   color: var(--v4p-text-2);
   font-weight: 600;
   text-align: right;
-}
-
-/* Technical section */
-.v4p-bdp__technical {
-  padding: 16px 18px;
-  border: 1px solid rgba(148, 163, 184, 0.10);
-  border-radius: 14px;
-  background: rgba(15, 23, 42, 0.88);
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.v4p-bdp__section-head {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-.v4p-bdp__section-icon {
-  font-size: 18px;
-  color: var(--v4p-accent);
-  margin-top: 1px;
-}
-.v4p-bdp__section-head h3 {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--v4p-text-1);
-}
-.v4p-bdp__section-head p {
-  margin: 3px 0 0;
-  font-size: 11px;
-  color: var(--v4p-text-4);
-}
-
-.v4p-bdp__data-grid {
-  display: flex;
-  flex-direction: column;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.08);
-}
-
-.v4p-bdp__perf-bars {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.v4p-bdp__perf-bar { display: flex; flex-direction: column; gap: 5px; }
-.v4p-bdp__perf-bar-head {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-  color: var(--v4p-text-4);
-}
-.v4p-bdp__perf-bar-track {
-  height: 5px;
-  border-radius: 99px;
-  background: rgba(148, 163, 184, 0.10);
-  overflow: hidden;
-}
-.v4p-bdp__perf-bar-fill {
-  height: 100%;
-  border-radius: 99px;
-  transition: width 0.5s ease;
 }
 
 /* ── ROW 3: Contracts + Performance ──────────────────────────── */
@@ -866,10 +801,15 @@
 
 /* ── RESPONSIVIDADE ──────────────────────────────────────────── */
 @media (max-width: 1440px) {
-  .v4p-bdp__row2,
+  .v4p-bdp__location-grid,
   .v4p-bdp__row3,
   .v4p-bdp__row4 {
     grid-template-columns: 1fr;
+  }
+
+  .v4p-locmap,
+  .v4p-locmap__map {
+    min-height: 260px;
   }
 }
 

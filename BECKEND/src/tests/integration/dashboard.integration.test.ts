@@ -12,6 +12,7 @@ import {
   TEST_EMPRESA_ID,
 } from './setup';
 import Aluguel from '../../modules/alugueis/Aluguel';
+import Placa from '../../modules/placas/Placa';
 import PropostaInterna from '../../modules/propostas-internas/PropostaInterna';
 import Contrato from '../../modules/contratos/Contrato';
 import { OperationRecord } from '../../modules/operations/services/operations-v4.service';
@@ -284,6 +285,18 @@ describe('Dashboard V4 — nativo (sem dependência do DashboardService v1)', ()
     expect(availableBoards).toBe(2);
     expect(occupiedBoards).toBe(1);
     expect(occupancyRate).toBe(33.33);
+  });
+
+  it('GET /kpis informa quantas placas estao sem coordenadas cadastradas', async () => {
+    const { placaB } = await seedDashboardData();
+    await Placa.findByIdAndUpdate(placaB._id, { latitude: -23.55, longitude: -46.63 });
+
+    const res = await request(app)
+      .get('/api/v4/dashboard/kpis')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(res.body.data.boardsWithoutCoordinates).toBe(2);
   });
 
   it('GET /kpis nao quebra com operacao canonica e ainda le legado', async () => {

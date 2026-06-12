@@ -3,8 +3,13 @@ import { memo } from 'react';
 const TYPE_LABEL = {
   INSTALLATION: 'Instalacao',
   SCRAPING: 'Raspagem',
+  CLEANING: 'Limpeza',
+  REMOVAL: 'Retirada',
   MAINTENANCE: 'Manutencao',
   BLOCK: 'Bloqueio',
+  BLOCKING: 'Bloqueio',
+  CRITICAL: 'Operacao critica',
+  INSPECTION: 'Inspecao',
   OTHER: 'Operacao',
 };
 

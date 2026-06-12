@@ -258,6 +258,65 @@ describe('V4OperationalMap - slideout da placa selecionada', () => {
     fireEvent.click(screen.getByText('click'));
     expect(screen.getByLabelText('Detalhes da placa selecionada')).toHaveClass('v4-geomap-bottom-sheet');
   });
+
+  it('exibe operacao em aberto no slideout quando operationalBlock.blocked e true', () => {
+    render(
+      <ControlledMap
+        points={[selectedHarnessPoint({
+          status: 'maintenance',
+          operationalBlock: { blocked: true, operationType: 'MAINTENANCE', operationStatus: 'IN_PROGRESS', label: 'Manutenção em andamento' },
+        })]}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('click'));
+    const panel = screen.getByLabelText('Detalhes da placa selecionada');
+    expect(panel).toHaveTextContent('Operação em aberto');
+    expect(panel).toHaveTextContent('Manutenção em andamento');
+  });
+
+  it('exibe equipe responsável no slideout quando operationalBlock traz teamSnapshot', () => {
+    render(
+      <ControlledMap
+        points={[selectedHarnessPoint({
+          status: 'maintenance',
+          operationalBlock: {
+            blocked: true,
+            operationType: 'SCRAPING',
+            operationStatus: 'IN_PROGRESS',
+            label: 'Raspagem em andamento',
+            teamSnapshot: {
+              id: 'team-1',
+              name: 'Equipe Fortaleza 01',
+              memberCount: 3,
+              members: [{ name: 'João Silva', role: 'Instalador', phone: null }],
+            },
+          },
+        })]}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('click'));
+    const panel = screen.getByLabelText('Detalhes da placa selecionada');
+    expect(panel).toHaveTextContent('Equipe responsável');
+    expect(panel).toHaveTextContent('Equipe Fortaleza 01 · 3 integrantes');
+    expect(panel).toHaveTextContent('João Silva — Instalador');
+  });
+
+  it('nao exibe equipe responsável no slideout quando operationalBlock nao traz teamSnapshot', () => {
+    render(
+      <ControlledMap
+        points={[selectedHarnessPoint({
+          status: 'maintenance',
+          operationalBlock: { blocked: true, operationType: 'MAINTENANCE', operationStatus: 'IN_PROGRESS', label: 'Manutenção em andamento' },
+        })]}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('click'));
+    const panel = screen.getByLabelText('Detalhes da placa selecionada');
+    expect(panel).not.toHaveTextContent('Equipe responsável');
+  });
 });
 
 describe('V4OperationalMap - heatmap regional', () => {
@@ -413,6 +472,30 @@ describe('V4OperationalMap — popup operacional', () => {
       />,
     );
     expect(screen.getByText(/Reserva ativa/)).toBeInTheDocument();
+  });
+
+  it('exibe o tipo real da operacao aberta no popup mesmo com status visual Manutencao', () => {
+    render(
+      <V4OperationalMap
+        points={[point({
+          status: 'maintenance',
+          operationalBlock: { blocked: true, operationType: 'SCRAPING', operationStatus: 'IN_PROGRESS', label: 'Raspagem em andamento' },
+        })]}
+      />,
+    );
+    expect(screen.getByText('Raspagem em andamento')).toBeInTheDocument();
+  });
+
+  it('nao exibe texto de operacao quando operationalBlock.blocked e false', () => {
+    render(
+      <V4OperationalMap
+        points={[point({
+          status: 'available',
+          operationalBlock: { blocked: false, operationType: 'MAINTENANCE', label: 'Manutenção em andamento' },
+        })]}
+      />,
+    );
+    expect(screen.queryByText('Manutenção em andamento')).toBeNull();
   });
 
   it('renderiza datas de inicio e fim do contrato', () => {

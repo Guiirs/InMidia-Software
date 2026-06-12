@@ -6,6 +6,9 @@ import {
   getOperationsByDomain,
   getOperationsSummary,
   getOperationsTimeline,
+  cancelOperationTask,
+  completeOperationTask,
+  startOperationTask,
   listOperationTasks,
   listPendingOperationTasks,
 } from './operationsV4Service.js';
@@ -104,6 +107,62 @@ describe('api routing regression', () => {
       '/api/v4/operations/by-domain',
     ]));
     expect(paths.every((path) => !path.includes(BROKEN_V4_PATH))).toBe(true);
+  });
+
+  it('cancela operacao com id na URL e payload objeto', async () => {
+    mockData({ task: { id: 'op-123', status: 'CANCELLED' } });
+
+    await cancelOperationTask('op-123', { id: 'op-123', reason: 'Cancelado pelo usuário' });
+
+    expect(lastRequest()).toEqual(expect.objectContaining({
+      method: 'post',
+      data: { id: 'op-123', reason: 'Cancelado pelo usuário' },
+    }));
+    expect(requestPath(lastRequest())).toBe('/api/v4/operations/op-123/cancel');
+  });
+
+  it('nao chama a API ao cancelar sem id valido', async () => {
+    await expect(cancelOperationTask(undefined, {})).rejects.toThrow(/identificar a operação/i);
+    expect(apiClient.request).not.toHaveBeenCalled();
+  });
+
+  it('inicia operacao com id na URL e payload objeto', async () => {
+    mockData({ task: { id: 'op-123', status: 'IN_PROGRESS' } });
+
+    await startOperationTask('op-123', { id: 'op-123', startedAt: '2026-06-12T10:00:00.000Z' });
+
+    expect(lastRequest()).toEqual(expect.objectContaining({
+      method: 'post',
+      data: { id: 'op-123', startedAt: '2026-06-12T10:00:00.000Z' },
+    }));
+    expect(requestPath(lastRequest())).toBe('/api/v4/operations/op-123/start');
+  });
+
+  it('nao chama a API ao iniciar sem id valido', async () => {
+    await expect(startOperationTask(undefined, { id: undefined })).rejects.toThrow(/identificar a operação/i);
+    expect(apiClient.request).not.toHaveBeenCalled();
+  });
+
+  it('conclui operacao com id na URL e payload objeto', async () => {
+    mockData({ task: { id: 'op-123', status: 'DONE' } });
+
+    await completeOperationTask('op-123', { id: 'op-123', completedAt: '2026-06-12T10:00:00.000Z' });
+
+    expect(lastRequest()).toEqual(expect.objectContaining({
+      method: 'post',
+      data: { id: 'op-123', completedAt: '2026-06-12T10:00:00.000Z' },
+    }));
+    expect(requestPath(lastRequest())).toBe('/api/v4/operations/op-123/complete');
+  });
+
+  it('nao chama a API ao concluir sem id valido', async () => {
+    await expect(completeOperationTask(undefined, { id: undefined })).rejects.toThrow(/identificar a operação/i);
+    expect(apiClient.request).not.toHaveBeenCalled();
+  });
+
+  it('nao chama a API ao concluir com id "undefined" (string) vindo de payload malformado', async () => {
+    await expect(completeOperationTask('undefined', {})).rejects.toThrow(/identificar a operação/i);
+    expect(apiClient.request).not.toHaveBeenCalled();
   });
 
   it('mantem realtime, readiness e clients em /api/v4/*', async () => {

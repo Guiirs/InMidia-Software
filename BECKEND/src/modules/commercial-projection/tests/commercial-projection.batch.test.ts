@@ -17,6 +17,7 @@ const mockTemporalFind = jest.fn();
 const mockContratoFind = jest.fn();
 const mockPiFind = jest.fn();
 const mockClienteFind = jest.fn();
+const mockOperationRecordFind = jest.fn();
 
 jest.mock('@modules/placas/Placa', () => ({
   __esModule: true,
@@ -51,6 +52,14 @@ jest.mock('@modules/clientes/Cliente', () => ({
   __esModule: true,
   default: {
     find: (...args: any[]) => mockClienteFind(...args),
+    findOne: jest.fn(),
+  },
+}));
+
+jest.mock('@modules/operations/services/operations-v4.service', () => ({
+  __esModule: true,
+  OperationRecord: {
+    find: (...args: any[]) => mockOperationRecordFind(...args),
     findOne: jest.fn(),
   },
 }));
@@ -122,6 +131,7 @@ describe('CommercialProjectionService.resolveBatch()', () => {
     mockContratoFind.mockReturnValue(chainQuery([]));
     mockPiFind.mockReturnValue(chainQuery([]));
     mockClienteFind.mockReturnValue(chainQuery([]));
+    mockOperationRecordFind.mockReturnValue(chainQuery([]));
   });
 
   afterEach(() => jest.useRealTimers());

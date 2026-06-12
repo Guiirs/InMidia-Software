@@ -1,6 +1,7 @@
 import { Suspense, lazy, memo, useMemo } from 'react';
 
 import { useAuth } from '../../../context/AuthContext.jsx';
+import { useSyncResource } from '../../../core/sync-core/hooks/useSyncResource.js';
 import { StatusBadge } from '../../design-system/badges/index.js';
 import DataSourceBadge from '../../design-system/states/DataSourceBadge.jsx';
 import {
@@ -15,11 +16,14 @@ import {
 } from '../../components/ui/index.js';
 import DashboardProvider, { useDashboard } from '../../providers/DashboardProvider.jsx';
 import { resolveSafePlateImageUrl } from '../../components/inventory/normalizePlateCardData.js';
+import { normalizeBoardCoordinates } from '../../integration/adapters/boardCoordinates.js';
 import { useRealtime } from '../../providers/RealtimeProvider.jsx';
 import { ROLE_RANK } from '../../foundation/navigation.js';
 import './DashboardPage.css';
 
 const V4OperationalMap = lazy(() => import('../../components/map/V4OperationalMap.jsx'));
+
+const EMPTY_BOARDS = [];
 
 const ROLE_LAYER = {
   OPERATOR: 1,
@@ -62,20 +66,23 @@ function roleLayer(role) {
 }
 
 function toMapPoints(boards) {
-  return (boards ?? []).map((board) => ({
-    id: board.id ?? board.codigo,
-    title: board.codigo ?? board.nome,
-    subtitle: board.nome,
-    latitude: board.lat ?? null,
-    longitude: board.lng ?? null,
-    status: board.status ?? 'available',
-    region: board.regiao ?? board.regiaoId,
-    address: board.localizacao,
-    mainImageUrl: resolveSafePlateImageUrl(board),
-    images: board.images ?? board.imagens ?? [],
-    imageStatus: board.imageStatus ?? (resolveSafePlateImageUrl(board) ? 'AVAILABLE' : 'MISSING'),
-    metadata: null,
-  }));
+  return (boards ?? []).map((board) => {
+    const coords = normalizeBoardCoordinates(board);
+    return {
+      id: board.id ?? board.codigo,
+      title: board.codigo ?? board.nome,
+      subtitle: board.nome,
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      status: board.status ?? 'available',
+      region: board.regiao ?? board.regiaoId,
+      address: board.localizacao,
+      mainImageUrl: resolveSafePlateImageUrl(board),
+      images: board.images ?? board.imagens ?? [],
+      imageStatus: board.imageStatus ?? (resolveSafePlateImageUrl(board) ? 'AVAILABLE' : 'MISSING'),
+      metadata: null,
+    };
+  });
 }
 
 function formatPercent(value) {
@@ -148,6 +155,16 @@ function normalizeKpis(dashboard, layer) {
       context: 'Sem contrato ativo',
       state: 'warning',
       trend: 'Priorizar carteira comercial',
+      source: 'dashboard.kpis',
+    },
+    {
+      id: 'no-coordinates',
+      layer: ROLE_LAYER.OPERATOR,
+      title: 'Placas sem coordenadas',
+      value: formatCount(kpis.boardsWithoutCoordinates),
+      context: 'Nao aparecem no mapa operacional',
+      state: Number(kpis.boardsWithoutCoordinates ?? 0) > 0 ? 'warning' : 'healthy',
+      trend: Number(kpis.boardsWithoutCoordinates ?? 0) > 0 ? 'Cadastrar localizacao no Inventario' : 'Cobertura completa',
       source: 'dashboard.kpis',
     },
     {
@@ -600,9 +617,13 @@ function DashboardPageInner() {
   const auth = useAuth();
   const { dashboard, loading, refreshing, stale, status, error, source, refresh } = useDashboard();
   const { connected, reconnecting } = useRealtime();
+  const boardsResource = useSyncResource('inventory.boards');
   const layer = roleLayer(auth.role ?? auth.user?.role);
   const kpis = useMemo(() => normalizeKpis(dashboard, layer), [dashboard, layer]);
-  const mapPoints = useMemo(() => toMapPoints(dashboard.featuredBoards), [dashboard.featuredBoards]);
+  const boards = Array.isArray(boardsResource.data) ? boardsResource.data : EMPTY_BOARDS;
+  const mapPoints = useMemo(() => toMapPoints(boards), [boards]);
+  const mapLoading = boardsResource.status === 'loading' || boardsResource.status === 'idle';
+  const mapError = boardsResource.status === 'error' ? (boardsResource.error?.message ?? 'Nao foi possivel carregar as placas.') : null;
   const isLoading = loading && !dashboard.generatedAt;
 
   return (
@@ -633,7 +654,8 @@ function DashboardPageInner() {
           <Suspense fallback={<DashboardMapFallback />}>
             <V4OperationalMap
               points={mapPoints}
-              loading={isLoading}
+              loading={mapLoading}
+              error={mapError}
               compact
             />
           </Suspense>

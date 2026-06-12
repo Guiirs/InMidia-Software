@@ -5,13 +5,70 @@ import Contrato from '@modules/contratos/Contrato';
 import PropostaInterna from '@modules/propostas-internas/PropostaInterna';
 import Cliente from '@modules/clientes/Cliente';
 import Placa from '@modules/placas/Placa';
+import { OperationRecord } from '@modules/operations/services/operations-v4.service';
+import { resolveOperationBlockLabel } from '@modules/operations/operation-block-label';
 import { TEMPORAL_BLOCKING_STATUSES } from '@modules/temporal/temporal.types';
 import type {
   CommercialProjection,
   CommercialProjectionActiveContract,
   CommercialProjectionPricing,
   CommercialStatus,
+  OperationalBlockInfo,
 } from './commercial-projection.types';
+
+function stringOrUndefined(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
+}
+
+/** Constroi o bloqueio visual a partir de uma operacao aberta ligada a placa. */
+function buildOperationalBlock(operation: any): OperationalBlockInfo {
+  const payload = operation.payload ?? {};
+  const operationType = String(payload.operationType ?? operation.type ?? 'OTHER');
+  const operationStatus = String(payload.operationStatus ?? operation.status ?? 'PENDING');
+  return {
+    blocked: true,
+    reason: 'Esta placa já possui uma operação em aberto.',
+    operationId: String(operation._id),
+    operationType,
+    operationStatus,
+    status: operationStatus,
+    label: resolveOperationBlockLabel(operationType, operationStatus),
+    assignedTo: stringOrUndefined(payload.assignedTo ?? operation.assigneeId),
+    notes: stringOrUndefined(payload.notes),
+    teamSnapshot: payload.teamSnapshot ?? undefined,
+  };
+}
+
+const FINAL_OPERATION_STATUSES = new Set([
+  'DONE', 'COMPLETED', 'COMPLETE', 'FINISHED', 'FINALIZED', 'CLOSED', 'RESOLVED',
+  'CONCLUIDA', 'CONCLUÍDA', 'CONCLUIDO', 'ENCERRADA', 'ENCERRADO', 'FINALIZADA', 'FINALIZADO',
+  'CANCELLED', 'CANCELED', 'CANCELADA', 'CANCELADO',
+]);
+
+function operationPlateId(operation: any): string | undefined {
+  const payload = operation?.payload ?? {};
+  return stringOrUndefined(payload.plateId ?? payload.placaId ?? payload.boardId ?? payload.placa_id ?? payload.board_id);
+}
+
+function isBlockingOpenOperation(operation: any): boolean {
+  const payload = operation?.payload ?? {};
+  const operationStatus = String(payload.operationStatus ?? payload.status ?? operation?.status ?? '').toUpperCase();
+  return !operation?.completedAt
+    && !payload.completedAt
+    && !payload.resolvedAt
+    && !payload.cancelledAt
+    && !FINAL_OPERATION_STATUSES.has(operationStatus);
+}
+
+function newestOpenOperation(operations: any[]): any | undefined {
+  return operations
+    .filter(isBlockingOpenOperation)
+    .sort((left, right) => {
+      const leftTime = new Date(left.updatedAt ?? left.createdAt ?? 0).getTime();
+      const rightTime = new Date(right.updatedAt ?? right.createdAt ?? 0).getTime();
+      return rightTime - leftTime;
+    })[0];
+}
 
 function toObjectId(value: string): Types.ObjectId {
   if (!Types.ObjectId.isValid(value)) {
@@ -180,6 +237,20 @@ class CommercialProjectionService {
       pricing = single.pricing;
     }
 
+    const plateOperations = await OperationRecord.find({
+      empresaId: empresaOid,
+      kind: 'task',
+      $or: [
+        { 'payload.plateId': placaId },
+        { 'payload.placaId': placaId },
+        { 'payload.boardId': placaId },
+        { 'payload.placa_id': placaId },
+        { 'payload.board_id': placaId },
+      ],
+    }).lean<any[]>();
+    const openOperation = newestOpenOperation(plateOperations);
+    const operationalBlock = openOperation ? buildOperationalBlock(openOperation) : undefined;
+
     return {
       placaId,
       empresaId,
@@ -187,6 +258,7 @@ class CommercialProjectionService {
       activeContract,
       reservation: { active: !!active, future: !!future },
       pricing,
+      operationalBlock,
       resolvedAt: now.toISOString(),
     };
   }
@@ -299,7 +371,7 @@ class CommercialProjectionService {
         .map((r) => String(r.customerId)),
     )];
 
-    const [contracts, pis, legacyClients] = await Promise.all([
+    const [contracts, pis, legacyClients, operations] = await Promise.all([
       contractIds.length > 0
         ? Contrato.find({ _id: { $in: contractIds.map((id) => new Types.ObjectId(id)) }, empresaId: empresaOid })
           .populate('piId', 'valorTotal pi_code startDate endDate dataInicio dataFim')
@@ -318,11 +390,29 @@ class CommercialProjectionService {
           .select('nome nomeFantasia')
           .lean<any[]>()
         : Promise.resolve([] as any[]),
+
+      OperationRecord.find({
+        empresaId: empresaOid,
+        kind: 'task',
+        $or: [
+          { 'payload.plateId': { $in: validIds } },
+          { 'payload.placaId': { $in: validIds } },
+          { 'payload.boardId': { $in: validIds } },
+          { 'payload.placa_id': { $in: validIds } },
+          { 'payload.board_id': { $in: validIds } },
+        ],
+      }).lean<any[]>(),
     ]);
 
     const contractsById = new Map<string, any>(contracts.map((c) => [String(c._id), c]));
     const pisById = new Map<string, any>(pis.map((p) => [String(p._id), p]));
     const clientsById = new Map<string, any>(legacyClients.map((c) => [String(c._id), c]));
+    const operationsByPlate = new Map<string, any[]>();
+    operations.forEach((operation) => {
+      const plateId = operationPlateId(operation);
+      if (!plateId) return;
+      operationsByPlate.set(plateId, [...(operationsByPlate.get(plateId) ?? []), operation]);
+    });
 
     // ── Build projections ─────────────────────────────────────────────────
     const result = new Map<string, CommercialProjection>();
@@ -358,6 +448,9 @@ class CommercialProjectionService {
         pricing = enrichment.pricing;
       }
 
+      const openOperation = newestOpenOperation(operationsByPlate.get(placaId) ?? []);
+      const operationalBlock = openOperation ? buildOperationalBlock(openOperation) : undefined;
+
       result.set(placaId, {
         placaId,
         empresaId,
@@ -365,6 +458,7 @@ class CommercialProjectionService {
         activeContract,
         reservation: { active: !!active, future: !!future },
         pricing,
+        operationalBlock,
         resolvedAt: now.toISOString(),
       });
     });

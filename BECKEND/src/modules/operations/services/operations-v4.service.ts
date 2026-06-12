@@ -2,6 +2,7 @@ import mongoose, { Model, Schema } from 'mongoose';
 import AppError from '@shared/container/AppError';
 import { temporalEngine } from '@modules/temporal';
 import Placa from '@modules/placas/Placa';
+import { resolveOperationTeamAssignment } from '@modules/operations/operation-teams/operation-team.service';
 
 type OperationKind = 'task' | 'event';
 
@@ -13,6 +14,7 @@ type OperationDoc = {
   domain: string;
   priority?: string;
   status: string;
+  openPlateKey?: string;
   assigneeId?: string;
   dueDate?: Date;
   completedAt?: Date;
@@ -23,7 +25,17 @@ type OperationDoc = {
 };
 
 type OperationScope = 'PLATE' | 'REGIONAL' | 'GLOBAL' | 'ADMINISTRATIVE';
-type CanonicalOperationType = 'INSTALLATION' | 'SCRAPING' | 'MAINTENANCE' | 'BLOCK' | 'INSPECTION' | 'OTHER';
+type CanonicalOperationType =
+  | 'INSTALLATION'
+  | 'SCRAPING'
+  | 'MAINTENANCE'
+  | 'BLOCK'
+  | 'INSPECTION'
+  | 'CLEANING'
+  | 'REMOVAL'
+  | 'BLOCKING'
+  | 'CRITICAL'
+  | 'OTHER';
 type CanonicalOperationStatus = 'PENDING' | 'SCHEDULED' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
 type CanonicalOperationPriority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 type OperationSlaStatus = 'ON_TRACK' | 'DUE_SOON' | 'OVERDUE' | 'RESOLVED' | 'CANCELLED' | 'UNKNOWN';
@@ -43,10 +55,22 @@ type CanonicalizationDiagnostic = {
   };
 };
 
-const PLATE_REQUIRED_TYPES = new Set(['INSTALLATION', 'SCRAPING', 'MAINTENANCE', 'BLOCK']);
+const PLATE_REQUIRED_TYPES = new Set<CanonicalOperationType>([
+  'SCRAPING',
+  'MAINTENANCE',
+  'BLOCK',
+  'INSPECTION',
+  'CLEANING',
+  'REMOVAL',
+  'BLOCKING',
+  'CRITICAL',
+]);
 const PLATE_REQUIRED_SCOPES = new Set(['PLATE', 'REGIONAL']);
-const DONE_STATUS_KEYS = new Set(['DONE', 'COMPLETED', 'COMPLETE', 'RESOLVED', 'CONCLUIDA', 'CONCLUÍDA']);
-const CANCELLED_STATUS_KEYS = new Set(['CANCELLED', 'CANCELED', 'CANCELADA']);
+const DONE_STATUS_KEYS = new Set([
+  'DONE', 'COMPLETED', 'COMPLETE', 'FINISHED', 'FINALIZED', 'CLOSED', 'RESOLVED',
+  'CONCLUIDA', 'CONCLUÍDA', 'CONCLUIDO', 'ENCERRADA', 'ENCERRADO', 'FINALIZADA', 'FINALIZADO',
+]);
+const CANCELLED_STATUS_KEYS = new Set(['CANCELLED', 'CANCELED', 'CANCELADA', 'CANCELADO']);
 const PRIORITY_RANK: Record<OperationSlaPriority, number> = {
   LOW: 1,
   MEDIUM: 2,
@@ -71,6 +95,16 @@ const TYPE_ALIASES: Record<string, CanonicalOperationType> = {
   INSPECTION: 'INSPECTION',
   INSPECAO: 'INSPECTION',
   INSPEÇÃO: 'INSPECTION',
+  CLEANING: 'CLEANING',
+  LIMPEZA: 'CLEANING',
+  REMOVAL: 'REMOVAL',
+  REMOCAO: 'REMOVAL',
+  BLOCKING: 'BLOCKING',
+  CRITICAL: 'CRITICAL',
+  CRITICA: 'CRITICAL',
+  OTHER: 'OTHER',
+  OUTRA: 'OTHER',
+  OUTRO: 'OTHER',
 };
 
 const STATUS_ALIASES: Record<string, CanonicalOperationStatus> = {
@@ -85,11 +119,21 @@ const STATUS_ALIASES: Record<string, CanonicalOperationStatus> = {
   DONE: 'DONE',
   COMPLETED: 'DONE',
   COMPLETE: 'DONE',
+  FINISHED: 'DONE',
+  FINALIZED: 'DONE',
+  CLOSED: 'DONE',
+  RESOLVED: 'DONE',
   CONCLUIDA: 'DONE',
   CONCLUÍDA: 'DONE',
+  CONCLUIDO: 'DONE',
+  ENCERRADA: 'DONE',
+  ENCERRADO: 'DONE',
+  FINALIZADA: 'DONE',
+  FINALIZADO: 'DONE',
   CANCELLED: 'CANCELLED',
   CANCELED: 'CANCELLED',
   CANCELADA: 'CANCELLED',
+  CANCELADO: 'CANCELLED',
 };
 
 const PRIORITY_ALIASES: Record<string, CanonicalOperationPriority> = {
@@ -114,6 +158,7 @@ const operationSchema = new Schema<OperationDoc>({
   domain: { type: String, default: 'system', index: true },
   priority: { type: String, default: 'normal' },
   status: { type: String, default: 'pending', index: true },
+  openPlateKey: { type: String },
   assigneeId: { type: String },
   dueDate: { type: Date },
   completedAt: { type: Date },
@@ -122,6 +167,14 @@ const operationSchema = new Schema<OperationDoc>({
 }, { timestamps: true, collection: 'operations_v4_records' });
 
 operationSchema.index({ empresaId: 1, kind: 1, createdAt: -1 });
+operationSchema.index(
+  { empresaId: 1, openPlateKey: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { openPlateKey: { $exists: true, $type: 'string' } },
+    name: 'idx_operation_open_plate_unique',
+  },
+);
 
 export const OperationRecord: Model<OperationDoc> = (mongoose.models.OperationV4Record as Model<OperationDoc> | undefined)
   || mongoose.model<OperationDoc>('OperationV4Record', operationSchema);
@@ -225,6 +278,55 @@ function isResolvedOperation(operation: { status?: unknown; completedAt?: unknow
 
 function isCancelledOperation(operation: { status?: unknown; payload?: Record<string, unknown> } | Record<string, unknown>): boolean {
   return CANCELLED_STATUS_KEYS.has(getOperationStatusKey(operation));
+}
+
+function isOpenOperation(operation: { status?: unknown; completedAt?: unknown; payload?: Record<string, unknown> } | Record<string, unknown>): boolean {
+  return !isResolvedOperation(operation) && !isCancelledOperation(operation);
+}
+
+function operationOpenPlateKey(
+  empresaId: string,
+  operation: { status?: unknown; completedAt?: unknown; payload?: Record<string, unknown>; type?: unknown } | Record<string, unknown>,
+): string | undefined {
+  const payload = getOperationPayload(operation);
+  const operationType = normalizeOperationTypeValue(payload.operationType ?? ('type' in operation ? operation.type : undefined));
+  const plateId = resolveOperationPlateId(operation);
+  if (operationType === 'INSTALLATION' || !plateId || !isOpenOperation(operation)) return undefined;
+  return `${empresaId}:${plateId}`;
+}
+
+function isMongoDuplicateKey(error: unknown): boolean {
+  return Boolean(error && typeof error === 'object' && 'code' in error && error.code === 11000);
+}
+
+function plateOperationConflictError(): AppError {
+  return new AppError(
+    'Esta placa já possui uma operação em aberto.',
+    409,
+    undefined,
+    'PLATE_OPERATION_ALREADY_OPEN',
+    'plateId',
+  );
+}
+
+async function assertPlateHasNoOpenOperation(empresaId: string, plateId: string, excludeOperationId?: string) {
+  const candidates = await OperationRecord.find({
+    empresaId,
+    kind: 'task',
+    ...(excludeOperationId ? { _id: { $ne: excludeOperationId } } : {}),
+    $or: [
+      { 'payload.plateId': plateId },
+      { 'payload.placaId': plateId },
+      { 'payload.boardId': plateId },
+    ],
+  }).select('status completedAt type payload').lean<OperationDoc[]>();
+
+  if (candidates.some((candidate) => (
+    normalizeOperationTypeValue(candidate.payload?.operationType ?? candidate.type) !== 'INSTALLATION'
+    && isOpenOperation(candidate)
+  ))) {
+    throw plateOperationConflictError();
+  }
 }
 
 function getReferenceDueAt(operation: Record<string, any>, payload: Record<string, unknown>): Date | undefined {
@@ -568,26 +670,35 @@ export async function resolveOperationRegionId(
   return getPlateRegionId(plate);
 }
 
-export function assertOperationHasPlate(payload: Record<string, unknown>, options: { operationScope?: unknown; operationType?: unknown } = {}) {
+export function assertOperationHasPlate(
+  payload: Record<string, unknown>,
+  options: { operationScope?: unknown; operationType?: unknown; requireOtherPlate?: boolean } = {},
+) {
   const plateId = stringOrNull(payload.plateId);
   const operationType = normalizeOperationTypeValue(options.operationType ?? payload.operationType ?? payload.type);
   const operationScope = normalizeOperationScope(options.operationScope ?? payload.operationScope, plateId);
+  const requiresPlate = PLATE_REQUIRED_SCOPES.has(operationScope)
+    || PLATE_REQUIRED_TYPES.has(operationType)
+    || (operationType === 'OTHER' && options.requireOtherPlate === true);
 
-  if ((PLATE_REQUIRED_SCOPES.has(operationScope) || PLATE_REQUIRED_TYPES.has(operationType)) && !plateId) {
-    throw new AppError('Operacao regional ou de placa exige plateId canonico.', 400);
+  if (requiresPlate && !plateId) {
+    throw new AppError('Operacao regional ou de placa exige plateId canonico.', 400, undefined, 'OPERATION_BOARD_REQUIRED', 'boardId');
   }
 }
 
 export async function normalizeOperationPayload(payload: Record<string, unknown>, empresaId: string) {
   const canonical: Record<string, unknown> = { ...payload };
   const legacyPlateId = getLegacyPlateCandidate(canonical);
+  const explicitOperationType = stringOrNull(canonical.operationType ?? canonical.type);
   const operationType = normalizeOperationTypeValue(canonical.operationType ?? canonical.type ?? canonical.title);
   const operationScope = normalizeOperationScope(canonical.operationScope, legacyPlateId);
-  const plateRequired = PLATE_REQUIRED_SCOPES.has(operationScope) || PLATE_REQUIRED_TYPES.has(operationType);
+  const plateRequired = PLATE_REQUIRED_SCOPES.has(operationScope)
+    || PLATE_REQUIRED_TYPES.has(operationType)
+    || (operationType === 'OTHER' && Boolean(explicitOperationType));
   const plate = legacyPlateId ? await findPlateForOperation(empresaId, legacyPlateId) : null;
 
   if (legacyPlateId && !plate && plateRequired) {
-    throw new AppError('Placa da operacao nao encontrada para a empresa.', 404);
+    throw new AppError('Placa da operacao nao encontrada para a empresa.', 404, undefined, 'OPERATION_BOARD_NOT_FOUND', 'boardId');
   }
 
   if (plate) {
@@ -621,7 +732,11 @@ export async function normalizeOperationPayload(payload: Record<string, unknown>
   canonical.slaStatus = sla.slaStatus;
   canonical.slaPriority = sla.slaPriority;
 
-  assertOperationHasPlate(canonical, { operationScope, operationType });
+  assertOperationHasPlate(canonical, {
+    operationScope,
+    operationType,
+    requireOtherPlate: operationType === 'OTHER' && Boolean(explicitOperationType),
+  });
   return canonical;
 }
 
@@ -654,6 +769,8 @@ function toTask(doc: OperationDoc) {
     regionalLot: stringOrNull(doc.payload?.regionalLot),
     operationType: stringOrNull(doc.payload?.operationType) ?? doc.type ?? null,
     operationStatus: stringOrNull(doc.payload?.operationStatus) ?? doc.status,
+    teamId: stringOrNull(doc.payload?.teamId),
+    teamSnapshot: doc.payload?.teamSnapshot ?? null,
     payload: doc.payload ?? {},
     createdAt: doc.createdAt?.toISOString?.() ?? null,
     updatedAt: doc.updatedAt?.toISOString?.() ?? null,
@@ -675,9 +792,9 @@ function toEvent(doc: OperationDoc) {
 }
 
 async function findTask(empresaId: string, id: string): Promise<OperationDoc> {
-  if (!mongoose.Types.ObjectId.isValid(id)) throw new AppError('Tarefa operacional invalida.', 400);
+  if (!mongoose.Types.ObjectId.isValid(id)) throw new AppError('Tarefa operacional invalida.', 400, undefined, 'OPERATION_NOT_FOUND');
   const task = await OperationRecord.findOne({ _id: id, empresaId, kind: 'task' }).lean<OperationDoc>();
-  if (!task) throw new AppError('Tarefa operacional nao encontrada.', 404);
+  if (!task) throw new AppError('Tarefa operacional nao encontrada.', 404, undefined, 'OPERATION_NOT_FOUND');
   return task;
 }
 
@@ -773,7 +890,7 @@ export class OperationsV4Service {
       },
       { new: true },
     ).lean<OperationDoc>();
-    if (!updated) throw new AppError('Tarefa operacional nao encontrada.', 404);
+    if (!updated) throw new AppError('Tarefa operacional nao encontrada.', 404, undefined, 'OPERATION_NOT_FOUND');
     return { operation: updated, diagnostic };
   }
 
@@ -1097,9 +1214,28 @@ export class OperationsV4Service {
 
   async createTask(empresaId: string, input: Record<string, unknown>) {
     const payload = await normalizeOperationPayload(input, empresaId);
-    const plateId = payload.plateId;
+    const teamAssignment = await resolveOperationTeamAssignment(empresaId, input.teamId);
+    if (teamAssignment) {
+      payload.teamId = teamAssignment.teamId;
+      payload.teamSnapshot = teamAssignment.teamSnapshot;
+    }
+    const plateId = stringOrNull(payload.plateId);
+    const openPlateKey = operationOpenPlateKey(empresaId, {
+      status: String(input.status ?? 'pending'),
+      type: payload.operationType,
+      payload,
+    });
     const startDate = payload.scheduledAt || input.startDate || input.dataInicio || payload.dueAt || input.dueDate;
     const endDate = payload.dueAt || input.endDate || input.dataFim || input.dueDate;
+
+    // Pre-gerado para que a reserva temporal referencie o mesmo id do
+    // OperationRecord, permitindo que completeTask/cancelTask liberem a placa
+    // via cancelTemporalReservation('OPERATION', id, ...).
+    const operationId = new mongoose.Types.ObjectId();
+
+    if (openPlateKey && plateId) {
+      await assertPlateHasNoOpenOperation(empresaId, plateId);
+    }
 
     if (plateId && startDate && endDate) {
       const normalizedStart = toDate(startDate) || new Date(String(startDate));
@@ -1107,51 +1243,104 @@ export class OperationsV4Service {
       if (normalizedEnd <= normalizedStart) {
         normalizedEnd.setDate(normalizedStart.getDate() + 1);
       }
+      const operationType = String(payload.operationType ?? input.type ?? input.title ?? 'OTHER');
+      const operationStatus = String(payload.operationStatus ?? 'PENDING');
       await temporalEngine.createTemporalReservation({
         empresaId,
         plateId: String(plateId),
         sourceType: 'OPERATION',
-        sourceId: String(input.sourceId ?? new mongoose.Types.ObjectId()),
+        sourceId: String(operationId),
         startDate: normalizedStart,
         endDate: normalizedEnd,
         status: 'RESERVED',
-        reason: String(payload.operationType ?? input.type ?? input.title ?? 'Operacao agendada'),
+        reason: `${operationType}:${operationStatus}`,
       });
     }
 
-    const record = await OperationRecord.create({
-      empresaId,
-      kind: 'task',
-      title: String(input.title ?? 'Tarefa operacional'),
-      domain: String(input.domain ?? 'system'),
-      priority: String(input.priority ?? 'normal'),
-      status: String(input.status ?? 'pending'),
-      assigneeId: input.assigneeId ? String(input.assigneeId) : undefined,
-      dueDate: toDate(input.dueDate),
-      type: String(payload.operationType ?? input.type ?? 'OTHER'),
-      payload,
-    });
+    let record;
+    try {
+      record = await OperationRecord.create({
+        _id: operationId,
+        empresaId,
+        kind: 'task',
+        title: String(input.title ?? 'Tarefa operacional'),
+        domain: String(input.domain ?? 'system'),
+        priority: String(input.priority ?? 'normal'),
+        status: String(input.status ?? 'pending'),
+        ...(openPlateKey ? { openPlateKey } : {}),
+        assigneeId: input.assigneeId ? String(input.assigneeId) : undefined,
+        dueDate: toDate(input.dueDate),
+        type: String(payload.operationType ?? input.type ?? 'OTHER'),
+        payload,
+      });
+    } catch (error) {
+      if (isMongoDuplicateKey(error)) {
+        await temporalEngine.cancelTemporalReservation('OPERATION', String(operationId), empresaId);
+        throw plateOperationConflictError();
+      }
+      throw error;
+    }
     return toTask(record.toObject() as OperationDoc);
   }
 
   async updateTask(empresaId: string, id: string, input: Record<string, unknown>) {
     const current = await findTask(empresaId, id);
-    const updated = await OperationRecord.findOneAndUpdate(
-      { _id: id, empresaId, kind: 'task' },
-      {
-        $set: {
-          title: input.title !== undefined ? String(input.title) : current.title,
-          domain: input.domain !== undefined ? String(input.domain) : current.domain,
-          priority: input.priority !== undefined ? String(input.priority) : current.priority,
-          status: input.status !== undefined ? String(input.status) : current.status,
-          assigneeId: input.assigneeId !== undefined ? String(input.assigneeId) : current.assigneeId,
-          dueDate: input.dueDate !== undefined ? toDate(input.dueDate) : current.dueDate,
-          payload: { ...current.payload, ...input },
+    const nextStatus = input.status !== undefined ? String(input.status) : current.status;
+    const nextPayload: Record<string, unknown> = {
+      ...current.payload,
+      ...input,
+      ...(input.status !== undefined && input.operationStatus === undefined
+        ? { operationStatus: normalizeOperationStatusValue(input.status) }
+        : {}),
+    };
+    const teamAssignment = await resolveOperationTeamAssignment(empresaId, input.teamId);
+    if (teamAssignment) {
+      nextPayload.teamId = teamAssignment.teamId;
+      nextPayload.teamSnapshot = teamAssignment.teamSnapshot;
+    }
+    const nextCanonicalStatus = normalizeOperationStatusValue(nextPayload.operationStatus ?? nextStatus);
+    const isReopening = input.status !== undefined && nextCanonicalStatus !== 'DONE' && nextCanonicalStatus !== 'CANCELLED';
+    if (isReopening) {
+      delete nextPayload.completedAt;
+      delete nextPayload.resolvedAt;
+      delete nextPayload.cancelledAt;
+    }
+    const openPlateKey = operationOpenPlateKey(empresaId, {
+      status: nextStatus,
+      completedAt: isReopening ? undefined : current.completedAt,
+      type: input.type ?? current.type,
+      payload: nextPayload,
+    });
+    const plateId = resolveOperationPlateId({ payload: nextPayload });
+    if (openPlateKey && plateId) await assertPlateHasNoOpenOperation(empresaId, plateId, id);
+
+    let updated;
+    try {
+      const fieldsToUnset: Record<string, 1> = {};
+      if (!openPlateKey) fieldsToUnset.openPlateKey = 1;
+      if (isReopening) fieldsToUnset.completedAt = 1;
+      updated = await OperationRecord.findOneAndUpdate(
+        { _id: id, empresaId, kind: 'task' },
+        {
+          $set: {
+            title: input.title !== undefined ? String(input.title) : current.title,
+            domain: input.domain !== undefined ? String(input.domain) : current.domain,
+            priority: input.priority !== undefined ? String(input.priority) : current.priority,
+            status: nextStatus,
+            assigneeId: input.assigneeId !== undefined ? String(input.assigneeId) : current.assigneeId,
+            dueDate: input.dueDate !== undefined ? toDate(input.dueDate) : current.dueDate,
+            payload: nextPayload,
+            ...(openPlateKey ? { openPlateKey } : {}),
+          },
+          ...(Object.keys(fieldsToUnset).length ? { $unset: fieldsToUnset } : {}),
         },
-      },
-      { new: true },
-    ).lean<OperationDoc>();
-    if (!updated) throw new AppError('Tarefa operacional nao encontrada.', 404);
+        { new: true },
+      ).lean<OperationDoc>();
+    } catch (error) {
+      if (isMongoDuplicateKey(error)) throw plateOperationConflictError();
+      throw error;
+    }
+    if (!updated) throw new AppError('Tarefa operacional nao encontrada.', 404, undefined, 'OPERATION_NOT_FOUND');
     return toTask(updated);
   }
 
@@ -1166,32 +1355,46 @@ export class OperationsV4Service {
       (task.payload as Record<string, unknown>)?.operationStatus ?? task.status,
     );
     if (currentStatus === 'DONE' || currentStatus === 'CANCELLED') {
-      throw new AppError(`Operacao nao pode ser iniciada: status atual e ${currentStatus}.`, 409);
+      throw new AppError(`Operacao nao pode ser iniciada: status atual e ${currentStatus}.`, 409, undefined, 'OPERATION_INVALID_STATUS');
     }
     if (currentStatus === 'IN_PROGRESS') {
-      throw new AppError('Operacao ja esta em andamento.', 409);
+      throw new AppError('Operacao ja esta em andamento.', 409, undefined, 'OPERATION_INVALID_STATUS');
     }
 
     const now = new Date();
     const payload = task.payload ?? {};
     const operationType = normalizeOperationTypeValue(payload.operationType ?? task.type ?? 'OTHER');
+    const openPlateKey = operationOpenPlateKey(empresaId, {
+      status: 'IN_PROGRESS',
+      type: operationType,
+      payload: { ...payload, operationStatus: 'IN_PROGRESS' },
+    });
+    const plateId = resolveOperationPlateId(task);
+    if (openPlateKey && plateId) await assertPlateHasNoOpenOperation(empresaId, plateId, id);
 
-    const updated = await OperationRecord.findOneAndUpdate(
-      { _id: id, empresaId, kind: 'task' },
-      {
-        $set: {
-          status: 'IN_PROGRESS',
-          payload: {
-            ...payload,
-            operationStatus: 'IN_PROGRESS',
-            startedAt: now.toISOString(),
-            updatedBy: stringOrNull(input.updatedBy) ?? payload.updatedBy ?? null,
+    let updated;
+    try {
+      updated = await OperationRecord.findOneAndUpdate(
+        { _id: id, empresaId, kind: 'task' },
+        {
+          $set: {
+            status: 'IN_PROGRESS',
+            ...(openPlateKey ? { openPlateKey } : {}),
+            payload: {
+              ...payload,
+              operationStatus: 'IN_PROGRESS',
+              startedAt: now.toISOString(),
+              updatedBy: stringOrNull(input.updatedBy) ?? payload.updatedBy ?? null,
+            },
           },
         },
-      },
-      { new: true },
-    ).lean<OperationDoc>();
-    if (!updated) throw new AppError('Tarefa operacional nao encontrada.', 404);
+        { new: true },
+      ).lean<OperationDoc>();
+    } catch (error) {
+      if (isMongoDuplicateKey(error)) throw plateOperationConflictError();
+      throw error;
+    }
+    if (!updated) throw new AppError('Tarefa operacional nao encontrada.', 404, undefined, 'OPERATION_NOT_FOUND');
 
     const timelineType = operationType === 'BLOCK' ? 'OPERATION_PLATE_BLOCKED' : 'OPERATION_STARTED';
     await OperationRecord.create({
@@ -1210,14 +1413,34 @@ export class OperationsV4Service {
       },
     });
 
+    // Atualiza a reserva temporal para refletir o novo status (PENDING -> IN_PROGRESS)
+    // sem recriar a reserva, mantendo a placa bloqueada durante a execucao.
+    await temporalEngine.updateReservationReason(
+      'OPERATION',
+      id,
+      empresaId,
+      `${operationType}:IN_PROGRESS`,
+    );
+
     return toTask(updated);
   }
 
   async completeTask(empresaId: string, id: string, input: Record<string, unknown> = {}) {
     const task = await findTask(empresaId, id);
+    const currentStatus = normalizeOperationStatusValue(
+      (task.payload as Record<string, unknown>)?.operationStatus ?? task.status,
+    );
+    if (currentStatus === 'DONE' || currentStatus === 'CANCELLED') {
+      throw new AppError(`Operacao nao pode ser concluida: status atual e ${currentStatus}.`, 409, undefined, 'OPERATION_INVALID_STATUS');
+    }
     const now = new Date();
     const payload = task.payload ?? {};
     const operationType = normalizeOperationTypeValue(payload.operationType ?? task.type ?? 'OTHER');
+
+    const finalReport = stringOrNull(input.finalReport ?? input.relatorioFinal);
+    if (operationType === 'MAINTENANCE' && !finalReport) {
+      throw new AppError('Relatório final obrigatório para concluir manutenção.', 400, undefined, 'OPERATION_FINAL_REPORT_REQUIRED', 'finalReport');
+    }
 
     const newAddress = stringOrNull(input.newAddress ?? input.address);
     const newLat = input.newLatitude != null ? Number(input.newLatitude) : null;
@@ -1268,6 +1491,7 @@ export class OperationsV4Service {
     const extraPayload: Record<string, unknown> = {};
     if (newAddress) extraPayload.installationAddress = newAddress;
     if (newLat != null) { extraPayload.installationLatitude = newLat; extraPayload.installationLongitude = newLon; }
+    if (finalReport) extraPayload.finalReport = finalReport;
 
     const updated = await OperationRecord.findOneAndUpdate(
       { _id: id, empresaId, kind: 'task' },
@@ -1283,10 +1507,11 @@ export class OperationsV4Service {
             updatedBy: stringOrNull(input.updatedBy) ?? payload.updatedBy ?? null,
           },
         },
+        $unset: { openPlateKey: 1 },
       },
       { new: true },
     ).lean<OperationDoc>();
-    if (!updated) throw new AppError('Tarefa operacional nao encontrada.', 404);
+    if (!updated) throw new AppError('Tarefa operacional nao encontrada.', 404, undefined, 'OPERATION_NOT_FOUND');
 
     await OperationRecord.create({
       empresaId,
@@ -1303,8 +1528,18 @@ export class OperationsV4Service {
         completedBy: stringOrNull(input.completedBy) ?? stringOrNull(input.updatedBy),
         ...(newAddress ? { newAddress } : {}),
         ...(newLat != null ? { newLatitude: newLat, newLongitude: newLon } : {}),
+        ...(finalReport ? { finalReport } : {}),
       },
     });
+
+    // Libera a placa: cancela a reserva temporal criada para esta operacao,
+    // devolvendo o status comercial/operacional para disponivel.
+    await temporalEngine.cancelTemporalReservation(
+      'OPERATION',
+      id,
+      empresaId,
+      stringOrNull(input.completedBy) ?? stringOrNull(input.updatedBy) ?? undefined,
+    );
 
     return toTask(updated);
   }
@@ -1315,10 +1550,10 @@ export class OperationsV4Service {
       (task.payload as Record<string, unknown>)?.operationStatus ?? task.status,
     );
     if (currentStatus === 'DONE') {
-      throw new AppError('Operacao concluida nao pode ser cancelada.', 409);
+      throw new AppError('Operacao concluida nao pode ser cancelada.', 409, undefined, 'OPERATION_INVALID_STATUS');
     }
     if (currentStatus === 'CANCELLED') {
-      throw new AppError('Operacao ja esta cancelada.', 409);
+      throw new AppError('Operacao ja esta cancelada.', 409, undefined, 'OPERATION_INVALID_STATUS');
     }
 
     const now = new Date();
@@ -1338,10 +1573,11 @@ export class OperationsV4Service {
             updatedBy: stringOrNull(input.updatedBy) ?? payload.updatedBy ?? null,
           },
         },
+        $unset: { openPlateKey: 1 },
       },
       { new: true },
     ).lean<OperationDoc>();
-    if (!updated) throw new AppError('Tarefa operacional nao encontrada.', 404);
+    if (!updated) throw new AppError('Tarefa operacional nao encontrada.', 404, undefined, 'OPERATION_NOT_FOUND');
 
     const timelineType = operationType === 'BLOCK' ? 'OPERATION_PLATE_UNBLOCKED' : 'OPERATION_CANCELLED';
     await OperationRecord.create({
@@ -1361,6 +1597,15 @@ export class OperationsV4Service {
       },
     });
 
+    // Libera a placa: cancela a reserva temporal criada para esta operacao,
+    // devolvendo o status comercial/operacional para disponivel.
+    await temporalEngine.cancelTemporalReservation(
+      'OPERATION',
+      id,
+      empresaId,
+      stringOrNull(input.cancelledBy) ?? stringOrNull(input.updatedBy) ?? undefined,
+    );
+
     return toTask(updated);
   }
 
@@ -1371,7 +1616,7 @@ export class OperationsV4Service {
       { $set: { assigneeId } },
       { new: true },
     ).lean<OperationDoc>();
-    if (!updated) throw new AppError('Tarefa operacional nao encontrada.', 404);
+    if (!updated) throw new AppError('Tarefa operacional nao encontrada.', 404, undefined, 'OPERATION_NOT_FOUND');
     return toTask(updated);
   }
 
@@ -1406,11 +1651,17 @@ export class OperationsV4Service {
   }
 
   async getByPlate(empresaId: string, plateId: string) {
-    if (!mongoose.Types.ObjectId.isValid(plateId)) throw new AppError('plateId invalido.', 400);
+    if (!mongoose.Types.ObjectId.isValid(plateId)) throw new AppError('plateId invalido.', 400, undefined, 'OPERATION_BOARD_INVALID', 'boardId');
     const tasks = await OperationRecord.find({
       empresaId,
       kind: 'task',
-      'payload.plateId': plateId,
+      $or: [
+        { 'payload.plateId': plateId },
+        { 'payload.placaId': plateId },
+        { 'payload.boardId': plateId },
+        { 'payload.placa_id': plateId },
+        { 'payload.board_id': plateId },
+      ],
     }).sort({ createdAt: -1 }).lean<OperationDoc[]>();
     return { tasks: tasks.map(toTask), total: tasks.length };
   }
@@ -1485,7 +1736,7 @@ export class OperationsV4Service {
   ) {
     const operation = await findTask(empresaId, operationId);
     const plate = await findPlateForOperation(empresaId, plateId);
-    if (!plate) throw new AppError('Placa da operacao nao encontrada para a empresa.', 404);
+    if (!plate) throw new AppError('Placa da operacao nao encontrada para a empresa.', 404, undefined, 'OPERATION_BOARD_NOT_FOUND', 'boardId');
 
     const now = new Date();
     const payload = operation.payload ?? {};
@@ -1518,12 +1769,24 @@ export class OperationsV4Service {
       },
     };
 
-    const updated = await OperationRecord.findOneAndUpdate(
-      { _id: operation._id, empresaId, kind: 'task' },
-      { $set: { payload: nextPayload } },
-      { new: true },
-    ).lean<OperationDoc>();
-    if (!updated) throw new AppError('Tarefa operacional nao encontrada.', 404);
+    const openPlateKey = operationOpenPlateKey(empresaId, { ...operation, payload: nextPayload });
+    if (openPlateKey) await assertPlateHasNoOpenOperation(empresaId, String(plate._id), operationId);
+
+    let updated;
+    try {
+      updated = await OperationRecord.findOneAndUpdate(
+        { _id: operation._id, empresaId, kind: 'task' },
+        {
+          $set: { payload: nextPayload, ...(openPlateKey ? { openPlateKey } : {}) },
+          ...(!openPlateKey ? { $unset: { openPlateKey: 1 } } : {}),
+        },
+        { new: true },
+      ).lean<OperationDoc>();
+    } catch (error) {
+      if (isMongoDuplicateKey(error)) throw plateOperationConflictError();
+      throw error;
+    }
+    if (!updated) throw new AppError('Tarefa operacional nao encontrada.', 404, undefined, 'OPERATION_NOT_FOUND');
 
     return {
       task: toTask(updated),
@@ -1554,13 +1817,23 @@ export class OperationsV4Service {
       const payload = operation.payload ?? {};
 
       if (stringOrNull(payload.plateId)) {
-        const diagnostic = await buildCanonicalizationDiagnostic(empresaId, operation);
-        const metadata = getPayloadMetadata(payload);
-        await OperationRecord.updateOne(
-          { _id: operation._id, empresaId, kind: 'task' },
-          { $set: { payload: { ...payload, metadata: { ...metadata, canonicalizationDiagnostic: diagnostic } } } },
-        );
-        report.skippedAlreadyCanonical += 1;
+        try {
+          const diagnostic = await buildCanonicalizationDiagnostic(empresaId, operation);
+          const metadata = getPayloadMetadata(payload);
+          const nextPayload = { ...payload, metadata: { ...metadata, canonicalizationDiagnostic: diagnostic } };
+          const openPlateKey = operationOpenPlateKey(empresaId, { ...operation, payload: nextPayload });
+          if (openPlateKey) await assertPlateHasNoOpenOperation(empresaId, String(payload.plateId), operationId);
+          await OperationRecord.updateOne(
+            { _id: operation._id, empresaId, kind: 'task' },
+            {
+              $set: { payload: nextPayload, ...(openPlateKey ? { openPlateKey } : {}) },
+              ...(!openPlateKey ? { $unset: { openPlateKey: 1 } } : {}),
+            },
+          );
+          report.skippedAlreadyCanonical += 1;
+        } catch (error: any) {
+          report.errors.push({ operationId, message: error?.message ?? 'Erro desconhecido' });
+        }
         continue;
       }
 
@@ -1610,9 +1883,14 @@ export class OperationsV4Service {
           },
         };
 
+        const openPlateKey = operationOpenPlateKey(empresaId, { ...operation, payload: canonicalPayload });
+        if (openPlateKey) await assertPlateHasNoOpenOperation(empresaId, String(plate._id), operationId);
         await OperationRecord.updateOne(
           { _id: operation._id, empresaId, kind: 'task' },
-          { $set: { payload: canonicalPayload } },
+          {
+            $set: { payload: canonicalPayload, ...(openPlateKey ? { openPlateKey } : {}) },
+            ...(!openPlateKey ? { $unset: { openPlateKey: 1 } } : {}),
+          },
         );
         report.updated += 1;
         if (source === 'plateId') report.matchedById += 1;

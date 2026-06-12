@@ -182,8 +182,12 @@ function OperationLinkResolutionQueue({ onReportRefresh }) {
             <option value="">Todos</option>
             <option value="INSTALLATION">Instalacao</option>
             <option value="SCRAPING">Raspagem</option>
+            <option value="CLEANING">Limpeza</option>
+            <option value="REMOVAL">Retirada</option>
             <option value="MAINTENANCE">Manutencao</option>
             <option value="BLOCK">Bloqueio</option>
+            <option value="BLOCKING">Bloqueio de placa</option>
+            <option value="CRITICAL">Operacao critica</option>
             <option value="INSPECTION">Inspecao</option>
             <option value="OTHER">Outras</option>
           </select>

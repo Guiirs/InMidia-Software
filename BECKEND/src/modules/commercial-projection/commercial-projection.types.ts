@@ -47,6 +47,35 @@ export interface CommercialProjectionPricing {
   contractValue?: number;
 }
 
+/**
+ * Detalhes da operacao bloqueante ativa (sourceType=OPERATION) que impede
+ * alocacao comercial da placa: instalacao, raspagem, manutencao ou bloqueio
+ * operacional manual.
+ */
+export interface OperationalBlockInfo {
+  blocked: true;
+  reason: string;
+  operationId: string;
+  /** INSTALLATION | SCRAPING | MAINTENANCE | BLOCK | INSPECTION | OTHER */
+  operationType: string;
+  /** PENDING | SCHEDULED | IN_PROGRESS */
+  operationStatus: string;
+  status: string;
+  /** Label localizado (pt-BR) — ex.: "Pendente de instalação" */
+  label: string;
+  /** Equipe/pessoa responsavel pela operacao (payload.assignedTo) */
+  assignedTo?: string;
+  /** Observacao opcional (payload.notes) */
+  notes?: string;
+  /** Equipe operacional vinculada a operacao (payload.teamSnapshot) */
+  teamSnapshot?: {
+    id: string;
+    name: string;
+    memberCount: number;
+    members?: Array<{ name: string; role: string | null; phone: string | null }>;
+  };
+}
+
 export interface CommercialProjection {
   placaId: string;
   empresaId: string;
@@ -54,6 +83,8 @@ export interface CommercialProjection {
   activeContract?: CommercialProjectionActiveContract;
   reservation: CommercialProjectionReservation;
   pricing?: CommercialProjectionPricing;
+  /** Presente quando ha uma operacao bloqueante ativa na placa */
+  operationalBlock?: OperationalBlockInfo;
   /** ISO 8601 timestamp when this projection was resolved */
   resolvedAt: string;
 }
@@ -66,5 +97,6 @@ export interface CommercialProjectionDTO {
   activeContract?: CommercialProjectionActiveContract;
   reservation: CommercialProjectionReservation;
   pricing?: CommercialProjectionPricing;
+  operationalBlock?: OperationalBlockInfo;
   resolvedAt: string;
 }

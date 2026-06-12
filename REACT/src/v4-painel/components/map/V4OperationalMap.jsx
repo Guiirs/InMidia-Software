@@ -325,6 +325,9 @@ function BoardPopupContent({ point }) {
   const endDate        = m.activeContract?.endDate   ?? null;
   const hasReservation = Boolean(m.reservation);
   const commStatus     = m.commercialStatus ?? null;
+  const operationalBlock = point.operationalBlock ?? m.operationalBlock ?? null;
+  const openOperationLabel = operationalBlock?.blocked === true ? (operationalBlock.label ?? 'Operação em aberto') : null;
+  const teamSnapshot = operationalBlock?.blocked === true ? (operationalBlock.teamSnapshot ?? null) : null;
 
   const hasCommercial = clientName || contractValue || commStatus || hasReservation || startDate || endDate;
 
@@ -347,6 +350,16 @@ function BoardPopupContent({ point }) {
       {point.status && (
         <span className="v4-geomap-popup__status" style={{ color: pinColor(point.status) }}>
           {STATUS_LABELS[point.status] ?? point.status}
+        </span>
+      )}
+      {openOperationLabel && (
+        <span className="v4-geomap-popup__operation" title={operationalBlock?.reason ?? undefined}>
+          {openOperationLabel}
+        </span>
+      )}
+      {teamSnapshot && (
+        <span className="v4-geomap-popup__team">
+          Equipe: {teamSnapshot.name} · {teamSnapshot.memberCount} {teamSnapshot.memberCount === 1 ? 'integrante' : 'integrantes'}
         </span>
       )}
       {point.region && (
@@ -407,6 +420,9 @@ function pointCommercialData(point) {
 function SelectedBoardPanel({ point, onClose }) {
   if (!point) return null;
   const commercial = pointCommercialData(point);
+  const operationalBlock = point.operationalBlock ?? point.metadata?.operationalBlock ?? null;
+  const openOperationLabel = operationalBlock?.blocked === true ? (operationalBlock.label ?? 'Operação em aberto') : null;
+  const teamSnapshot = operationalBlock?.blocked === true ? (operationalBlock.teamSnapshot ?? null) : null;
   const copyAddress = async () => {
     if (!point.address || !navigator.clipboard?.writeText) return;
     await navigator.clipboard.writeText(point.address);
@@ -450,6 +466,27 @@ function SelectedBoardPanel({ point, onClose }) {
             <dd>{STATUS_LABELS[point.status] ?? point.status}</dd>
           </>
         )}
+        {openOperationLabel && (
+          <>
+            <dt>Operação em aberto</dt>
+            <dd>{openOperationLabel}</dd>
+          </>
+        )}
+        {teamSnapshot && (
+          <>
+            <dt>Equipe responsável</dt>
+            <dd>
+              {teamSnapshot.name} · {teamSnapshot.memberCount} {teamSnapshot.memberCount === 1 ? 'integrante' : 'integrantes'}
+              {Array.isArray(teamSnapshot.members) && teamSnapshot.members.length > 0 && (
+                <ul className="v4-geomap-slideout__team-members">
+                  {teamSnapshot.members.map((member) => (
+                    <li key={member.name}>{member.name}{member.role ? ` — ${member.role}` : ''}</li>
+                  ))}
+                </ul>
+              )}
+            </dd>
+          </>
+        )}
         {commercial.commercialStatus && (
           <>
             <dt>Status comercial</dt>
@@ -482,7 +519,7 @@ function SelectedBoardPanel({ point, onClose }) {
         )}
       </dl>
       <div className="v4-geomap-slideout__actions">
-        <a href={`/placas/${encodeURIComponent(point.id)}`}>Ver detalhes</a>
+        <a href={`/inventario?board=${encodeURIComponent(point.id)}`}>Ver detalhes</a>
         {point.address && (
           <button type="button" onClick={copyAddress}>Copiar endereco</button>
         )}

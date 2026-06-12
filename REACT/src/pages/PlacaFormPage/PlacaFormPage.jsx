@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { fetchPlacaById, addPlaca, updatePlaca, getPlacaHealth } from '../../services';
+import { getPlateErrorMessage, PLATE_NAME_CONFLICT_MESSAGE } from '../../v4-painel/utils/plateErrorMessages.js';
 import { listRegions } from '../../services/regionService';
 import { useToast } from '../../components/ToastNotification/ToastNotification';
 import Spinner from '../../components/Spinner/Spinner';
@@ -264,10 +265,10 @@ function PlacaFormPage() {
       navigate('/placas');
     },
     onError: (error) => {
-      const msg = error.message || 'Erro ao guardar a placa.';
+      const msg = getPlateErrorMessage(error, 'Erro ao guardar a placa.');
       showToast(msg, 'error');
-      if (msg.toLowerCase().includes('duplicad') || msg.toLowerCase().includes('duplicate')) {
-        setFormError('numero_placa', { type: 'api', message: 'Número já existe nesta empresa.' });
+      if (msg === PLATE_NAME_CONFLICT_MESSAGE || msg.toLowerCase().includes('duplicad') || msg.toLowerCase().includes('duplicate')) {
+        setFormError('numero_placa', { type: 'api', message: PLATE_NAME_CONFLICT_MESSAGE });
       }
       if (msg.toLowerCase().includes('bloqueado') || msg.toLowerCase().includes('contrato')) {
         setIsLocked(true);
@@ -283,8 +284,11 @@ function PlacaFormPage() {
       navigate('/placas');
     },
     onError: (error) => {
-      const msg = error.message || 'Erro ao guardar a placa.';
+      const msg = getPlateErrorMessage(error, 'Erro ao guardar a placa.');
       showToast(msg, 'error');
+      if (msg === PLATE_NAME_CONFLICT_MESSAGE) {
+        setFormError('numero_placa', { type: 'api', message: PLATE_NAME_CONFLICT_MESSAGE });
+      }
       if (msg.toLowerCase().includes('bloqueado') || msg.toLowerCase().includes('contrato')) {
         setIsLocked(true);
         showToast('Campos críticos bloqueados: placa possui contrato ativo.', 'warning');

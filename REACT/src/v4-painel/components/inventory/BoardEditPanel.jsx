@@ -5,6 +5,7 @@ import { normalizeBoardCoordinates } from '../../integration/adapters/boardCoord
 import { normalizePlateCoordinatePair } from '../../../pages/PlacaFormPage/placaFormPayload.js';
 import { resolveSafePlateImageUrl } from './normalizePlateCardData.js';
 import PlateImageManager from '../media/PlateImageManager.jsx';
+import { getPlateErrorMessage } from '../../utils/plateErrorMessages.js';
 import './BoardEditPanel.css';
 
 function Field({ label, children, full, required }) {
@@ -162,6 +163,8 @@ function BoardEditPanel({ board, onSave, onClose, saving = false, onImageChange 
         coordenadas: coords.hasCoordinates ? `${coords.latitude},${coords.longitude}` : undefined,
       });
       onClose();
+    } catch (error) {
+      setErrors((prev) => ({ ...prev, codigo: getPlateErrorMessage(error) }));
     } finally {
       setLocalSaving(false);
     }

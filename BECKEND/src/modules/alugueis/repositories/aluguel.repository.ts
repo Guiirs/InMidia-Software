@@ -5,6 +5,7 @@
 
 import { FilterQuery } from 'mongoose';
 import Aluguel from '../Aluguel';
+import { syncAluguelFields } from '../utils/aluguel-field-sync';
 import { Result, DomainError } from '@shared/core';
 import { 
   DatabaseError, 
@@ -168,7 +169,7 @@ export class AluguelRepository implements IAluguelRepository {
     try {
       const aluguel = await Aluguel.findOneAndUpdate(
         { _id: id, empresaId },
-        { $set: data },
+        { $set: syncAluguelFields(data) },
         { new: true, runValidators: true }
       )
       .populate('placaId', 'numero_placa')

@@ -86,11 +86,11 @@ function saveMapPanelWidthPref(value) {
 
 function SkeletonCard() {
   return (
-    <div className="v4p-board-card" aria-hidden="true" style={{ cursor: 'default' }}>
-      <div style={{ aspectRatio: '16/9', background: 'rgba(148,163,184,0.08)', animation: 'v4p-skeleton 1.6s ease-in-out infinite', backgroundSize: '200% 100%' }} />
-      <div style={{ padding: '12px 13px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {[85, 60, 40, 70, 50].map((w, i) => (
-          <div key={i} style={{ height: 10, width: `${w}%`, borderRadius: 4, background: 'rgba(148,163,184,0.08)', animation: 'v4p-skeleton 1.6s ease-in-out infinite', backgroundSize: '200% 100%' }} />
+    <div className="inv-skeleton-card" aria-hidden="true">
+      <div className="inv-skeleton-card__image" />
+      <div className="inv-skeleton-card__body">
+        {[82, 58, 42, 68, 48].map((w, i) => (
+          <div key={i} className="inv-skeleton-card__line" style={{ width: `${w}%` }} />
         ))}
       </div>
     </div>
@@ -231,6 +231,19 @@ function InventoryPageInner({ onNavigateToMap }) {
     setDetailBoard(board);
     setCurrentView('board-detail');
   }, []);
+
+  /* Deep link from the map ("Ver detalhes" -> /inventario?board=<id>) */
+  useEffect(() => {
+    if (typeof window === 'undefined' || !boards.length) return;
+    const params = new URLSearchParams(window.location.search);
+    const boardId = params.get('board');
+    if (!boardId) return;
+    const board = boards.find((b) => b.id === boardId);
+    if (board) handleViewDetails(board);
+    params.delete('board');
+    const query = params.toString();
+    window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+  }, [boards, handleViewDetails]);
 
   const handleBackToInventory = useCallback(() => {
     setCurrentView('inventory');
@@ -485,20 +498,12 @@ function InventoryPageInner({ onNavigateToMap }) {
           <section className="v4p-inventory-workspace">
             <div className="v4p-inventory-table-area">
               <div className="v4p-inventory-section-head">
-                <div>
-                  <h2>Placas operacionais</h2>
-                  <p>
-                    {viewMode === 'cards'
-                      ? 'Visão por cards com imagem e ações rápidas.'
-                      : 'Tabela de disponibilidade, receita e prioridade.'}
-                  </p>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                  <span style={{ color: 'var(--v4p-text-4)', fontSize: 11 }}>
-                    {loading ? '…' : `${filteredBoards.length} resultado${filteredBoards.length !== 1 ? 's' : ''}`}
-                  </span>
-                  <InventoryViewToggle view={viewMode} onChange={setViewMode} />
-                </div>
+                <span className="v4p-inventory-section-head__count" aria-live="polite" aria-atomic="true">
+                  {loading
+                    ? null
+                    : `${filteredBoards.length} ${filteredBoards.length === 1 ? 'placa' : 'placas'}`}
+                </span>
+                <InventoryViewToggle view={viewMode} onChange={setViewMode} />
               </div>
 
               {viewMode === 'cards' ? (
@@ -507,8 +512,13 @@ function InventoryPageInner({ onNavigateToMap }) {
                     Array.from({ length: 8 }, (_, i) => <SkeletonCard key={i} />)
                   ) : filteredBoards.length === 0 ? (
                     <div className="v4p-inventory-empty">
-                      <span className="material-symbols-rounded">search_off</span>
-                      <p>Nenhuma placa encontrada com os filtros selecionados.</p>
+                      <div className="v4p-inventory-empty__icon-wrap">
+                        <span className="material-symbols-rounded" aria-hidden="true">search_off</span>
+                      </div>
+                      <div className="v4p-inventory-empty__content">
+                        <h3>Nenhuma placa encontrada</h3>
+                        <p>Nenhuma placa encontrada com os filtros selecionados.</p>
+                      </div>
                     </div>
                   ) : (
                     filteredBoards.map((board) => {

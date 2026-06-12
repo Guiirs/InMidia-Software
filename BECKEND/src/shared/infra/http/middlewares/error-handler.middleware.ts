@@ -2,6 +2,12 @@ import { Request, Response, NextFunction } from 'express';
 import logger from '@shared/container/logger';
 import AppError from '@shared/container/AppError';
 import { getClientIp, getRequestId } from '@shared/infra/http/proxy.utils';
+import {
+  isPlateNameDuplicateKeyError,
+  PLATE_NAME_CONFLICT_CODE,
+  PLATE_NAME_CONFLICT_FIELD,
+  PLATE_NAME_CONFLICT_MESSAGE,
+} from '@modules/placas/utils/plate-name.utils';
 
 /**
  * Converts Mongoose Cast errors to operational AppError
@@ -15,6 +21,15 @@ const handleCastErrorDB = (err: any): AppError => {
  * Converts duplicate key errors (code 11000) to operational AppError
  */
 const handleDuplicateFieldsDB = (err: any): AppError => {
+  if (isPlateNameDuplicateKeyError(err)) {
+    return new AppError(
+      PLATE_NAME_CONFLICT_MESSAGE,
+      409,
+      undefined,
+      PLATE_NAME_CONFLICT_CODE,
+      PLATE_NAME_CONFLICT_FIELD,
+    );
+  }
   const field = Object.keys(err.keyValue || {})[0];
   const value = field ? err.keyValue[field] : 'desconhecido';
   const message = `O campo '${field}' com valor '${value}' já existe. Por favor, use outro valor.`;
@@ -47,9 +62,18 @@ const isV4Route = (req: Request): boolean =>
 
 /**
  * Normalizes any error into the V4 standard contract:
- * { success: false, code, message, details? }
+ * {
+ *   success: false,
+ *   code, message, details?,           // back-compat flat fields
+ *   error: { code, message, details?, field?, statusCode },
+ *   requestId,
+ * }
+ *
+ * `error.code` is a machine-readable identifier the frontend maps to a
+ * user-friendly message (see operationErrorMessages.js). The technical
+ * `message` here is for logs/support and must never be shown verbatim in the UI.
  */
-const sendErrorV4 = (err: any, _req: Request, res: Response): void => {
+const sendErrorV4 = (err: any, req: Request, res: Response): void => {
   const statusCode = err.statusCode || 500;
   const code: string =
     err.code ||
@@ -65,9 +89,25 @@ const sendErrorV4 = (err: any, _req: Request, res: Response): void => {
     ? (err.message || 'Erro na requisição')
     : 'Erro interno no servidor. Tente novamente mais tarde.';
 
-  const payload: Record<string, unknown> = { success: false, code, message };
+  const requestId = getRequestId(req);
+  const details = err.errors;
+  const field = err.field;
 
-  if (err.errors) payload.details = err.errors;
+  const payload: Record<string, unknown> = {
+    success: false,
+    code,
+    message,
+    error: {
+      code,
+      message,
+      ...(details ? { details } : {}),
+      ...(field ? { field } : {}),
+      statusCode,
+    },
+    requestId,
+  };
+
+  if (details) payload.details = details;
   if (process.env.NODE_ENV === 'development') {
     payload.debug = { originalMessage: err.message, stack: err.stack };
   }

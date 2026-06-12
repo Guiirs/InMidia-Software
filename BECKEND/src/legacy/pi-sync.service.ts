@@ -10,6 +10,7 @@
 import PropostaInterna from './PropostaInterna';
 import Aluguel from '../alugueis/Aluguel';
 import logger from '../../shared/container/logger';
+import { syncAluguelFields } from '../alugueis/utils/aluguel-field-sync';
 
 class PISyncService {
 
@@ -150,10 +151,10 @@ class PISyncService {
             await Aluguel.updateMany(
                 { pi_code: pi.pi_code },
                 {
-                    $set: {
+                    $set: syncAluguelFields({
                         data_inicio: pi.dataInicio,
                         data_fim: pi.dataFim
-                    }
+                    })
                 }
             );
             resultado.alugueisCorrigidos = alugueisComDataIncorreta.length;

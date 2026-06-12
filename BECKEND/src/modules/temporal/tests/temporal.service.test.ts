@@ -288,4 +288,47 @@ describe('TemporalEngineService', () => {
 
     expect(availability.available).toBe(false);
   });
+
+  it.each([
+    ['INSTALLATION:PENDING', 'INSTALLATION_PENDING'],
+    ['INSTALLATION:IN_PROGRESS', 'INSTALLATION_IN_PROGRESS'],
+    ['SCRAPING:PENDING', 'SCRAPING_PENDING'],
+    ['SCRAPING:IN_PROGRESS', 'SCRAPING_IN_PROGRESS'],
+    ['MAINTENANCE:PENDING', 'MAINTENANCE_PENDING'],
+    ['MAINTENANCE:IN_PROGRESS', 'MAINTENANCE_IN_PROGRESS'],
+    ['BLOCK:PENDING', 'OPERATIONAL_BLOCK'],
+    ['BLOCK:IN_PROGRESS', 'OPERATIONAL_BLOCK'],
+  ])('resolve status %s -> %s para reserva sourceType=OPERATION', async (reason, expectedStatus) => {
+    const plate = await createPlate();
+    await TemporalReservation.create({
+      empresaId,
+      plateId: plate._id,
+      sourceType: 'OPERATION',
+      sourceId: new Types.ObjectId().toString(),
+      startDate: date('2026-06-01'),
+      endDate: date('2026-06-30'),
+      status: 'ACTIVE',
+      reason,
+    });
+
+    await expect(temporalEngine.resolvePlateTemporalStatus(String(plate._id), date('2026-06-15'), empresaId))
+      .resolves.toBe(expectedStatus);
+  });
+
+  it('resolve status RESERVED_FUTURE para reserva sourceType=OPERATION com reason legado sem ":"', async () => {
+    const plate = await createPlate();
+    await TemporalReservation.create({
+      empresaId,
+      plateId: plate._id,
+      sourceType: 'OPERATION',
+      sourceId: new Types.ObjectId().toString(),
+      startDate: date('2026-06-01'),
+      endDate: date('2026-06-30'),
+      status: 'ACTIVE',
+      reason: 'OUTRO',
+    });
+
+    await expect(temporalEngine.resolvePlateTemporalStatus(String(plate._id), date('2026-06-15'), empresaId))
+      .resolves.toBe('RESERVED_FUTURE');
+  });
 });

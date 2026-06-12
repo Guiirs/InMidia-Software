@@ -3,10 +3,12 @@
   "compilerOptions": {
     "types": ["jest", "node"],
     "sourceMap": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "rootDir": "."
   },
   "include": [
     "src/**/*",
+    "scripts/**/*",
     "__tests__/**/*"
   ]
 }

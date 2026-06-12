@@ -16,7 +16,9 @@ function PlateHealthRow({ board, vencFormatted, revenueColor }) {
   const isLowHealth = hasScore && score < 50;
 
   const revColor = revenueColor ?? (variant?.color ?? 'var(--v4p-text-3)');
-  const revLabel = status === 'available' ? 'Potencial' : null;
+  const revLabel = status === 'available' ? 'Potencial'
+    : status === 'occupied' ? 'Faturamento'
+    : null;
 
   return (
     <div className="plate-health-row">

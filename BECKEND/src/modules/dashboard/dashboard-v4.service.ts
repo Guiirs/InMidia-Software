@@ -8,6 +8,7 @@ import Placa from '@modules/placas/Placa';
 import Aluguel from '@modules/alugueis/Aluguel';
 import { commercialAvailabilityProjection } from '@modules/commercial-availability';
 import { resolveOperationPlateId, resolveOperationSla } from '@modules/operations/services/operations-v4.service';
+import { normalizeInventoryBoardCoordinates } from '@modules/inventory/services/inventory-boards.service';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -57,7 +58,7 @@ export class DashboardV4Service {
       pendingTasks,
       pipelineAgg,
     ] = await Promise.all([
-      oid ? Placa.find({ empresaId: oid }).select('_id').lean() : [],
+      oid ? Placa.find({ empresaId: oid }).select('_id latitude longitude coordenadas').lean() : [],
       oid ? Aluguel.countDocuments({
         empresaId: oid,
         status: { $ne: 'cancelado' },
@@ -75,6 +76,8 @@ export class DashboardV4Service {
     ]);
 
     const totalBoards = boards.length;
+    const boardsWithoutCoordinates = (boards as any[])
+      .filter((board) => !normalizeInventoryBoardCoordinates(board)).length;
     const commercialStatuses = await commercialAvailabilityProjection.resolveManyPlateCommercialStatuses({
       empresaId,
       placaIds: boards.map((board: any) => String(board._id)),
@@ -106,6 +109,7 @@ export class DashboardV4Service {
       availableBoards,
       occupiedBoards,
       occupancyRate,
+      boardsWithoutCoordinates,
       activeContracts,
       monthlyRevenue: 0,
       commercialPipelineValue,

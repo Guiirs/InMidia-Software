@@ -24,23 +24,49 @@ const STATUS_FILTERS = [
   { id: 'critical', label: 'Criticas' },
 ];
 
+// Tipos de operacao que, quando em aberto (operationalBlock.blocked === true),
+// sobrepoem o status visual da placa para 'critical'. Demais tipos (manutencao,
+// raspagem, limpeza, vistoria, instalacao, etc.) sobrepoem para 'maintenance'.
+const OPEN_OPERATION_CRITICAL_TYPES = new Set(['BLOCK', 'BLOCKING', 'CRITICAL']);
+
+function operationalVisualStatus(operationType) {
+  const type = String(operationType ?? '').toUpperCase();
+  return OPEN_OPERATION_CRITICAL_TYPES.has(type) ? 'critical' : 'maintenance';
+}
+
+// Fonte unica de verdade para o status visual: usada pelos markers do mapa
+// e pelos filtros/contadores, para que ambos reflitam operacoes em aberto.
+function getBoardVisualStatus(board) {
+  const operationalBlock = board.operationalBlock ?? null;
+  if (operationalBlock?.blocked === true) {
+    return operationalVisualStatus(operationalBlock.operationType);
+  }
+  return board.status ?? 'available';
+}
+
 function toMapPoints(boards) {
   return boards.map((board) => {
     const coords = normalizeBoardCoordinates(board);
+    const baseStatus = board.status ?? 'available';
+    const operationalBlock = board.operationalBlock ?? null;
+    const status = getBoardVisualStatus(board);
     return {
       id: board.id ?? board.codigo,
       title: board.codigo,
       subtitle: board.nome,
       latitude: coords.latitude,
       longitude: coords.longitude,
-      status: board.status ?? 'available',
+      status,
+      baseStatus,
       region: getBoardRegionId(board),
       address: board.localizacao,
       mainImageUrl: resolveSafePlateImageUrl(board),
       images: board.images ?? board.imagens ?? [],
       imageStatus: board.imageStatus ?? (resolveSafePlateImageUrl(board) ? 'AVAILABLE' : 'MISSING'),
+      operationalBlock,
       metadata: {
         coordinateSource: coords.source,
+        operationalBlock,
       },
     };
   });
@@ -339,7 +365,7 @@ function MapPage({ focusBoard, onClearFocus }) {
         if (!match) return false;
       }
     }
-    if (filters.status !== 'all' && board.status !== filters.status) return false;
+    if (filters.status !== 'all' && getBoardVisualStatus(board) !== filters.status) return false;
     if (filters.search.trim()) {
       const q = filters.search.trim().toLowerCase();
       return board.codigo.toLowerCase().includes(q)
@@ -370,7 +396,7 @@ function MapPage({ focusBoard, onClearFocus }) {
     });
 
     return scopedBoards.reduce((acc, board) => {
-      const statusId = board.status ?? 'available';
+      const statusId = getBoardVisualStatus(board);
       acc.all += 1;
       acc[statusId] = (acc[statusId] ?? 0) + 1;
       return acc;

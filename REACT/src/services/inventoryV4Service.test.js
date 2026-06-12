@@ -156,6 +156,29 @@ describe('inventoryV4Service', () => {
     }));
   });
 
+  it('preserva a cidade da região nas placas normalizadas', async () => {
+    mockData({
+      boards: [{
+        id: 'b-city',
+        codigo: 'B-CITY',
+        disponivel: true,
+        status: 'available',
+        regiao: { id: 'r1', nome: 'Ceará Norte', city: 'Caucaia', state: 'CE' },
+      }],
+      total: 1,
+      page: 1,
+      limit: 200,
+    });
+
+    const boards = await listBoards();
+
+    expect(boards[0]).toEqual(expect.objectContaining({
+      cidade: 'Caucaia',
+      city: 'Caucaia',
+      regiao: 'Ceará Norte',
+    }));
+  });
+
   it('envia latitude/longitude canonicos e compatibilidade no create/update', async () => {
     mockData({ id: 'b1', codigo: 'B-CREATE', disponivel: true, status: 'available' });
     await createBoard({
@@ -183,6 +206,72 @@ describe('inventoryV4Service', () => {
       latitude: -25.57,
       longitude: -49.22,
       coordenadas: '-25.57,-49.22',
+    }));
+  });
+
+  it('create com vírgula decimal envia número correto (locale pt-BR)', async () => {
+    mockData({ id: 'b1', codigo: 'B-COMMA', disponivel: true, status: 'available' });
+    await createBoard({
+      codigo: 'B-COMMA',
+      endereco: 'Rua Virgula',
+      regiaoId: 'r1',
+      latitude: '-3,742352',
+      longitude: '-38,608361',
+    });
+
+    expect(lastRequest().data).toEqual(expect.objectContaining({
+      latitude: -3.742352,
+      longitude: -38.608361,
+      coordinates: { latitude: -3.742352, longitude: -38.608361 },
+      coordenadas: '-3.742352,-38.608361',
+    }));
+  });
+
+  it('create com latitude NaN não envia coordenadas', async () => {
+    mockData({ id: 'b1', codigo: 'B-NAN', disponivel: true, status: 'available' });
+    await createBoard({
+      codigo: 'B-NAN',
+      endereco: 'Rua Invalida',
+      regiaoId: 'r1',
+      latitude: NaN,
+      longitude: NaN,
+    });
+
+    expect(lastRequest().data).not.toHaveProperty('latitude');
+    expect(lastRequest().data).not.toHaveProperty('longitude');
+  });
+
+  it('update envia coordenadas novas, não regressa lat/lng aliases do board original', async () => {
+    mockData({ id: 'b1', codigo: 'B-UPDT', disponivel: true, status: 'available' });
+    await updateBoard('b1', {
+      id: 'b1',
+      codigo: 'B-UPDT',
+      latitude: -3.742352,
+      longitude: -38.608361,
+      lat: -3.742,
+      lng: -38.608,
+    });
+
+    expect(lastRequest().data).toEqual(expect.objectContaining({
+      latitude: -3.742352,
+      longitude: -38.608361,
+      coordenadas: '-3.742352,-38.608361',
+    }));
+  });
+
+  it('update com latitude string com vírgula decimal (locale pt-BR) envia número correto', async () => {
+    mockData({ id: 'b1', codigo: 'B-COMMA2', disponivel: true, status: 'available' });
+    await updateBoard('b1', {
+      id: 'b1',
+      codigo: 'B-COMMA2',
+      latitude: '-23,5505',
+      longitude: '-46,6333',
+    });
+
+    expect(lastRequest().data).toEqual(expect.objectContaining({
+      latitude: -23.5505,
+      longitude: -46.6333,
+      coordenadas: '-23.5505,-46.6333',
     }));
   });
 
@@ -321,6 +410,118 @@ describe('inventoryV4Service', () => {
       method: 'delete',
       url: '/v1/placas/b1/images/img-1',
     }));
+  });
+
+  describe('dados comerciais via Commercial Projection Engine', () => {
+    it('boardToCanonical preserva cliente_nome e expoe via normalizeBoard', async () => {
+      mockData({
+        boards: [{
+          id: 'b-cp1',
+          codigo: 'CP-001',
+          disponivel: true,
+          status: 'occupied',
+          cliente_nome: 'Fortaleza Shopping',
+          valorMensal: 3500,
+          commercialProjection: {
+            commercialStatus: 'CONTRACTED_ACTIVE',
+            activeContract: {
+              id: 'tr-1',
+              clientName: 'Fortaleza Shopping',
+              startDate: '2026-06-01T00:00:00.000Z',
+              endDate: '2026-06-30T23:59:59.000Z',
+            },
+            pricing: { contractValue: 3500 },
+            reservation: { active: true, future: false },
+            resolvedAt: '2026-06-09T00:00:00.000Z',
+          },
+        }],
+        total: 1, page: 1, limit: 200,
+      });
+
+      const boards = await listBoards();
+      expect(boards[0].cliente).toBe('Fortaleza Shopping');
+    });
+
+    it('boardToCanonical preserva valorMensal e expoe receita real', async () => {
+      mockData({
+        boards: [{
+          id: 'b-cp2',
+          codigo: 'CP-002',
+          disponivel: true,
+          status: 'occupied',
+          valorMensal: 4200,
+          commercialProjection: {
+            commercialStatus: 'CONTRACTED_ACTIVE',
+            pricing: { contractValue: 4200 },
+            reservation: { active: true, future: false },
+            resolvedAt: '2026-06-09T00:00:00.000Z',
+          },
+        }],
+        total: 1, page: 1, limit: 200,
+      });
+
+      const boards = await listBoards();
+      expect(boards[0].receitaEstimada).toBe(4200);
+      expect(boards[0].receitaFormatada).not.toBe('A negociar');
+      expect(boards[0].receitaFormatada).toMatch(/R\$.*4\.200/);
+    });
+
+    it('boardToCanonical preserva commercialProjection no canonical', async () => {
+      const cp = {
+        commercialStatus: 'CONTRACTED_ACTIVE',
+        activeContract: {
+          id: 'tr-3',
+          clientName: 'RioMar Shopping',
+          piCode: 'PI-2026-001',
+          contractCode: 'CTR-001',
+        },
+        pricing: { contractValue: 5000 },
+        reservation: { active: true, future: false },
+        resolvedAt: '2026-06-09T00:00:00.000Z',
+      };
+      mockData({
+        boards: [{ id: 'b-cp3', codigo: 'CP-003', disponivel: true, status: 'occupied', commercialProjection: cp }],
+        total: 1, page: 1, limit: 200,
+      });
+
+      const boards = await listBoards();
+      expect(boards[0].commercialSnapshot).toEqual(expect.objectContaining({
+        clientName: 'RioMar Shopping',
+        piCode: 'PI-2026-001',
+        contractCode: 'CTR-001',
+        revenue: 5000,
+        hasActiveContract: true,
+      }));
+    });
+
+    it('fallback correto sem contrato — cliente null e receitaEstimada zero', async () => {
+      mockData({
+        boards: [{ id: 'b-free', codigo: 'CP-FREE', disponivel: true, status: 'available' }],
+        total: 1, page: 1, limit: 200,
+      });
+
+      const boards = await listBoards();
+      expect(boards[0].cliente).toBeNull();
+      expect(boards[0].receitaEstimada).toBe(0);
+      expect(boards[0].receitaFormatada).toBe('A negociar');
+      expect(boards[0].commercialSnapshot).toBeNull();
+    });
+
+    it('nao persiste commercialSnapshot em boardPayloadFromUi', async () => {
+      mockData({ id: 'b1', codigo: 'B-EDIT', disponivel: true, status: 'occupied' });
+      await updateBoard('b1', {
+        id: 'b1',
+        codigo: 'B-EDIT',
+        endereco: 'Rua Fisica',
+        commercialSnapshot: { clientName: 'X', revenue: 9999 },
+        cliente: 'X',
+        receitaEstimada: 9999,
+      });
+
+      expect(lastRequest().data).not.toHaveProperty('commercialSnapshot');
+      expect(lastRequest().data).not.toHaveProperty('cliente');
+      expect(lastRequest().data).not.toHaveProperty('receitaEstimada');
+    });
   });
 
   it('InventoryProvider consome Sync Core sem chamar v1 direto', () => {

@@ -1,4 +1,5 @@
 import winston from 'winston';
+import { parsePositiveInt } from '@config/validators/parsePositiveInt';
 
 const levels = {
   error: 0,
@@ -56,6 +57,19 @@ const format = winston.format.combine(
   )
 );
 
+/** Configuração de rotação dos arquivos de log (env-overridable). */
+export function getLogRotationConfig(env: NodeJS.ProcessEnv = process.env): {
+  maxsize: number;
+  maxFiles: number;
+} {
+  return {
+    maxsize: parsePositiveInt(env.LOG_MAX_SIZE_BYTES, 10 * 1024 * 1024), // 10MB
+    maxFiles: parsePositiveInt(env.LOG_MAX_FILES, 5),
+  };
+}
+
+const { maxsize: logMaxSize, maxFiles: logMaxFiles } = getLogRotationConfig();
+
 const transports: winston.transport[] = [
   new winston.transports.Console({
     format: winston.format.combine(winston.format.colorize({ all: true })),
@@ -63,10 +77,14 @@ const transports: winston.transport[] = [
   new winston.transports.File({
     filename: 'logs/error.log',
     level: 'error',
+    maxsize: logMaxSize,
+    maxFiles: logMaxFiles,
   }),
-  new winston.transports.File({ 
+  new winston.transports.File({
     filename: 'logs/all.log',
-    level: 'info' // Não salva debug no arquivo
+    level: 'info', // Não salva debug no arquivo
+    maxsize: logMaxSize,
+    maxFiles: logMaxFiles,
   }),
 ];
 

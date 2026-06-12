@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useState } from 'react';
 import BoardStatusBadge       from '../../components/inventory/BoardStatusBadge.jsx';
 import BoardEditPanel         from '../../components/inventory/BoardEditPanel.jsx';
 import BoardGeoPanel          from '../../components/inventory/BoardGeoPanel.jsx';
+import BoardLocationMap       from '../../components/inventory/BoardLocationMap.jsx';
 import BoardContractsHistory  from '../../components/inventory/BoardContractsHistory.jsx';
 import BoardActivityHistory   from '../../components/inventory/BoardActivityHistory.jsx';
 import { getStateMeta }       from '../../foundation/operationalStates.js';
@@ -52,24 +53,8 @@ function Stat({ label, value, color, sub }) {
 function buildExtendedBoard(board) {
   return {
     ...board,
-    city: board.regiao ?? 'Sem regiao',
-    uf: null,
-    operationalRegion: board.regiao,
-    address: board.localizacao,
-    zone: null,
-    referencePoint: null,
-    estimatedFlow: null,
-    visibilityScore: null,
-    format: board.categoria,
-    dimensions: null,
-    face: null,
-    material: null,
-    lighting: null,
-    condition: null,
-    lastInspection: null,
-    operationalOwner: null,
+    address: board.endereco || board.localizacao,
     performance: {
-      taxaOcupacao: board.ocupacao ?? 0,
       receitaAcumulada: board.ocupado ? board.receitaEstimada : 0,
       diasOcupada: null,
       diasDisponivel: board.diasOcioso ?? null,
@@ -82,22 +67,6 @@ function buildExtendedBoard(board) {
     recentContracts: [],
     activityHistory: [],
   };
-}
-function PerfBar({ label, pct, color }) {
-  return (
-    <div className="v4p-bdp__perf-bar">
-      <div className="v4p-bdp__perf-bar-head">
-        <span>{label}</span>
-        <span>{Math.round((pct ?? 0) * 100)}%</span>
-      </div>
-      <div className="v4p-bdp__perf-bar-track">
-        <div
-          className="v4p-bdp__perf-bar-fill"
-          style={{ width: `${Math.round((pct ?? 0) * 100)}%`, background: color ?? 'var(--v4p-accent)' }}
-        />
-      </div>
-    </div>
-  );
 }
 function ImageWithFallback({ src, alt, fallbackStyle, codigo }) {
   const [failed, setFailed] = useState(false);
@@ -142,6 +111,13 @@ function BoardDetailPageInner({
   useEffect(() => {
     setBoard(boardProp);
   }, [boardProp]);
+
+  /* Ao abrir o detalhe da placa, garante que a página comece do topo
+     (o scroll fica na área .v4p-shell__page, não na window) */
+  useEffect(() => {
+    document.querySelector('.v4p-shell__page')?.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [board.id]);
 
   const showToast = useCallback((message, icon = 'check_circle') => {
     setActionToast({ message, icon });
@@ -213,6 +189,16 @@ function BoardDetailPageInner({
   const occupancyPct = Math.round((board.ocupacao ?? 0) * 100);
   const priorityChipClass = PRIORITY_CHIP_CLASS[board.prioridade] ?? 'v4p-chip--neutral';
 
+  /* "Ativo"/"Livre" apenas repetem o stat de Disponibilidade */
+  const showLastActivity = board.ultimaAtividade && !['Ativo', 'Livre'].includes(board.ultimaAtividade);
+
+  /* Nota de status só aparece quando traz informação além do já exibido em Disponibilidade/Campanha */
+  const showHeroNote = Boolean(board.statusDetalhe) && (
+    board.status === 'maintenance' ||
+    board.status === 'critical' ||
+    ((board.status === 'available' || board.status === 'reserved') && (board.diasOcioso ?? 0) > 0)
+  );
+
   return (
     <div className="v4p-bdp" style={{ '--v4p-bdp-accent': stateMeta.color }}>
 
@@ -227,14 +213,10 @@ function BoardDetailPageInner({
             <span className="v4p-bdp__eyebrow">Detalhe da placa</span>
             <h1>
               <span className="v4p-mono v4p-bdp__code">{board.codigo}</span>
-              <span className="v4p-bdp__sep">·</span>
-              {board.nome}
             </h1>
-            <p className="v4p-bdp__subtitle">
-              {ext.city ?? board.regiao}
-              {ext.uf ? `, ${ext.uf}` : ''}
-              {' · '}{board.regiao}
-              {ext.operationalRegion ? ` — ${ext.operationalRegion}` : ''}
+            <p className="v4p-bdp__subtitle">{ext.address || 'Endereço não informado'}</p>
+            <p className="v4p-bdp__subtitle v4p-bdp__subtitle--aux">
+              {[board.regiao, board.siglaRegiao].filter(Boolean).join(' — ') || 'Região não informada'}
             </p>
           </div>
         </div>
@@ -259,13 +241,13 @@ function BoardDetailPageInner({
                 className={`v4p-bdp__action-btn${isUnavailable ? ' v4p-bdp__action-btn--reserved' : ' v4p-bdp__action-btn--reserve'}`}
                 onClick={handleReserve}
                 disabled={isBusy}
-                aria-label={isUnavailable ? `Disponibilizar placa ${board.codigo}` : `Indisponibilizar placa ${board.codigo}`}
+                aria-label={isUnavailable ? `Disponibilizar placa ${board.codigo}` : `Marcar placa ${board.codigo} como indisponível`}
                 style={isBusy ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
               >
                 <span className="material-symbols-rounded" style={{ fontSize: 15 }}>
                   {isBusy ? 'pending' : (isUnavailable ? 'lock_open' : 'block')}
                 </span>
-                {isBusy ? '...' : (isUnavailable ? 'Disponibilizar' : 'Indisponibilizar')}
+                {isBusy ? '...' : (isUnavailable ? 'Disponibilizar' : 'Marcar indisponível')}
               </button>
             )}
 
@@ -276,7 +258,7 @@ function BoardDetailPageInner({
               aria-label={`Ver placa ${board.codigo} no mapa`}
             >
               <span className="material-symbols-rounded" style={{ fontSize: 15 }}>map</span>
-              Ver no mapa
+              Abrir no mapa
             </button>
           </div>
         </div>
@@ -323,9 +305,6 @@ function BoardDetailPageInner({
               codigo={board.codigo}
             />
             <div className="v4p-bdp__hero-img-overlay" />
-            <div className="v4p-bdp__hero-img-badges">
-              <BoardStatusBadge status={board.status} />
-            </div>
           </div>
         </div>
 
@@ -333,12 +312,12 @@ function BoardDetailPageInner({
           <div className="v4p-bdp__hero-summary-title">Resumo operacional</div>
 
           <div className="v4p-bdp__hero-stats">
-            <Stat label="Receita/mês"     value={board.receitaFormatada} color="var(--v4p-success)" />
+            <Stat label="Receita"         value={board.receitaFormatada} color="var(--v4p-success)" />
             <Stat label="Disponibilidade" value={board.ocupado ? 'Ocupada' : 'Livre'}
               color={board.ocupado ? 'var(--v4p-success)' : 'var(--v4p-accent)'} />
-            <Stat label="Ocupação atual"  value={`${occupancyPct}%`}
+            <Stat label="Ocupação"        value={`${occupancyPct}%`}
               color={occupancyPct > 0 ? 'var(--v4p-success)' : 'var(--v4p-text-3)'} />
-            <Stat label="Potencial/mês"   value={fmtMoney(perf.potencialMensal)} color="var(--v4p-text-2)" />
+            <Stat label="Potencial"       value={fmtMoney(perf.potencialMensal)} color="var(--v4p-text-2)" sub="por mês" />
           </div>
 
           <div className="v4p-bdp__hero-detail">
@@ -357,47 +336,27 @@ function BoardDetailPageInner({
             <DataRow label="Categoria"        value={board.categoria} />
             <DataRow label="Visibilidade"     value={board.visibilidade} />
             <DataRow label="Risco"            value={riskMeta.label} />
-            <DataRow label="Última atividade" value={board.ultimaAtividade} />
+            {showLastActivity && <DataRow label="Última atividade" value={board.ultimaAtividade} />}
           </div>
 
-          <div className="v4p-bdp__hero-note">{board.statusDetalhe}</div>
+          {showHeroNote && <div className="v4p-bdp__hero-note">{board.statusDetalhe}</div>}
         </div>
       </div>
 
-      {/* ── ROW 2: Geo + Técnico ──────────────────────────────── */}
-      <div className="v4p-bdp__row2">
-        <BoardGeoPanel board={ext} />
-
-        <section className="v4p-bdp__technical">
-          <header className="v4p-bdp__section-head">
-            <span className="material-symbols-rounded v4p-bdp__section-icon" aria-hidden="true">settings</span>
-            <div>
-              <h3>Dados operacionais</h3>
-              <p>Especificações técnicas da placa</p>
-            </div>
-          </header>
-          <div className="v4p-bdp__data-grid">
-            <DataRow label="Formato"         value={ext.format} />
-            <DataRow label="Dimensões"        value={ext.dimensions} />
-            <DataRow label="Face"             value={ext.face} />
-            <DataRow label="Material"         value={ext.material} />
-            <DataRow label="Iluminação"       value={ext.lighting} />
-            <DataRow label="Condição"         value={ext.condition} />
-            <DataRow label="Última vistoria"  value={fmtDate(ext.lastInspection)} />
-            <DataRow label="Responsável op."  value={ext.operationalOwner} />
+      {/* ── LOCALIZAÇÃO ───────────────────────────────────────── */}
+      <section className="v4p-bdp__location">
+        <header className="v4p-bdp__section-head">
+          <span className="material-symbols-rounded v4p-bdp__section-icon" aria-hidden="true">map</span>
+          <div>
+            <h3>Localização</h3>
+            <p>Endereço e posição geográfica da placa</p>
           </div>
-          <div className="v4p-bdp__perf-bars">
-            <PerfBar label="Taxa de ocupação (período)" pct={perf.taxaOcupacao} color="var(--v4p-success)" />
-            {perf.mediaRegiao != null && perf.potencialMensal != null && (
-              <PerfBar
-                label="Média da região"
-                pct={perf.mediaRegiao / perf.potencialMensal}
-                color="var(--v4p-info)"
-              />
-            )}
-          </div>
-        </section>
-      </div>
+        </header>
+        <div className="v4p-bdp__location-grid">
+          <BoardLocationMap board={board} codigo={board.codigo} accentColor={stateMeta.color} />
+          <BoardGeoPanel board={ext} />
+        </div>
+      </section>
 
       {/* ── ROW 3: Contratos + Performance ───────────────────── */}
       <div className="v4p-bdp__row3">

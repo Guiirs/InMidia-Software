@@ -30,6 +30,9 @@ vi.mock('../../components/map/V4OperationalMap.jsx', () => ({
       data-boundaries={regionBoundaries.map((region) => region.id).join('|')}
       data-points={points.map((point) => point.title).join('|')}
       data-coordinates={points.map((point) => `${point.latitude ?? 'null'},${point.longitude ?? 'null'}`).join('|')}
+      data-statuses={points.map((point) => point.status).join('|')}
+      data-base-statuses={points.map((point) => point.baseStatus).join('|')}
+      data-operational-blocks={points.map((point) => (point.operationalBlock ? point.operationalBlock.operationType : '')).join('|')}
     />
   ),
 }));
@@ -482,6 +485,408 @@ describe('MapPage integration surface', () => {
       // O mock de V4OperationalMap recebe os points — verificar que a placa chegou
       const mapEl = screen.getByTestId('operational-map');
       expect(mapEl.dataset.points).toContain('COM-001');
+    });
+  });
+
+  describe('toMapPoints — status visual sobreposto por operationalBlock', () => {
+    it('placa disponivel sem operacao permanece Disponivel', async () => {
+      setMapData({
+        regions: [],
+        boards: [
+          { id: 'b1', codigo: 'DISP-001', nome: 'Disp', lat: -23.1, lng: -46.1, status: 'available', localizacao: 'A' },
+        ],
+      });
+      const { default: MapPage } = await import('./MapPage.jsx');
+      render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+      const mapEl = screen.getByTestId('operational-map');
+      expect(mapEl.dataset.statuses).toBe('available');
+      expect(mapEl.dataset.baseStatuses).toBe('available');
+    });
+
+    it('placa ocupada sem operacao permanece Ocupada', async () => {
+      setMapData({
+        regions: [],
+        boards: [
+          { id: 'b1', codigo: 'OCUP-001', nome: 'Ocup', lat: -23.1, lng: -46.1, status: 'occupied', localizacao: 'A' },
+        ],
+      });
+      const { default: MapPage } = await import('./MapPage.jsx');
+      render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+      const mapEl = screen.getByTestId('operational-map');
+      expect(mapEl.dataset.statuses).toBe('occupied');
+    });
+
+    it('placa reservada sem operacao permanece Reservada', async () => {
+      setMapData({
+        regions: [],
+        boards: [
+          { id: 'b1', codigo: 'RES-001', nome: 'Res', lat: -23.1, lng: -46.1, status: 'reserved', localizacao: 'A' },
+        ],
+      });
+      const { default: MapPage } = await import('./MapPage.jsx');
+      render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+      const mapEl = screen.getByTestId('operational-map');
+      expect(mapEl.dataset.statuses).toBe('reserved');
+    });
+
+    it('placa ocupada com operacao de manutencao aberta aparece como Manutencao', async () => {
+      setMapData({
+        regions: [],
+        boards: [
+          {
+            id: 'b1', codigo: 'MNT-001', nome: 'Manutencao', lat: -23.1, lng: -46.1, status: 'occupied', localizacao: 'A',
+            operationalBlock: { blocked: true, operationType: 'MAINTENANCE', operationStatus: 'IN_PROGRESS', label: 'Manutenção em andamento' },
+          },
+        ],
+      });
+      const { default: MapPage } = await import('./MapPage.jsx');
+      render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+      const mapEl = screen.getByTestId('operational-map');
+      expect(mapEl.dataset.statuses).toBe('maintenance');
+      expect(mapEl.dataset.baseStatuses).toBe('occupied');
+    });
+
+    it('placa com operacao de raspagem aberta aparece como Manutencao sem criar nova cor', async () => {
+      setMapData({
+        regions: [],
+        boards: [
+          {
+            id: 'b1', codigo: 'RASP-001', nome: 'Raspagem', lat: -23.1, lng: -46.1, status: 'available', localizacao: 'A',
+            operationalBlock: { blocked: true, operationType: 'SCRAPING', operationStatus: 'IN_PROGRESS', label: 'Raspagem em andamento' },
+          },
+        ],
+      });
+      const { default: MapPage } = await import('./MapPage.jsx');
+      render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+      const mapEl = screen.getByTestId('operational-map');
+      expect(mapEl.dataset.statuses).toBe('maintenance');
+    });
+
+    it('placa com operacao de limpeza/vistoria aberta aparece como Manutencao', async () => {
+      setMapData({
+        regions: [],
+        boards: [
+          {
+            id: 'b1', codigo: 'INSP-001', nome: 'Vistoria', lat: -23.1, lng: -46.1, status: 'available', localizacao: 'A',
+            operationalBlock: { blocked: true, operationType: 'INSPECTION', operationStatus: 'PENDING', label: 'Vistoria pendente' },
+          },
+        ],
+      });
+      const { default: MapPage } = await import('./MapPage.jsx');
+      render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+      const mapEl = screen.getByTestId('operational-map');
+      expect(mapEl.dataset.statuses).toBe('maintenance');
+    });
+
+    it('placa com operacao critica (BLOCK) aberta aparece como Critica', async () => {
+      setMapData({
+        regions: [],
+        boards: [
+          {
+            id: 'b1', codigo: 'BLK-001', nome: 'Bloqueio', lat: -23.1, lng: -46.1, status: 'available', localizacao: 'A',
+            operationalBlock: { blocked: true, operationType: 'BLOCK', operationStatus: 'IN_PROGRESS', label: 'Bloqueio operacional' },
+          },
+        ],
+      });
+      const { default: MapPage } = await import('./MapPage.jsx');
+      render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+      const mapEl = screen.getByTestId('operational-map');
+      expect(mapEl.dataset.statuses).toBe('critical');
+    });
+
+    it('operationalBlock.blocked === false nao altera o status visual', async () => {
+      setMapData({
+        regions: [],
+        boards: [
+          {
+            id: 'b1', codigo: 'OK-001', nome: 'Ok', lat: -23.1, lng: -46.1, status: 'occupied', localizacao: 'A',
+            operationalBlock: { blocked: false, operationType: 'MAINTENANCE' },
+          },
+        ],
+      });
+      const { default: MapPage } = await import('./MapPage.jsx');
+      render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+      const mapEl = screen.getByTestId('operational-map');
+      expect(mapEl.dataset.statuses).toBe('occupied');
+    });
+
+    it('ao concluir/cancelar operacao (operationalBlock ausente) o status volta ao original', async () => {
+      setMapData({
+        regions: [],
+        boards: [
+          { id: 'b1', codigo: 'BACK-001', nome: 'De volta', lat: -23.1, lng: -46.1, status: 'occupied', localizacao: 'A', operationalBlock: null },
+        ],
+      });
+      const { default: MapPage } = await import('./MapPage.jsx');
+      render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+      const mapEl = screen.getByTestId('operational-map');
+      expect(mapEl.dataset.statuses).toBe('occupied');
+      expect(mapEl.dataset.operationalBlocks).toBe('');
+    });
+  });
+
+  describe('filtros e contadores — status visual final (operationalBlock)', () => {
+    function chipCount(name) {
+      const chip = screen.getByRole('button', { name: new RegExp(name, 'i') });
+      return chip.querySelector('strong').textContent;
+    }
+
+    it('contadores base: Disponiveis/Ocupadas/Reservadas contam placas sem operacao', async () => {
+      setMapData({
+        regions: [],
+        boards: [
+          { id: 'b1', codigo: 'DISP-001', nome: 'Disp', lat: -23.1, lng: -46.1, status: 'available', localizacao: 'A' },
+          { id: 'b2', codigo: 'OCUP-001', nome: 'Ocup', lat: -23.2, lng: -46.2, status: 'occupied', localizacao: 'B' },
+          { id: 'b3', codigo: 'RES-001', nome: 'Res', lat: -23.3, lng: -46.3, status: 'reserved', localizacao: 'C' },
+        ],
+      });
+
+      const { default: MapPage } = await import('./MapPage.jsx');
+      render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+      expect(chipCount('Disponiveis')).toBe('1');
+      expect(chipCount('Ocupadas')).toBe('1');
+      expect(chipCount('Reservadas')).toBe('1');
+      expect(chipCount('Manutencao')).toBe('0');
+      expect(chipCount('Criticas')).toBe('0');
+    });
+
+    it('placa ocupada com raspagem aberta conta em Manutencao, nao em Ocupadas', async () => {
+      setMapData({
+        regions: [],
+        boards: [
+          {
+            id: 'b1', codigo: 'RASP-001', nome: 'Raspagem', lat: -23.1, lng: -46.1, status: 'occupied', localizacao: 'A',
+            operationalBlock: { blocked: true, operationType: 'SCRAPING', operationStatus: 'IN_PROGRESS', label: 'Raspagem em andamento' },
+          },
+        ],
+      });
+
+      const { default: MapPage } = await import('./MapPage.jsx');
+      render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+      expect(chipCount('Ocupadas')).toBe('0');
+      expect(chipCount('Manutencao')).toBe('1');
+    });
+
+    it('placa disponivel com manutencao aberta conta em Manutencao, nao em Disponiveis', async () => {
+      setMapData({
+        regions: [],
+        boards: [
+          {
+            id: 'b1', codigo: 'MNT-001', nome: 'Manutencao', lat: -23.1, lng: -46.1, status: 'available', localizacao: 'A',
+            operationalBlock: { blocked: true, operationType: 'MAINTENANCE', operationStatus: 'IN_PROGRESS', label: 'Manutencao em andamento' },
+          },
+        ],
+      });
+
+      const { default: MapPage } = await import('./MapPage.jsx');
+      render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+      expect(chipCount('Disponiveis')).toBe('0');
+      expect(chipCount('Manutencao')).toBe('1');
+    });
+
+    it('placa reservada com vistoria aberta conta em Manutencao, nao em Reservadas', async () => {
+      setMapData({
+        regions: [],
+        boards: [
+          {
+            id: 'b1', codigo: 'INSP-001', nome: 'Vistoria', lat: -23.1, lng: -46.1, status: 'reserved', localizacao: 'A',
+            operationalBlock: { blocked: true, operationType: 'INSPECTION', operationStatus: 'PENDING', label: 'Vistoria pendente' },
+          },
+        ],
+      });
+
+      const { default: MapPage } = await import('./MapPage.jsx');
+      render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+      expect(chipCount('Reservadas')).toBe('0');
+      expect(chipCount('Manutencao')).toBe('1');
+    });
+
+    it('operacao critica (BLOCK) conta em Criticos', async () => {
+      setMapData({
+        regions: [],
+        boards: [
+          {
+            id: 'b1', codigo: 'BLK-001', nome: 'Bloqueio', lat: -23.1, lng: -46.1, status: 'available', localizacao: 'A',
+            operationalBlock: { blocked: true, operationType: 'BLOCK', operationStatus: 'IN_PROGRESS', label: 'Bloqueio operacional' },
+          },
+        ],
+      });
+
+      const { default: MapPage } = await import('./MapPage.jsx');
+      render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+      expect(chipCount('Disponiveis')).toBe('0');
+      expect(chipCount('Criticas')).toBe('1');
+    });
+
+    it('operationalBlock.blocked === false nao altera os contadores', async () => {
+      setMapData({
+        regions: [],
+        boards: [
+          {
+            id: 'b1', codigo: 'OK-001', nome: 'Ok', lat: -23.1, lng: -46.1, status: 'occupied', localizacao: 'A',
+            operationalBlock: { blocked: false, operationType: 'MAINTENANCE' },
+          },
+        ],
+      });
+
+      const { default: MapPage } = await import('./MapPage.jsx');
+      render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+      expect(chipCount('Ocupadas')).toBe('1');
+      expect(chipCount('Manutencao')).toBe('0');
+    });
+
+    it('botao Manutencao mostra placas com raspagem/manutencao/vistoria abertas, botao Ocupadas exclui a placa em raspagem', async () => {
+      setMapData({
+        regions: [],
+        boards: [
+          { id: 'b1', codigo: 'OCUP-001', nome: 'Ocup', lat: -23.1, lng: -46.1, status: 'occupied', localizacao: 'A' },
+          {
+            id: 'b2', codigo: 'RASP-001', nome: 'Raspagem', lat: -23.2, lng: -46.2, status: 'occupied', localizacao: 'B',
+            operationalBlock: { blocked: true, operationType: 'SCRAPING', operationStatus: 'IN_PROGRESS', label: 'Raspagem em andamento' },
+          },
+          {
+            id: 'b3', codigo: 'MNT-001', nome: 'Manutencao', lat: -23.3, lng: -46.3, status: 'available', localizacao: 'C',
+            operationalBlock: { blocked: true, operationType: 'MAINTENANCE', operationStatus: 'IN_PROGRESS', label: 'Manutencao em andamento' },
+          },
+          {
+            id: 'b4', codigo: 'INSP-001', nome: 'Vistoria', lat: -23.4, lng: -46.4, status: 'reserved', localizacao: 'D',
+            operationalBlock: { blocked: true, operationType: 'INSPECTION', operationStatus: 'PENDING', label: 'Vistoria pendente' },
+          },
+        ],
+      });
+
+      const { default: MapPage } = await import('./MapPage.jsx');
+      render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+      fireEvent.click(screen.getByRole('button', { name: /Manutencao/i }));
+      const maintenancePoints = screen.getByTestId('operational-map').dataset.points;
+      expect(maintenancePoints).toContain('RASP-001');
+      expect(maintenancePoints).toContain('MNT-001');
+      expect(maintenancePoints).toContain('INSP-001');
+      expect(maintenancePoints).not.toContain('OCUP-001');
+
+      fireEvent.click(screen.getByRole('button', { name: /Ocupadas/i }));
+      const occupiedPoints = screen.getByTestId('operational-map').dataset.points;
+      expect(occupiedPoints).toContain('OCUP-001');
+      expect(occupiedPoints).not.toContain('RASP-001');
+    });
+
+    it('select "Todos os status" usa a mesma logica dos botoes para status visual final', async () => {
+      setMapData({
+        regions: [],
+        boards: [
+          { id: 'b1', codigo: 'OCUP-001', nome: 'Ocup', lat: -23.1, lng: -46.1, status: 'occupied', localizacao: 'A' },
+          {
+            id: 'b2', codigo: 'RASP-001', nome: 'Raspagem', lat: -23.2, lng: -46.2, status: 'occupied', localizacao: 'B',
+            operationalBlock: { blocked: true, operationType: 'SCRAPING', operationStatus: 'IN_PROGRESS', label: 'Raspagem em andamento' },
+          },
+        ],
+      });
+
+      const { default: MapPage } = await import('./MapPage.jsx');
+      render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+      const statusSelect = screen.getAllByRole('combobox')[1];
+      fireEvent.change(statusSelect, { target: { value: 'maintenance' } });
+
+      const points = screen.getByTestId('operational-map').dataset.points;
+      expect(points).toBe('RASP-001');
+    });
+
+    it('busca por texto continua funcionando junto com filtro de status visual', async () => {
+      setMapData({
+        regions: [],
+        boards: [
+          {
+            id: 'b1', codigo: 'RASP-001', nome: 'Raspagem Norte', lat: -23.1, lng: -46.1, status: 'occupied', localizacao: 'A',
+            operationalBlock: { blocked: true, operationType: 'SCRAPING', operationStatus: 'IN_PROGRESS', label: 'Raspagem em andamento' },
+          },
+          {
+            id: 'b2', codigo: 'RASP-002', nome: 'Raspagem Sul', lat: -23.2, lng: -46.2, status: 'occupied', localizacao: 'B',
+            operationalBlock: { blocked: true, operationType: 'SCRAPING', operationStatus: 'IN_PROGRESS', label: 'Raspagem em andamento' },
+          },
+        ],
+      });
+
+      const { default: MapPage } = await import('./MapPage.jsx');
+      render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+      fireEvent.click(screen.getByRole('button', { name: /Manutencao/i }));
+      fireEvent.change(screen.getByPlaceholderText('Buscar placa ou localizacao'), { target: { value: 'Norte' } });
+
+      const points = screen.getByTestId('operational-map').dataset.points;
+      expect(points).toBe('RASP-001');
+    });
+
+    it('filtro por regiao continua funcionando junto com filtro de status visual', async () => {
+      setMapData({
+        regions: [
+          { id: 'r1', name: 'Regiao 1', occupancyRate: 0.5, totalBoards: 1, availableBoards: 0 },
+          { id: 'r2', name: 'Regiao 2', occupancyRate: 0.5, totalBoards: 1, availableBoards: 0 },
+        ],
+        boards: [
+          {
+            id: 'b1', codigo: 'RASP-R1', nome: 'Raspagem R1', lat: -23.1, lng: -46.1, status: 'occupied', regionId: 'r1', localizacao: 'A',
+            operationalBlock: { blocked: true, operationType: 'SCRAPING', operationStatus: 'IN_PROGRESS', label: 'Raspagem em andamento' },
+          },
+          {
+            id: 'b2', codigo: 'RASP-R2', nome: 'Raspagem R2', lat: -23.2, lng: -46.2, status: 'occupied', regionId: 'r2', localizacao: 'B',
+            operationalBlock: { blocked: true, operationType: 'SCRAPING', operationStatus: 'IN_PROGRESS', label: 'Raspagem em andamento' },
+          },
+        ],
+      });
+
+      const { default: MapPage } = await import('./MapPage.jsx');
+      render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+      fireEvent.click(screen.getByRole('button', { name: /Manutencao/i }));
+      const regionSelect = screen.getAllByRole('combobox')[0];
+      fireEvent.change(regionSelect, { target: { value: 'r1' } });
+
+      const points = screen.getByTestId('operational-map').dataset.points;
+      expect(points).toBe('RASP-R1');
+    });
+
+    it('apos conclusao/cancelamento da operacao, contadores voltam ao status base', async () => {
+      setMapData({
+        regions: [],
+        boards: [
+          {
+            id: 'b1', codigo: 'RASP-001', nome: 'Raspagem', lat: -23.1, lng: -46.1, status: 'occupied', localizacao: 'A',
+            operationalBlock: { blocked: true, operationType: 'SCRAPING', operationStatus: 'IN_PROGRESS', label: 'Raspagem em andamento' },
+          },
+        ],
+      });
+
+      const { default: MapPage } = await import('./MapPage.jsx');
+      const view = render(<MemoryRouter><MapPage /></MemoryRouter>);
+
+      expect(chipCount('Manutencao')).toBe('1');
+      expect(chipCount('Ocupadas')).toBe('0');
+
+      resources['inventory.boards'] = resource([
+        { id: 'b1', codigo: 'RASP-001', nome: 'Raspagem', lat: -23.1, lng: -46.1, status: 'occupied', localizacao: 'A', operationalBlock: null },
+      ]);
+      // focusBoard precisa mudar para forcar re-render do componente memo()
+      view.rerender(<MemoryRouter><MapPage focusBoard={null} /></MemoryRouter>);
+
+      expect(chipCount('Manutencao')).toBe('0');
+      expect(chipCount('Ocupadas')).toBe('1');
     });
   });
 });

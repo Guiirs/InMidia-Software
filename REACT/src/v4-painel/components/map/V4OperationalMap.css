@@ -390,6 +390,22 @@
   font-weight: 650;
 }
 
+.v4-geomap-popup__operation {
+  display: inline-block;
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--v4p-text-3, #b0bac9);
+}
+
+.v4-geomap-popup__team {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--v4p-text-4, #8390a6);
+}
+
 .v4-geomap-popup__region {
   display: block;
   color: var(--v4p-text-4, #8390a6);
@@ -834,6 +850,14 @@
   line-height: 1.35;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.v4-geomap-slideout__team-members {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  color: var(--v4p-text-4, #8390a6);
+  font-size: 10px;
+  line-height: 1.5;
 }
 
 .v4-geomap-slideout__actions {

@@ -1,5 +1,6 @@
 import { Types } from 'mongoose';
 import Aluguel from '@modules/alugueis/Aluguel';
+import { syncAluguelFields } from '@modules/alugueis/utils/aluguel-field-sync';
 import AppError from '@shared/container/AppError';
 
 type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
@@ -343,17 +344,12 @@ export class OperationalContractService {
     if (input.periodType) update.periodType = input.periodType;
     if (input.biWeekIds) {
       update.biWeekIds = input.biWeekIds;
-      update.bi_week_ids = input.biWeekIds;
     }
     if (input.startDate || input.dataInicio) {
-      const startDate = requireDate(input.startDate ?? input.dataInicio, 'startDate');
-      update.startDate = startDate;
-      update.data_inicio = startDate;
+      update.startDate = requireDate(input.startDate ?? input.dataInicio, 'startDate');
     }
     if (input.endDate || input.dataFim) {
-      const endDate = requireDate(input.endDate ?? input.dataFim, 'endDate');
-      update.endDate = endDate;
-      update.data_fim = endDate;
+      update.endDate = requireDate(input.endDate ?? input.dataFim, 'endDate');
     }
     const status = normalizeDbStatus(input.status);
     if (status) update.status = status;
@@ -367,7 +363,7 @@ export class OperationalContractService {
 
     const updated = await Aluguel.findOneAndUpdate(
       { _id: requireObjectId(id, 'id'), empresaId },
-      { $set: update },
+      { $set: syncAluguelFields(update) },
       { new: true, runValidators: true },
     ).lean();
 

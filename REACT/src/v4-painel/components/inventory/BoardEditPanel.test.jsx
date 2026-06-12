@@ -175,4 +175,25 @@ describe('BoardEditPanel', () => {
     fireEvent.click(screen.getAllByText('Remover').at(-1));
     await waitFor(() => expect(deleteMedia).toHaveBeenCalledWith('img-2'));
   });
+
+  it('mantem o painel aberto e mostra conflito amigavel ao renomear', async () => {
+    const onClose = vi.fn();
+    const onSave = vi.fn().mockRejectedValue({
+      response: { data: { error: { code: 'PLATE_NAME_CONFLICT' } } },
+    });
+
+    render(
+      <BoardEditPanel
+        board={{ id: 'b6', codigo: 'SP-006', endereco: 'Rua F', status: 'available' }}
+        onSave={onSave}
+        onClose={onClose}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Salvar placa/i }));
+    await waitFor(() => {
+      expect(screen.getByText('Já existe uma placa cadastrada com esse nome.')).toBeInTheDocument();
+    });
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });

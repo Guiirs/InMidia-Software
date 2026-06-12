@@ -2,6 +2,7 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { listRegions } from '../../../services/regionService.js';
 import { normalizePlateCoordinatePair } from '../../../pages/PlacaFormPage/placaFormPayload.js';
+import { getPlateErrorMessage } from '../../utils/plateErrorMessages.js';
 import './BoardEditPanel.css';
 
 const EMPTY_FORM = {
@@ -99,6 +100,8 @@ function BoardCreatePanel({ onSave, onClose, saving = false }) {
         longitude: coords.hasCoordinates ? coords.longitude : undefined,
       });
       onClose();
+    } catch (error) {
+      setErrors((prev) => ({ ...prev, codigo: getPlateErrorMessage(error) }));
     } finally {
       setLocalSaving(false);
     }

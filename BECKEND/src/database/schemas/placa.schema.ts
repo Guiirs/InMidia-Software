@@ -1,5 +1,6 @@
 import { Schema, Types } from 'mongoose';
 import { IPlaca } from '../../types/models';
+import { normalizePlateName, PLATE_NORMALIZED_NAME_INDEX } from '@modules/placas/utils/plate-name.utils';
 
 export const PlateImageCategoryValues = [
   'MAIN',
@@ -49,6 +50,7 @@ export const placaSchema = new Schema<IPlaca>(
       trim: true,
       index: true,
     },
+    numeroPlacaNormalizado: { type: String, trim: true },
     numeroOperacional: { type: Number, min: 1, index: true },
 
     // ── Endereço e localização ──────────────────────────────────────────────
@@ -193,10 +195,16 @@ placaSchema.index(
   { empresaId: 1, numero_placa: 1 },
   { unique: true, name: 'idx_placa_numero_empresa_unique' },
 );
+placaSchema.index(
+  { empresaId: 1, numeroPlacaNormalizado: 1 },
+  { unique: true, name: PLATE_NORMALIZED_NAME_INDEX },
+);
 
 // ── Pre-validate: sincroniza aliases ────────────────────────────────────────
 placaSchema.pre('validate', function normalizePlacaAliases(next) {
   const doc = this as any;
+
+  doc.numeroPlacaNormalizado = normalizePlateName(doc.numero_placa);
 
   // Região
   doc.regionId = doc.regionId || doc.regiaoId;
@@ -217,6 +225,29 @@ placaSchema.pre('validate', function normalizePlacaAliases(next) {
 
   next();
 });
+
+function normalizePlateNameInUpdate(this: any, next: (error?: Error) => void) {
+  const update = this.getUpdate?.();
+  if (!update || Array.isArray(update)) {
+    next();
+    return;
+  }
+
+  const numeroPlaca = update.$set?.numero_placa ?? update.numero_placa;
+  if (typeof numeroPlaca === 'string') {
+    update.$set = {
+      ...(update.$set ?? {}),
+      numeroPlacaNormalizado: normalizePlateName(numeroPlaca),
+    };
+    delete update.numeroPlacaNormalizado;
+  }
+
+  next();
+}
+
+placaSchema.pre('findOneAndUpdate', normalizePlateNameInUpdate);
+placaSchema.pre('updateOne', normalizePlateNameInUpdate);
+placaSchema.pre('updateMany', normalizePlateNameInUpdate);
 
 // Exporta o tipo da imagem embutida para uso nos services
 export type PlateImageDoc = {

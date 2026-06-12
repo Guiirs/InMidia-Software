@@ -4,7 +4,10 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import Aluguel from '@modules/alugueis/Aluguel';
 import Placa from '@modules/placas/Placa';
 import { temporalEngine } from '@modules/temporal';
-import { commercialAvailabilityProjection } from '../commercial-availability.projection';
+import type { ITemporalReservation } from '@modules/temporal/TemporalReservation';
+import type { TemporalReservationStatus, TemporalSourceType } from '@modules/temporal/temporal.types';
+import { commercialAvailabilityProjection, activeTemporalStatus } from '../commercial-availability.projection';
+import { deriveCommercialStatus } from '@modules/commercial-projection/commercial-projection.service';
 import { getProjectionMetricsSnapshot, resetProjectionMetrics } from '@shared/infra/monitoring/projection-metrics';
 
 const date = (value: string) => new Date(`${value}T00:00:00.000Z`);
@@ -112,6 +115,45 @@ describe('CommercialAvailabilityProjection', () => {
     await expect(resolve(String(placa._id))).resolves.toMatchObject({
       status: 'FUTURE_RESERVED',
       source: 'temporal',
+      isCommerciallyAvailable: false,
+    });
+  });
+
+  it('resolve bloqueio manual ativo como MAINTENANCE', async () => {
+    const placa = await createPlate();
+    await temporalEngine.createTemporalReservation({
+      empresaId,
+      plateId: String(placa._id),
+      sourceType: 'MANUAL_BLOCK',
+      sourceId: 'BLOCK-1',
+      startDate: date('2026-06-01'),
+      endDate: date('2026-06-30'),
+      status: 'BLOCKED',
+    });
+
+    await expect(resolve(String(placa._id))).resolves.toMatchObject({
+      status: 'MAINTENANCE',
+      source: 'temporal',
+      isPhysicallyBlocked: true,
+      isCommerciallyAvailable: false,
+    });
+  });
+
+  it('resolve operacao ativa (sourceType=OPERATION) como MAINTENANCE', async () => {
+    const placa = await createPlate();
+    await temporalEngine.createTemporalReservation({
+      empresaId,
+      plateId: String(placa._id),
+      sourceType: 'OPERATION',
+      sourceId: 'OPERATION-1',
+      startDate: date('2026-06-01'),
+      endDate: date('2026-06-30'),
+    });
+
+    await expect(resolve(String(placa._id))).resolves.toMatchObject({
+      status: 'MAINTENANCE',
+      source: 'temporal',
+      isPhysicallyBlocked: true,
       isCommerciallyAvailable: false,
     });
   });
@@ -263,5 +305,44 @@ describe('CommercialAvailabilityProjection', () => {
         fallbackRate: 0.5,
       }),
     ]));
+  });
+
+  describe('paridade com commercial-projection (guardrail anti-regressao)', () => {
+    function makeReservation(overrides: Partial<ITemporalReservation>): ITemporalReservation {
+      return {
+        _id: new Types.ObjectId(),
+        empresaId: new Types.ObjectId(),
+        plateId: new Types.ObjectId(),
+        sourceType: 'PI',
+        sourceId: 'SRC-1',
+        startDate: date('2026-06-01'),
+        endDate: date('2026-06-30'),
+        status: 'RESERVED',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        ...overrides,
+      } as ITemporalReservation;
+    }
+
+    const sourceTypes: TemporalSourceType[] = ['PI', 'CONTRACT', 'OPERATION', 'MANUAL_BLOCK', 'LEGACY_RENTAL'];
+    const statuses: TemporalReservationStatus[] = ['RESERVED', 'ACTIVE', 'BLOCKED'];
+
+    it.each(
+      sourceTypes.flatMap((sourceType) => statuses.map((status) => [sourceType, status] as const)),
+    )('sourceType=%s status=%s produz o mesmo CommercialStatus nas duas projecoes', (sourceType, status) => {
+      const reservation = makeReservation({ sourceType, status });
+
+      const fromAvailability = activeTemporalStatus(reservation);
+      const fromProjection = deriveCommercialStatus(reservation, undefined, false, false);
+
+      expect(fromAvailability).toBe(fromProjection);
+    });
+
+    it('OPERATION ativo e MAINTENANCE em ambas projecoes', () => {
+      const reservation = makeReservation({ sourceType: 'OPERATION', status: 'RESERVED' });
+
+      expect(activeTemporalStatus(reservation)).toBe('MAINTENANCE');
+      expect(deriveCommercialStatus(reservation, undefined, false, false)).toBe('MAINTENANCE');
+    });
   });
 });

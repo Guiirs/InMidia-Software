@@ -31,7 +31,10 @@ class WhatsAppService {
 
         this.client = null;
         this.isReady = false;
-        this.groupId = '120363425517091266@g.us'; // ID fixo como valor inicial de segurança
+        this.groupId = process.env.WHATSAPP_GROUP_ID_FALLBACK || '';
+        if (!this.groupId) {
+            logger.warn('[WhatsApp] WHATSAPP_GROUP_ID_FALLBACK não configurado — envio para grupo ficará desabilitado até o grupo ser encontrado por nome.');
+        }
         this.currentQr = null; // Armazena o QR code atual
         this.connectedNumber = null; // Armazena o número conectado
         this.reconnectAttempts = 0;
@@ -210,42 +213,50 @@ class WhatsAppService {
      * Busca o grupo pelo nome ou usa o primeiro grupo encontrado
      */
     async findGroup() {
+        const NOME_GRUPO = process.env.WHATSAPP_GROUP_NAME || 'Placas Disponíveis';
+        const GROUP_ID_FALLBACK = process.env.WHATSAPP_GROUP_ID_FALLBACK || '';
+
         try {
-            const NOME_GRUPO = process.env.WHATSAPP_GROUP_NAME || 'Placas Disponíveis';
-            const GROUP_ID_FALLBACK = '120363425517091266@g.us'; // ID fixo como segurança
-            
             const chats = await this.client!.getChats();
             const groups = chats.filter(chat => chat.isGroup);
 
             logger.info(`[WhatsApp] Encontrados ${groups.length} grupos`);
 
             // Tenta encontrar o grupo pelo nome
-            const targetGroup = groups.find(group => 
+            const targetGroup = groups.find(group =>
                 group.name.toLowerCase().includes(NOME_GRUPO.toLowerCase())
             );
 
             if (targetGroup) {
                 this.groupId = targetGroup.id._serialized;
                 logger.info(`[WhatsApp] ✅ Grupo encontrado por nome: "${targetGroup.name}" (${this.groupId})`);
-            } else {
-                // Se não encontrar pelo nome, usa o ID fixo como segurança
+            } else if (GROUP_ID_FALLBACK) {
+                // Se não encontrar pelo nome, usa o ID configurado via env como segurança
                 logger.warn(`[WhatsApp] ⚠️ Grupo "${NOME_GRUPO}" não encontrado por nome.`);
-                logger.info(`[WhatsApp] 🔒 Usando ID fixo de segurança: ${GROUP_ID_FALLBACK}`);
+                logger.info(`[WhatsApp] 🔒 Usando WHATSAPP_GROUP_ID_FALLBACK: ${GROUP_ID_FALLBACK}`);
                 this.groupId = GROUP_ID_FALLBACK;
-                
-                // Verifica se o grupo com ID fixo existe
+
+                // Verifica se o grupo configurado existe
                 const groupById = groups.find(g => g.id._serialized === GROUP_ID_FALLBACK);
                 if (groupById) {
                     logger.info(`[WhatsApp] ✅ Grupo verificado: "${groupById.name}"`);
                 } else {
-                    logger.warn(`[WhatsApp] ⚠️ ID fixo não encontrado nos grupos disponíveis`);
+                    logger.warn(`[WhatsApp] ⚠️ WHATSAPP_GROUP_ID_FALLBACK não encontrado nos grupos disponíveis`);
                 }
+            } else {
+                // Sem grupo por nome e sem fallback configurado — desabilita envio para grupo
+                this.groupId = '';
+                logger.warn(`[WhatsApp] ⚠️ Grupo "${NOME_GRUPO}" não encontrado e WHATSAPP_GROUP_ID_FALLBACK não configurado. Envio para grupo desabilitado.`);
             }
         } catch (error: any) {
             logger.error(`[WhatsApp] Erro ao buscar grupo: ${error.message}`);
-            // Em caso de erro, usa o ID fixo como último recurso
-            this.groupId = '120363425517091266@g.us';
-            logger.info(`[WhatsApp] 🔒 Usando ID fixo de emergência`);
+            if (GROUP_ID_FALLBACK) {
+                this.groupId = GROUP_ID_FALLBACK;
+                logger.info(`[WhatsApp] 🔒 Usando WHATSAPP_GROUP_ID_FALLBACK após erro`);
+            } else {
+                this.groupId = '';
+                logger.warn('[WhatsApp] ⚠️ WHATSAPP_GROUP_ID_FALLBACK não configurado. Envio para grupo desabilitado.');
+            }
         }
     }
 

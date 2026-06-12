@@ -11,6 +11,7 @@ import {
   resolveOperationSla,
 } from '../../modules/operations/services/operations-v4.service';
 import { prepareOperationSlaAlert } from '../../modules/alerts/services/alerts-v4.service';
+import { temporalEngine, TemporalReservation } from '../../modules/temporal';
 import {
   app,
   clearDatabase,
@@ -120,6 +121,166 @@ describe('Operations V4 integration', () => {
 
   it('retorna 401 sem token em /tasks', async () => {
     expect((await request(app).get('/api/v4/operations/tasks')).status).toBe(401);
+  });
+
+  it('retorna erro controlado ao cancelar operacao sem id valido', async () => {
+    const res = await request(app)
+      .post('/api/v4/operations/undefined/cancel')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(400);
+
+    expect(res.body).toMatchObject({
+      success: false,
+      code: 'OPERATION_NOT_FOUND',
+      error: { code: 'OPERATION_NOT_FOUND', statusCode: 400 },
+    });
+  });
+
+  it('retorna erro controlado para JSON malformado no cancelamento', async () => {
+    const res = await request(app)
+      .post(`/api/v4/operations/${new Types.ObjectId()}/cancel`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('Content-Type', 'application/json')
+      .send('{"reason":')
+      .expect(400);
+
+    expect(res.body).toMatchObject({
+      success: false,
+      error: { statusCode: 400 },
+    });
+  });
+
+  it('retorna erro controlado ao iniciar operacao sem id valido', async () => {
+    const res = await request(app)
+      .post('/api/v4/operations/undefined/start')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(400);
+
+    expect(res.body).toMatchObject({
+      success: false,
+      code: 'OPERATION_NOT_FOUND',
+      error: { code: 'OPERATION_NOT_FOUND', statusCode: 400 },
+    });
+  });
+
+  it('retorna erro controlado para JSON malformado ao iniciar operacao', async () => {
+    const res = await request(app)
+      .post(`/api/v4/operations/${new Types.ObjectId()}/start`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('Content-Type', 'application/json')
+      .send('"6a2c0cd47')
+      .expect(400);
+
+    expect(res.body).toMatchObject({
+      success: false,
+      error: { statusCode: 400 },
+    });
+  });
+
+  it('inicia operacao valida, muda status para IN_PROGRESS e preserva openPlateKey', async () => {
+    const plate = await createPlate({ numero_placa: 'OP-START-01' });
+    const created = await request(app)
+      .post('/api/v4/operations/tasks')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ title: 'Raspagem para iniciar', domain: 'operations', type: 'SCRAPING', plateId: String(plate._id) })
+      .expect(201);
+
+    const id = created.body.data.task.id;
+    const openPlateKey = `${TEST_EMPRESA_ID}:${plate._id}`;
+    expect((await OperationRecord.findById(id).lean<any>())?.openPlateKey).toBe(openPlateKey);
+
+    const started = await request(app)
+      .post(`/api/v4/operations/${id}/start`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(200);
+
+    expect(started.body).toMatchObject({
+      success: true,
+      data: { task: { id, status: 'IN_PROGRESS' } },
+    });
+
+    const persisted = await OperationRecord.findById(id).lean<any>();
+    expect(persisted?.status).toBe('IN_PROGRESS');
+    expect(persisted?.openPlateKey).toBe(openPlateKey);
+  });
+
+  it('nao permite iniciar operacao ja em andamento ou finalizada', async () => {
+    const plate = await createPlate({ numero_placa: 'OP-START-02' });
+    const created = await request(app)
+      .post('/api/v4/operations/tasks')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ title: 'Inspecao para iniciar', domain: 'operations', type: 'INSPECTION', plateId: String(plate._id) })
+      .expect(201);
+
+    const id = created.body.data.task.id;
+
+    await request(app)
+      .post(`/api/v4/operations/${id}/start`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(200);
+
+    await request(app)
+      .post(`/api/v4/operations/${id}/start`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(409);
+
+    await request(app)
+      .patch(`/api/v4/operations/tasks/${id}/complete`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(200);
+
+    await request(app)
+      .post(`/api/v4/operations/${id}/start`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(409);
+  });
+
+  it('nao permite concluir operacao ja concluida ou cancelada', async () => {
+    const completedPlate = await createPlate({ numero_placa: 'OP-COMPLETE-FINAL' });
+    const completed = await request(app)
+      .post('/api/v4/operations/tasks')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ title: 'Inspecao concluida', type: 'INSPECTION', plateId: String(completedPlate._id) })
+      .expect(201);
+
+    await request(app)
+      .patch(`/api/v4/operations/tasks/${completed.body.data.task.id}/complete`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(200);
+
+    const completedAgain = await request(app)
+      .patch(`/api/v4/operations/tasks/${completed.body.data.task.id}/complete`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(409);
+    expect(completedAgain.body.code).toBe('OPERATION_INVALID_STATUS');
+
+    const cancelledPlate = await createPlate({ numero_placa: 'OP-CANCEL-FINAL' });
+    const cancelled = await request(app)
+      .post('/api/v4/operations/tasks')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ title: 'Inspecao cancelada', type: 'INSPECTION', plateId: String(cancelledPlate._id) })
+      .expect(201);
+    await request(app)
+      .post(`/api/v4/operations/${cancelled.body.data.task.id}/cancel`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(200);
+
+    const cancelledComplete = await request(app)
+      .patch(`/api/v4/operations/tasks/${cancelled.body.data.task.id}/complete`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(409);
+    expect(cancelledComplete.body.code).toBe('OPERATION_INVALID_STATUS');
   });
 
   // ── Permission guard ────────────────────────────────────────────
@@ -295,6 +456,203 @@ describe('Operations V4 integration', () => {
     ]));
   });
 
+  // ── Bloqueio operacional de placas ──────────────────────────────
+
+  it('cria instalacao sem plateId e sem gerar bloqueio de placa existente', async () => {
+    const createdRes = await request(app)
+      .post('/api/v4/operations/tasks')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        title: 'Instalacao nova placa',
+        domain: 'operations',
+        priority: 'high',
+        type: 'INSTALLATION',
+        startDate: '2026-06-01',
+        dueDate: '2026-06-10',
+      })
+      .expect(201);
+
+    const task = createdRes.body.data.task;
+    expect(task).toMatchObject({ status: 'pending' });
+    expect(task.plateId).toBeNull();
+
+    await request(app)
+      .patch(`/api/v4/operations/tasks/${task.id}/complete`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(200);
+
+    const installation = await OperationRecord.findById(task.id).lean<any>();
+    expect(installation?.openPlateKey).toBeUndefined();
+  });
+
+  it('bloqueia segunda operacao aberta da mesma placa e libera apos conclusao', async () => {
+    const plate = await createPlate({ numero_placa: 'OP-OPEN-01' });
+    const body = {
+      title: 'Raspagem da placa',
+      domain: 'operations',
+      type: 'SCRAPING',
+      plateId: String(plate._id),
+    };
+
+    const first = await request(app)
+      .post('/api/v4/operations/tasks')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send(body)
+      .expect(201);
+
+    const persisted = await OperationRecord.findById(first.body.data.task.id).lean<any>();
+    expect(persisted?.openPlateKey).toBe(`${TEST_EMPRESA_ID}:${plate._id}`);
+
+    const conflict = await request(app)
+      .post('/api/v4/operations/tasks')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ ...body, title: 'Segunda raspagem' })
+      .expect(409);
+    expect(conflict.body).toMatchObject({
+      code: 'PLATE_OPERATION_ALREADY_OPEN',
+      message: 'Esta placa já possui uma operação em aberto.',
+    });
+
+    await request(app)
+      .patch(`/api/v4/operations/tasks/${first.body.data.task.id}/complete`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(200);
+
+    const completed = await OperationRecord.findById(first.body.data.task.id).lean<any>();
+    expect(completed?.openPlateKey).toBeUndefined();
+
+    await request(app)
+      .post('/api/v4/operations/tasks')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ ...body, title: 'Nova raspagem após conclusão' })
+      .expect(201);
+  });
+
+  it('converte corrida no indice unico em PLATE_OPERATION_ALREADY_OPEN', async () => {
+    const plate = await createPlate({ numero_placa: 'OP-RACE-01' });
+    await OperationRecord.syncIndexes();
+    const body = {
+      domain: 'operations',
+      type: 'SCRAPING',
+      plateId: String(plate._id),
+    };
+
+    const responses = await Promise.all([
+      request(app).post('/api/v4/operations/tasks').set('Authorization', `Bearer ${adminToken}`).send({ ...body, title: 'Corrida A' }),
+      request(app).post('/api/v4/operations/tasks').set('Authorization', `Bearer ${adminToken}`).send({ ...body, title: 'Corrida B' }),
+    ]);
+
+    expect(responses.map((response) => response.status).sort()).toEqual([201, 409]);
+    expect(responses.find((response) => response.status === 409)?.body.code).toBe('PLATE_OPERATION_ALREADY_OPEN');
+  });
+
+  it('nao revela bloqueio de placa entre tenants', async () => {
+    const plate = await createPlate({ numero_placa: 'OP-TENANT-01' });
+    await request(app)
+      .post('/api/v4/operations/tasks')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ title: 'Operacao tenant A', domain: 'operations', type: 'SCRAPING', plateId: String(plate._id) })
+      .expect(201);
+
+    const otherTenantId = new Types.ObjectId().toString();
+    await ensureTestEmpresa(otherTenantId);
+    const otherTenantToken = generateTestToken({ role: 'admin_empresa', empresaId: otherTenantId });
+    const response = await request(app)
+      .post('/api/v4/operations/tasks')
+      .set('Authorization', `Bearer ${otherTenantToken}`)
+      .send({ title: 'Operacao tenant B', domain: 'operations', type: 'SCRAPING', plateId: String(plate._id) })
+      .expect(404);
+
+    expect(response.body.code).toBe('OPERATION_BOARD_NOT_FOUND');
+    expect(response.body.code).not.toBe('PLATE_OPERATION_ALREADY_OPEN');
+  });
+
+  it('remove e recria openPlateKey em transicoes genericas entre status final e aberto', async () => {
+    const plate = await createPlate({ numero_placa: 'OP-STATUS-01' });
+    const created = await request(app)
+      .post('/api/v4/operations/tasks')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ title: 'Inspecao', domain: 'operations', type: 'INSPECTION', plateId: String(plate._id) })
+      .expect(201);
+    const id = created.body.data.task.id;
+
+    await request(app)
+      .patch(`/api/v4/operations/tasks/${id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ status: 'FINISHED' })
+      .expect(200);
+    expect((await OperationRecord.findById(id).lean<any>())?.openPlateKey).toBeUndefined();
+
+    await request(app)
+      .patch(`/api/v4/operations/tasks/${id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ status: 'PENDING' })
+      .expect(200);
+    expect((await OperationRecord.findById(id).lean<any>())?.openPlateKey).toBe(`${TEST_EMPRESA_ID}:${plate._id}`);
+
+    await request(app)
+      .patch(`/api/v4/operations/tasks/${id}/complete`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(200);
+    await request(app)
+      .patch(`/api/v4/operations/tasks/${id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ status: 'PENDING' })
+      .expect(200);
+    const reopened = await OperationRecord.findById(id).lean<any>();
+    expect(reopened?.completedAt).toBeUndefined();
+    expect(reopened?.openPlateKey).toBe(`${TEST_EMPRESA_ID}:${plate._id}`);
+  });
+
+  it('exige relatorio final para concluir manutencao e libera a placa quando informado', async () => {
+    const plate = await createPlate({ numero_placa: 'OP-MAINT' });
+
+    const createdRes = await request(app)
+      .post('/api/v4/operations/tasks')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        title: 'Manutencao preventiva',
+        domain: 'operations',
+        priority: 'medium',
+        type: 'MAINTENANCE',
+        plateId: String(plate._id),
+        startDate: '2026-06-01',
+        dueDate: '2026-06-10',
+      })
+      .expect(201);
+
+    const task = createdRes.body.data.task;
+
+    const refusedRes = await request(app)
+      .patch(`/api/v4/operations/tasks/${task.id}/complete`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(400);
+    expect(refusedRes.body.success).toBe(false);
+
+    const stillBlocked = await temporalEngine.resolvePlateTemporalStatus(
+      String(plate._id), new Date('2026-06-05'), TEST_EMPRESA_ID,
+    );
+    expect(stillBlocked).toBe('MAINTENANCE_PENDING');
+
+    await request(app)
+      .patch(`/api/v4/operations/tasks/${task.id}/complete`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ finalReport: 'Troca de lampadas e revisao da estrutura.' })
+      .expect(200);
+
+    const completed = await OperationRecord.findOne({ _id: task.id, empresaId: TEST_EMPRESA_ID }).lean<any>();
+    expect(completed?.payload?.finalReport).toBe('Troca de lampadas e revisao da estrutura.');
+
+    const statusAfterComplete = await temporalEngine.resolvePlateTemporalStatus(
+      String(plate._id), new Date('2026-06-05'), TEST_EMPRESA_ID,
+    );
+    expect(statusAfterComplete).toBe('AVAILABLE');
+  });
+
   it('bloqueia criação de tarefas para perfil somente leitura', async () => {
     const res = await request(app)
       .post('/api/v4/operations/tasks')
@@ -372,6 +730,48 @@ describe('Operations V4 integration', () => {
     expect(res.body.data.task.payload.operationType).toBe('SCRAPING');
   });
 
+  it('busca historico por placa incluindo aliases legados ainda nao canonicalizados', async () => {
+    const plate = await createPlate();
+    await OperationRecord.create([
+      {
+        empresaId: TEST_EMPRESA_ID,
+        kind: 'task',
+        title: 'Legacy placaId',
+        domain: 'operations',
+        status: 'completed',
+        payload: { placaId: String(plate._id), operationType: 'SCRAPING', operationStatus: 'DONE' },
+      },
+      {
+        empresaId: TEST_EMPRESA_ID,
+        kind: 'task',
+        title: 'Legacy board_id',
+        domain: 'operations',
+        status: 'completed',
+        payload: { board_id: String(plate._id), operationType: 'INSPECTION', operationStatus: 'DONE' },
+      },
+    ]);
+
+    const res = await request(app)
+      .get(`/api/v4/operations/by-plate/${plate._id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(res.body.data.total).toBe(2);
+  });
+
+  it.each(['INSPECTION', 'CLEANING', 'REMOVAL', 'BLOCKING', 'CRITICAL', 'OTHER'])(
+    'exige plateId para operacao %s',
+    async (type) => {
+      const res = await request(app)
+        .post('/api/v4/operations/tasks')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ title: `Operacao ${type}`, type })
+        .expect(400);
+
+      expect(res.body.code).toBe('OPERATION_BOARD_REQUIRED');
+    },
+  );
+
   it('operacao regional sem plateId e bloqueada', async () => {
     const res = await request(app)
       .post('/api/v4/operations/tasks')
@@ -382,15 +782,14 @@ describe('Operations V4 integration', () => {
     expect(res.body.success).toBe(false);
   });
 
-  it('operacao GLOBAL sem plateId e permitida', async () => {
+  it('operacao nao-installation GLOBAL sem plateId e bloqueada', async () => {
     const res = await request(app)
       .post('/api/v4/operations/tasks')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ title: 'Auditoria administrativa', operationScope: 'GLOBAL', priority: 'low' })
-      .expect(201);
+      .send({ title: 'Auditoria administrativa', type: 'OTHER', operationScope: 'GLOBAL', priority: 'low' })
+      .expect(400);
 
-    expect(res.body.data.task.payload.plateId).toBeNull();
-    expect(res.body.data.task.payload.operationScope).toBe('GLOBAL');
+    expect(res.body.code).toBe('OPERATION_BOARD_REQUIRED');
   });
 
   it('backfill atualiza operacao legacy com placaId e e idempotente', async () => {
@@ -1091,6 +1490,8 @@ describe('Operations V4 integration', () => {
     });
     expect(res.body.data.task.payload.metadata.manualResolvedAt).toBeTruthy();
     expect(res.body.data.task.payload.metadata.manualResolvedBy).toBeTruthy();
+    expect((await OperationRecord.findById(operation._id).lean<any>())?.openPlateKey)
+      .toBe(`${TEST_EMPRESA_ID}:${plate._id}`);
 
     const audit = await AuditLog.findOne({
       empresaId: new Types.ObjectId(TEST_EMPRESA_ID),

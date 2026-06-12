@@ -1,6 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
+import { validateJwtSecret } from './validators/jwtSecret';
+import { validateRedisConfig } from './validators/redisConfig';
+import { parsePositiveInt } from './validators/parsePositiveInt';
 
 function loadEnvFiles(): void {
   const nodeEnv = process.env.NODE_ENV || 'development';
@@ -16,7 +19,12 @@ function loadEnvFiles(): void {
   for (const envFile of envFiles) {
     const envPath = path.join(projectRoot, envFile);
     if (!fs.existsSync(envPath)) continue;
-    dotenv.config({ path: envPath, override: true });
+    // Em NODE_ENV=test, o `.env` base nao deve sobrescrever variaveis ja
+    // definidas pelo processo (ex.: setup.ts força REDIS_ENABLED=false para
+    // testes de integração). Arquivos de override mais especificos
+    // (.env.test, .env.local, .env.test.local) continuam vencendo.
+    const override = !(nodeEnv === 'test' && envFile === '.env');
+    dotenv.config({ path: envPath, override });
   }
 }
 
@@ -51,9 +59,15 @@ interface IConfig {
   rateLimitMaxRequests: number;
   redisUrl: string;
   redisEnabled: boolean;
+  redisConnectTimeoutMs: number;
   metricsUser?: string;
   metricsPassword?: string;
   enableOrganizationBootstrapOnLogin: boolean;
+
+  // Mongo connection pool
+  mongoMinPoolSize: number;
+  mongoMaxPoolSize: number;
+  mongoServerSelectionTimeoutMs: number;
 }
 
 function resolveCorsOrigin(): string {
@@ -90,18 +104,12 @@ function parseDurationMs(value: string): number {
 }
 
 // Validate critical environment variables
-if (!process.env.JWT_SECRET) {
-  process.stderr.write('[CONFIG] FATAL ERROR: JWT_SECRET is not defined\n');
+const jwtSecretCheck = validateJwtSecret(process.env.JWT_SECRET, process.env.NODE_ENV || 'development');
+if (jwtSecretCheck.fatal) {
+  process.stderr.write(`[CONFIG] FATAL ERROR: ${jwtSecretCheck.message}\n`);
   process.exit(1);
-}
-
-if (process.env.JWT_SECRET.length < 64) {
-  if (process.env.NODE_ENV === 'production') {
-    process.stderr.write('[CONFIG] FATAL ERROR: JWT_SECRET must be at least 64 characters in production\n');
-    process.exit(1);
-  } else {
-    process.stderr.write('[CONFIG] WARNING: JWT_SECRET is shorter than 64 characters — insecure for production\n');
-  }
+} else if (!jwtSecretCheck.ok) {
+  process.stderr.write(`[CONFIG] WARNING: ${jwtSecretCheck.message}\n`);
 }
 
 if (!process.env.MONGODB_URI) {
@@ -122,6 +130,18 @@ if (
   (!process.env.R2_ENDPOINT || !process.env.R2_ACCESS_KEY_ID || !process.env.R2_SECRET_ACCESS_KEY || !process.env.R2_BUCKET_NAME || !process.env.R2_PUBLIC_URL)
 ) {
   process.stderr.write('[CONFIG] WARNING: R2 storage variables not fully configured.\n');
+}
+
+const redisEnabled = parseEnvToggle(process.env.REDIS_ENABLED, true);
+
+const redisConfigCheck = validateRedisConfig({
+  enabled: redisEnabled,
+  hasUrl: !!process.env.REDIS_URL,
+  nodeEnv: process.env.NODE_ENV || 'development',
+});
+if (redisConfigCheck.fatal) {
+  process.stderr.write(`[CONFIG] FATAL ERROR: ${redisConfigCheck.message}\n`);
+  process.exit(1);
 }
 
 const accessTokenExpiresIn = process.env.ACCESS_TOKEN_EXPIRES_IN || process.env.JWT_EXPIRES_IN || '15m';
@@ -151,13 +171,18 @@ const config: IConfig = {
   rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
   rateLimitMaxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10),
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
-  redisEnabled: parseEnvToggle(process.env.REDIS_ENABLED, true),
+  redisEnabled,
+  redisConnectTimeoutMs: parsePositiveInt(process.env.REDIS_CONNECT_TIMEOUT_MS, 5_000),
   metricsUser: process.env.METRICS_USER,
   metricsPassword: process.env.METRICS_PASSWORD,
   enableOrganizationBootstrapOnLogin: parseEnvToggle(
     process.env.ENABLE_ORGANIZATION_BOOTSTRAP_ON_LOGIN,
     (process.env.NODE_ENV ?? 'development') !== 'production',
   ),
+
+  mongoMinPoolSize: parsePositiveInt(process.env.MONGO_MIN_POOL_SIZE, 2),
+  mongoMaxPoolSize: parsePositiveInt(process.env.MONGO_MAX_POOL_SIZE, 10),
+  mongoServerSelectionTimeoutMs: parsePositiveInt(process.env.MONGO_SERVER_SELECTION_TIMEOUT_MS, 5_000),
 };
 
 export default config;

@@ -17,7 +17,10 @@ import {
 import OperationCanonicalizationCard from '../../components/operations/OperationCanonicalizationCard.jsx';
 import OperationLinkResolutionQueue from '../../components/operations/OperationLinkResolutionQueue.jsx';
 import OperationFormModal from '../../components/operations/OperationFormModal.jsx';
+import OperationTeamsPanel from '../../components/operations/OperationTeamsPanel.jsx';
+import MaintenanceCompletionModal from '../../components/operations/MaintenanceCompletionModal.jsx';
 import OperationsProvider, { useOperations } from '../../providers/OperationsProvider.jsx';
+import { getOperationErrorPresentation } from '../../utils/operationErrorMessages.js';
 import './OperationsPage.css';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -32,8 +35,12 @@ const STATUS_TO_BADGE = {
 const TYPE_ICON = {
   INSTALLATION: 'install_desktop',
   SCRAPING:     'cleaning_services',
+  CLEANING:     'cleaning_services',
+  REMOVAL:      'remove_circle_outline',
   MAINTENANCE:  'build',
   BLOCK:        'block',
+  BLOCKING:     'block',
+  CRITICAL:     'crisis_alert',
   INSPECTION:   'search',
   OTHER:        'more_horiz',
 };
@@ -41,8 +48,12 @@ const TYPE_ICON = {
 const TYPE_LABEL = {
   INSTALLATION: 'Instalação',
   SCRAPING:     'Raspagem',
+  CLEANING:     'Limpeza',
+  REMOVAL:      'Retirada',
   MAINTENANCE:  'Manutenção',
   BLOCK:        'Bloqueio',
+  BLOCKING:     'Bloqueio de placa',
+  CRITICAL:     'Operação crítica',
   INSPECTION:   'Inspeção',
   OTHER:        'Outro',
 };
@@ -50,8 +61,12 @@ const TYPE_LABEL = {
 const TYPE_COLOR = {
   INSTALLATION: 'info',
   SCRAPING:     'warning',
+  CLEANING:     'warning',
+  REMOVAL:      'warning',
   MAINTENANCE:  'warning',
   BLOCK:        'danger',
+  BLOCKING:     'danger',
+  CRITICAL:     'danger',
   INSPECTION:   'muted',
   OTHER:        'muted',
 };
@@ -219,21 +234,9 @@ function OperationsHeader({ operations, loading, refreshing, stale, status, sour
           Atualizado {overview.ultimaAtualizacao ?? operations.generatedAt ?? '—'}
         </span>
         <div className="v4p-ops-header__actions">
-          <V4Button type="button" variant="primary" size="sm" onClick={() => onCreateOp('INSTALLATION')}>
-            <span className="material-symbols-rounded" aria-hidden="true">install_desktop</span>
-            Nova instalação
-          </V4Button>
-          <V4Button type="button" variant="secondary" size="sm" onClick={() => onCreateOp('SCRAPING')}>
-            <span className="material-symbols-rounded" aria-hidden="true">cleaning_services</span>
-            Raspagem
-          </V4Button>
-          <V4Button type="button" variant="secondary" size="sm" onClick={() => onCreateOp('MAINTENANCE')}>
-            <span className="material-symbols-rounded" aria-hidden="true">build</span>
-            Manutenção
-          </V4Button>
-          <V4Button type="button" variant="danger" size="sm" onClick={() => onCreateOp('BLOCK')}>
-            <span className="material-symbols-rounded" aria-hidden="true">block</span>
-            Bloqueio
+          <V4Button type="button" variant="primary" size="sm" onClick={onCreateOp}>
+            <span className="material-symbols-rounded" aria-hidden="true">add</span>
+            Nova operação
           </V4Button>
         </div>
       </div>
@@ -363,6 +366,7 @@ function OperationCard({ task, onStart, onComplete, onCancel, actioning }) {
   const scheduledAt = task.payload?.scheduledAt ?? task.scheduledAt ?? null;
   const dueAt = task.referenceDueAt ?? task.payload?.dueAt ?? null;
   const slaStatus = task.slaStatus ?? null;
+  const teamSnapshot = task.payload?.teamSnapshot ?? task.teamSnapshot ?? null;
 
   const canStart    = status === 'PENDING' || status === 'SCHEDULED';
   const canComplete = status === 'IN_PROGRESS';
@@ -411,6 +415,12 @@ function OperationCard({ task, onStart, onComplete, onCancel, actioning }) {
             {assignedTo}
           </p>
         )}
+        {teamSnapshot && (
+          <p className="v4p-op-card__meta">
+            <span className="material-symbols-rounded" aria-hidden="true">groups</span>
+            Equipe: {teamSnapshot.name} · {teamSnapshot.memberCount} {teamSnapshot.memberCount === 1 ? 'integrante' : 'integrantes'}
+          </p>
+        )}
         {(scheduledAt || dueAt) && (
           <p className="v4p-op-card__meta">
             <span className="material-symbols-rounded" aria-hidden="true">calendar_today</span>
@@ -436,7 +446,7 @@ function OperationCard({ task, onStart, onComplete, onCancel, actioning }) {
         )}
         {canComplete && (
           <button type="button" className="v4p-op-card__action v4p-op-card__action--complete"
-            onClick={() => onComplete(task.id)} disabled={actioning === task.id}>
+            onClick={() => onComplete(task)} disabled={actioning === task.id}>
             <span className="material-symbols-rounded" aria-hidden="true">check</span>
             {actioning === task.id ? '…' : 'Concluir'}
           </button>
@@ -695,51 +705,113 @@ function OperationsPageInner() {
   const auth = useAuth();
   const [canonicalizationRefresh, setCanonicalizationRefresh] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalType, setModalType] = useState('INSTALLATION');
   const [saving, setSaving] = useState(false);
   const [actioning, setActioning] = useState(null);
+  const [maintenanceTask, setMaintenanceTask] = useState(null);
+  const [maintenanceSaving, setMaintenanceSaving] = useState(false);
+  const [createError, setCreateError] = useState(null);
+  const [maintenanceError, setMaintenanceError] = useState(null);
+  const [actionError, setActionError] = useState(null);
 
   const isLoading = loading && !operations.generatedAt;
   const canManageCanonicalization = auth?.hasPermission?.(PERMISSIONS.ADMIN_ACCESS) || auth?.permissions?.includes('superadmin');
   const canCreate = auth?.hasPermission?.('operations.create') ?? true;
 
-  const handleCreateOp = useCallback((type) => {
-    setModalType(type);
+  const handleCreateOp = useCallback(() => {
+    setCreateError(null);
     setModalOpen(true);
   }, []);
 
   const handleSaveOp = useCallback(async (payload) => {
     setSaving(true);
+    setCreateError(null);
     try {
       await createTask?.(payload);
       setModalOpen(false);
       refresh?.();
     } catch (err) {
       console.error('[OperationsPage] Erro ao criar operação:', err);
+      setCreateError(getOperationErrorPresentation(err));
     } finally {
       setSaving(false);
     }
   }, [createTask, refresh]);
 
   const handleStart = useCallback(async (id) => {
+    if (!id) {
+      setActionError('Não foi possível iniciar esta operação porque o identificador está ausente.');
+      return;
+    }
+    setActionError(null);
     setActioning(id);
-    try { await startTask?.(id); refresh?.(); }
-    catch (err) { console.error('[OperationsPage] Erro ao iniciar operação:', err); }
+    try {
+      await startTask?.({ id, startedAt: new Date().toISOString() });
+      refresh?.();
+    } catch (err) {
+      console.error('[OperationsPage] Erro ao iniciar operação:', err);
+      setActionError(getOperationErrorPresentation(err).message);
+    }
     finally { setActioning(null); }
   }, [startTask, refresh]);
 
-  const handleComplete = useCallback(async (id) => {
+  const handleComplete = useCallback(async (task) => {
+    const id = typeof task === 'string' ? task : task?.id;
+    const operationType = String(task?.payload?.operationType ?? task?.operationType ?? '').toUpperCase();
+    if (operationType === 'MAINTENANCE') {
+      setMaintenanceError(null);
+      setMaintenanceTask(task);
+      return;
+    }
+    if (!id) {
+      setActionError('Não foi possível concluir esta operação porque o identificador está ausente.');
+      return;
+    }
+    setActionError(null);
     setActioning(id);
-    try { await completeTask?.(id); refresh?.(); }
-    catch (err) { console.error('[OperationsPage] Erro ao concluir operação:', err); }
+    try {
+      await completeTask?.({ id, completedAt: new Date().toISOString() });
+      refresh?.();
+    } catch (err) {
+      console.error('[OperationsPage] Erro ao concluir operação:', err);
+      setActionError(getOperationErrorPresentation(err).message);
+    }
     finally { setActioning(null); }
   }, [completeTask, refresh]);
 
+  const handleConfirmMaintenanceCompletion = useCallback(async (finalReport) => {
+    const id = maintenanceTask?.id;
+    if (!id) return;
+    setMaintenanceSaving(true);
+    setMaintenanceError(null);
+    setActioning(id);
+    try {
+      await completeTask?.({ id, finalReport });
+      setMaintenanceTask(null);
+      refresh?.();
+    } catch (err) {
+      console.error('[OperationsPage] Erro ao concluir manutenção:', err);
+      setMaintenanceError(getOperationErrorPresentation(err));
+    } finally {
+      setMaintenanceSaving(false);
+      setActioning(null);
+    }
+  }, [completeTask, maintenanceTask, refresh]);
+
   const handleCancel = useCallback(async (id) => {
     if (!window.confirm('Confirmar cancelamento desta operação?')) return;
+    if (!id) {
+      setActionError('Não foi possível identificar a operação. Atualize a página e tente novamente.');
+      return;
+    }
+    setActionError(null);
     setActioning(id);
-    try { await cancelTask?.(id); refresh?.(); }
-    catch (err) { console.error('[OperationsPage] Erro ao cancelar operação:', err); }
+    try {
+      await cancelTask?.({ id, reason: 'Cancelado pelo usuário' });
+      refresh?.();
+    } catch (err) {
+      console.error('[OperationsPage] Erro ao cancelar operação:', err);
+      setActionError(getOperationErrorPresentation(err).message);
+    }
     finally { setActioning(null); }
   }, [cancelTask, refresh]);
 
@@ -761,6 +833,10 @@ function OperationsPageInner() {
 
       {/* ── 2. Aviso de estado (erro / offline / carregando) */}
       <OperationsStateNotice status={status} error={error} refresh={refresh} />
+      {actionError && <p className="v4p-ops-state-notice is-error" role="alert">{actionError}</p>}
+
+      {/* ── 2.1 Equipes operacionais */}
+      <OperationTeamsPanel />
 
       {/* ── 3. KPIs operacionais — o que precisa de atenção agora */}
       <OperationsKpis
@@ -803,12 +879,21 @@ function OperationsPageInner() {
       {canCreate && (
         <OperationFormModal
           open={modalOpen}
-          onClose={() => setModalOpen(false)}
+          onClose={() => { setModalOpen(false); setCreateError(null); }}
           onSave={handleSaveOp}
           saving={saving}
-          initialType={modalType}
+          serverError={createError}
         />
       )}
+
+      {/* ── Modal de conclusão de manutenção (relatório final obrigatório) */}
+      <MaintenanceCompletionModal
+        open={!!maintenanceTask}
+        onClose={() => { setMaintenanceTask(null); setMaintenanceError(null); }}
+        onConfirm={handleConfirmMaintenanceCompletion}
+        saving={maintenanceSaving}
+        serverError={maintenanceError}
+      />
     </div>
   );
 }

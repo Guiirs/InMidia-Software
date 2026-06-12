@@ -61,16 +61,21 @@ function isCancelledLegacy(status: unknown): boolean {
   return status === 'cancelado' || status === 'finalizado';
 }
 
-function activeTemporalStatus(reservation: ITemporalReservation): CommercialAvailabilityStatus {
+export function activeTemporalStatus(reservation: ITemporalReservation): CommercialAvailabilityStatus {
+  // Mantido em paridade com commercial-projection.service.ts#deriveCommercialStatus —
+  // ver teste de paridade em commercial-availability.projection.test.ts.
+  if (reservation.status === 'BLOCKED' || reservation.sourceType === 'MANUAL_BLOCK') return 'MAINTENANCE';
+  if (reservation.sourceType === 'OPERATION') return 'MAINTENANCE';
   if (reservation.sourceType === 'CONTRACT' || reservation.status === 'ACTIVE') return 'CONTRACTED_ACTIVE';
-  if (reservation.sourceType === 'MANUAL_BLOCK' || reservation.status === 'BLOCKED') return 'MAINTENANCE';
   return 'RESERVED';
 }
 
 function resultFromTemporal(reservation: ITemporalReservation, now: Date): CommercialAvailabilityResult {
   const active = reservation.startDate <= now && reservation.endDate >= now;
   const status = active ? activeTemporalStatus(reservation) : 'FUTURE_RESERVED';
-  const isPhysicallyBlocked = reservation.sourceType === 'MANUAL_BLOCK' || reservation.status === 'BLOCKED';
+  const isPhysicallyBlocked = reservation.sourceType === 'MANUAL_BLOCK'
+    || reservation.sourceType === 'OPERATION'
+    || reservation.status === 'BLOCKED';
 
   return {
     status,

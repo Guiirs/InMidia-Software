@@ -151,10 +151,37 @@ export function normalizeBoard(placa, fallback = null) {
   const coords      = normalizeBoardCoordinates(placa);
   const fallbackCoords = coords.hasCoordinates ? null : normalizeBoardCoordinates(fallback ?? {});
   const regiao      = placa.regiao_nome ?? placa.regiao?.nome ?? fallback?.regiao ?? 'Sem região';
+  const cidade      = placa.cidade ?? placa.city ?? placa.regiao?.city ?? placa.regiao?.cidade ?? fallback?.cidade ?? fallback?.city ?? '';
   const siglaRegiao = REGIAO_TO_SIGLA[regiao] ?? fallback?.siglaRegiao ?? '??';
-  const receita     = typeof placa.valor_mensal === 'number' ? placa.valor_mensal : (fallback?.receitaEstimada ?? 0);
   const diasOcioso  = ocupado ? null : daysSince(placa.aluguel_data_fim) ?? fallback?.diasOcioso ?? null;
   const estado      = STATUS_TO_ESTADO[status] ?? OPERATIONAL_STATE.PENDING;
+
+  // ── Commercial Projection snapshot (fonte de verdade comercial) ──────────────
+  // Derivado exclusivamente do CP Engine — nunca lido de campos da placa.
+  const cp = placa.commercialProjection ?? null;
+  const commercialSnapshot = cp != null ? {
+    clientName:       cp.activeContract?.clientName    ?? null,
+    revenue:          typeof cp.pricing?.contractValue === 'number' ? cp.pricing.contractValue : null,
+    contractCode:     cp.activeContract?.contractCode  ?? null,
+    piCode:           cp.activeContract?.piCode        ?? null,
+    startDate:        cp.activeContract?.startDate     ?? null,
+    endDate:          cp.activeContract?.endDate       ?? null,
+    commercialStatus: cp.commercialStatus              ?? null,
+    hasActiveContract: Boolean(
+      cp.activeContract?.clientName || cp.activeContract?.contractCode,
+    ),
+  } : null;
+
+  // Cliente: CP é fonte primária; cliente_nome é fallback para fontes legadas.
+  const cliente = commercialSnapshot?.clientName
+    ?? placa.cliente_nome
+    ?? fallback?.cliente
+    ?? null;
+
+  // Receita: CP.pricing.contractValue é fonte primária; campo legado da placa é fallback.
+  const cpRevenue = commercialSnapshot?.revenue ?? null;
+  const legacyRevenue = typeof placa.valor_mensal === 'number' ? placa.valor_mensal : null;
+  const receita = cpRevenue ?? legacyRevenue ?? fallback?.receitaEstimada ?? 0;
   const codigo      = placa.numero_placa || fallback?.codigo || placa.id;
   const endereco    = placa.endereco || placa.nomeDaRua || (typeof placa.localizacao === 'string' ? placa.localizacao : '') || fallback?.endereco || fallback?.localizacao || '';
   const nome        = placa.nomeDaRua || endereco || fallback?.nome || codigo;
@@ -200,6 +227,8 @@ export function normalizeBoard(placa, fallback = null) {
 
     /* ─ Localização ─────────────────────────────────────────── */
     regiao,
+    cidade,
+    city:             cidade,
     siglaRegiao,
     /* regiaoId é o ObjectId MongoDB — necessário para PUT /placas/:id */
     regiaoId:         placa.regiaoId ?? placa.regionId ?? placa.regiao?._id ?? placa.regiao?.id ?? null,
@@ -236,12 +265,23 @@ export function normalizeBoard(placa, fallback = null) {
 
     /* ─ Temporalidade ───────────────────────────────────────── */
     diasOcioso,
-    vencimento:       placa.aluguel_data_fim ?? fallback?.vencimento ?? null,
+    vencimento:       placa.aluguel_data_fim ?? commercialSnapshot?.endDate ?? fallback?.vencimento ?? null,
+    inicioContrato:   placa.aluguel_data_inicio ?? commercialSnapshot?.startDate ?? null,
     ultimaAtividade:  fallback?.ultimaAtividade ?? (ocupado ? 'Ativo' : 'Livre'),
 
-    /* ─ Comercial ───────────────────────────────────────────── */
-    campanha:         fallback?.campanha ?? null, // API não expõe campanha ainda
-    cliente:          placa.cliente_nome ?? fallback?.cliente ?? null,
+    /* ─ Comercial (derivado do CP Engine; nunca persistido na placa) ──────── */
+    campanha:           fallback?.campanha ?? null, // API não expõe campanha ainda
+    cliente,
+    commercialSnapshot,
+
+    /* ─ Bloqueio operacional (instalação/raspagem/manutenção/bloqueio manual) ── */
+    operationalBlock:     (placa.operationalBlock ?? cp?.operationalBlock)?.blocked === false
+      ? null
+      : placa.operationalBlock ?? cp?.operationalBlock ?? null,
+    isAllocationBlocked:  Boolean(
+      (placa.operationalBlock ?? cp?.operationalBlock)
+      && (placa.operationalBlock ?? cp?.operationalBlock).blocked !== false,
+    ),
 
     /* ─ Textos operacionais ─────────────────────────────────── */
     statusDetalhe:    deriveStatusDetalhe(status, placa, diasOcioso),
