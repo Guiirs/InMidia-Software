@@ -6,3 +6,4 @@ export { default as SyncStatusPanel }         from './SyncStatusPanel.jsx';
 export { default as OperationsFeed }          from './OperationsFeed.jsx';
 export { default as OperationCanonicalizationCard } from './OperationCanonicalizationCard.jsx';
 export { default as OperationLinkResolutionQueue } from './OperationLinkResolutionQueue.jsx';
+export { default as PlateOperationHistory }   from './PlateOperationHistory.jsx';

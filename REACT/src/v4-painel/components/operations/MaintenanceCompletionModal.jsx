@@ -4,12 +4,14 @@ import './OperationFormModal.css';
 
 function MaintenanceCompletionModal({ open, onClose, onConfirm, saving = false, serverError = null }) {
   const [report, setReport] = useState('');
+  const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   const firstRef = useRef(null);
 
   useEffect(() => {
     if (open) {
       setReport('');
+      setNotes('');
       setError('');
       const id = requestAnimationFrame(() => firstRef.current?.focus());
       return () => cancelAnimationFrame(id);
@@ -40,7 +42,7 @@ function MaintenanceCompletionModal({ open, onClose, onConfirm, saving = false, 
       setError('Relatório final é obrigatório para concluir a manutenção.');
       return;
     }
-    await onConfirm(report.trim());
+    await onConfirm({ finalReport: report.trim(), completionNotes: notes.trim() || undefined });
   }
 
   return createPortal(
@@ -86,6 +88,20 @@ function MaintenanceCompletionModal({ open, onClose, onConfirm, saving = false, 
               {(error || (serverError?.field === 'finalReport' && serverError.fieldMessage)) && (
                 <span className="v4p-op-modal__error" role="alert">{error || serverError.fieldMessage}</span>
               )}
+            </div>
+
+            <div className="v4p-op-modal__field">
+              <label className="v4p-op-modal__label" htmlFor="maintenance-completion-notes">
+                Observações finais
+              </label>
+              <textarea
+                id="maintenance-completion-notes"
+                className="v4p-op-modal__textarea v4p-op-modal__textarea--full"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                placeholder="Intercorrências, próximos passos ou observações adicionais (opcional)."
+              />
             </div>
           </section>
 

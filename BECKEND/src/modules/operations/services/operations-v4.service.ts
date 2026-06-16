@@ -151,6 +151,36 @@ const PRIORITY_ALIASES: Record<string, CanonicalOperationPriority> = {
   BAIXA: 'LOW',
 };
 
+const OPERATION_TYPE_LABELS: Record<CanonicalOperationType, string> = {
+  INSTALLATION: 'Instalação',
+  SCRAPING: 'Raspagem',
+  MAINTENANCE: 'Manutenção',
+  BLOCK: 'Bloqueio',
+  INSPECTION: 'Inspeção',
+  CLEANING: 'Limpeza',
+  REMOVAL: 'Remoção',
+  BLOCKING: 'Bloqueio de placa',
+  CRITICAL: 'Operação crítica',
+  OTHER: 'Outra',
+};
+
+const OPERATION_STATUS_LABELS: Record<CanonicalOperationStatus, string> = {
+  PENDING: 'Pendente',
+  SCHEDULED: 'Agendada',
+  IN_PROGRESS: 'Em andamento',
+  DONE: 'Concluída',
+  CANCELLED: 'Cancelada',
+};
+
+type OperationEvidence = {
+  id?: string;
+  url: string;
+  type: 'IMAGE' | 'FILE';
+  caption: string | null;
+  uploadedAt: string;
+  uploadedBy: string | null;
+};
+
 const operationSchema = new Schema<OperationDoc>({
   empresaId: { type: String, required: true, index: true },
   kind: { type: String, enum: ['task', 'event'], required: true, index: true },
@@ -226,6 +256,30 @@ function stringOrNull(value: unknown): string | null {
 
 function uniqueStrings(values: Array<string | null>): string[] {
   return Array.from(new Set(values.filter((value): value is string => Boolean(value))));
+}
+
+function normalizeEvidence(raw: unknown, defaultUploadedBy: unknown): OperationEvidence | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const record = raw as Record<string, unknown>;
+  const url = stringOrNull(record.url);
+  if (!url) return null;
+  const type = normalizedKey(record.type) === 'FILE' ? 'FILE' : 'IMAGE';
+  const id = stringOrNull(record.id);
+  return {
+    ...(id ? { id } : {}),
+    url,
+    type,
+    caption: stringOrNull(record.caption),
+    uploadedAt: toDate(record.uploadedAt)?.toISOString() ?? new Date().toISOString(),
+    uploadedBy: stringOrNull(record.uploadedBy) ?? stringOrNull(defaultUploadedBy),
+  };
+}
+
+function normalizeEvidenceList(raw: unknown, defaultUploadedBy: unknown): OperationEvidence[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => normalizeEvidence(item, defaultUploadedBy))
+    .filter((item): item is OperationEvidence => item !== null);
 }
 
 function getLegacyPlateCandidate(payload: Record<string, unknown>): string | null {
@@ -744,6 +798,8 @@ function toTask(doc: OperationDoc) {
   const id = String(doc._id);
   const plateId = resolveOperationPlateId(doc);
   const sla = resolveOperationSla(doc);
+  const operationType = normalizeOperationTypeValue(doc.payload?.operationType ?? doc.type);
+  const operationStatus = normalizeOperationStatusValue(doc.payload?.operationStatus ?? doc.status);
   return {
     id,
     realId: id,
@@ -751,10 +807,13 @@ function toTask(doc: OperationDoc) {
     domain: doc.domain,
     priority: doc.priority ?? 'normal',
     status: doc.status,
+    statusLabel: OPERATION_STATUS_LABELS[operationStatus],
     assigneeId: doc.assigneeId ?? null,
     owner: doc.assigneeId ?? null,
     dueDate: doc.dueDate?.toISOString?.() ?? null,
-    completedAt: doc.completedAt?.toISOString?.() ?? null,
+    completedAt: doc.completedAt?.toISOString?.() ?? isoOrNull(doc.payload?.completedAt),
+    startedAt: isoOrNull(doc.payload?.startedAt),
+    cancelledAt: isoOrNull(doc.payload?.cancelledAt),
     dueAt: isoOrNull(doc.payload?.dueAt ?? doc.payload?.dueDate ?? doc.dueDate),
     scheduledAt: isoOrNull(doc.payload?.scheduledAt),
     slaStatus: sla.slaStatus,
@@ -767,10 +826,14 @@ function toTask(doc: OperationDoc) {
     plateId,
     regionId: stringOrNull(doc.payload?.regionId),
     regionalLot: stringOrNull(doc.payload?.regionalLot),
-    operationType: stringOrNull(doc.payload?.operationType) ?? doc.type ?? null,
-    operationStatus: stringOrNull(doc.payload?.operationStatus) ?? doc.status,
+    operationType,
+    operationTypeLabel: OPERATION_TYPE_LABELS[operationType],
+    operationStatus,
     teamId: stringOrNull(doc.payload?.teamId),
     teamSnapshot: doc.payload?.teamSnapshot ?? null,
+    finalReport: stringOrNull(doc.payload?.finalReport),
+    completionNotes: stringOrNull(doc.payload?.completionNotes),
+    evidences: Array.isArray(doc.payload?.evidences) ? doc.payload.evidences : [],
     payload: doc.payload ?? {},
     createdAt: doc.createdAt?.toISOString?.() ?? null,
     updatedAt: doc.updatedAt?.toISOString?.() ?? null,
@@ -1441,6 +1504,8 @@ export class OperationsV4Service {
     if (operationType === 'MAINTENANCE' && !finalReport) {
       throw new AppError('Relatório final obrigatório para concluir manutenção.', 400, undefined, 'OPERATION_FINAL_REPORT_REQUIRED', 'finalReport');
     }
+    const completionNotes = stringOrNull(input.completionNotes ?? input.observacoesFinais);
+    const evidences = normalizeEvidenceList(input.evidences, input.updatedBy);
 
     const newAddress = stringOrNull(input.newAddress ?? input.address);
     const newLat = input.newLatitude != null ? Number(input.newLatitude) : null;
@@ -1492,6 +1557,8 @@ export class OperationsV4Service {
     if (newAddress) extraPayload.installationAddress = newAddress;
     if (newLat != null) { extraPayload.installationLatitude = newLat; extraPayload.installationLongitude = newLon; }
     if (finalReport) extraPayload.finalReport = finalReport;
+    if (completionNotes) extraPayload.completionNotes = completionNotes;
+    if (evidences.length > 0) extraPayload.evidences = evidences;
 
     const updated = await OperationRecord.findOneAndUpdate(
       { _id: id, empresaId, kind: 'task' },
@@ -1529,6 +1596,8 @@ export class OperationsV4Service {
         ...(newAddress ? { newAddress } : {}),
         ...(newLat != null ? { newLatitude: newLat, newLongitude: newLon } : {}),
         ...(finalReport ? { finalReport } : {}),
+        ...(completionNotes ? { completionNotes } : {}),
+        ...(evidences.length > 0 ? { evidencesCount: evidences.length } : {}),
       },
     });
 
@@ -1663,7 +1732,8 @@ export class OperationsV4Service {
         { 'payload.board_id': plateId },
       ],
     }).sort({ createdAt: -1 }).lean<OperationDoc[]>();
-    return { tasks: tasks.map(toTask), total: tasks.length };
+    const items = tasks.map(toTask);
+    return { plateId, total: items.length, tasks: items, items };
   }
 
   async getByRegion(empresaId: string, regionId: string) {

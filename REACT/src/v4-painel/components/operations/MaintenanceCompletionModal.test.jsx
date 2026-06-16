@@ -30,15 +30,32 @@ describe('MaintenanceCompletionModal', () => {
     expect(screen.getByText(/Relatório final é obrigatório para concluir a manutenção/)).toBeInTheDocument();
   });
 
-  it('chama onConfirm com o relatório preenchido', async () => {
+  it('chama onConfirm com objeto { finalReport, completionNotes }', async () => {
     const onConfirm = vi.fn().mockResolvedValue(undefined);
     render(<MaintenanceCompletionModal open onClose={vi.fn()} onConfirm={onConfirm} />);
 
     fireEvent.change(screen.getByLabelText(/Relatório final/), { target: { value: 'Troca de lona realizada.' } });
+    fireEvent.change(screen.getByLabelText(/Observações finais/), { target: { value: 'Sem intercorrências.' } });
     fireEvent.click(screen.getByRole('button', { name: 'Concluir manutenção' }));
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
-    expect(onConfirm).toHaveBeenCalledWith('Troca de lona realizada.');
+    expect(onConfirm).toHaveBeenCalledWith({
+      finalReport: 'Troca de lona realizada.',
+      completionNotes: 'Sem intercorrências.',
+    });
+  });
+
+  it('chama onConfirm sem completionNotes quando observações estão vazias', async () => {
+    const onConfirm = vi.fn().mockResolvedValue(undefined);
+    render(<MaintenanceCompletionModal open onClose={vi.fn()} onConfirm={onConfirm} />);
+
+    fireEvent.change(screen.getByLabelText(/Relatório final/), { target: { value: 'Relatório preenchido.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Concluir manutenção' }));
+
+    expect(onConfirm).toHaveBeenCalledWith({
+      finalReport: 'Relatório preenchido.',
+      completionNotes: undefined,
+    });
   });
 
   // ── Erro do servidor (mensagens amigáveis) ────────────────────────────────

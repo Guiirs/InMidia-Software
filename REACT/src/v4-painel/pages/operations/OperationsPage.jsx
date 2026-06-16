@@ -778,14 +778,14 @@ function OperationsPageInner() {
     finally { setActioning(null); }
   }, [completeTask, refresh]);
 
-  const handleConfirmMaintenanceCompletion = useCallback(async (finalReport) => {
+  const handleConfirmMaintenanceCompletion = useCallback(async ({ finalReport, completionNotes } = {}) => {
     const id = maintenanceTask?.id;
     if (!id) return;
     setMaintenanceSaving(true);
     setMaintenanceError(null);
     setActioning(id);
     try {
-      await completeTask?.({ id, finalReport });
+      await completeTask?.({ id, finalReport, ...(completionNotes ? { completionNotes } : {}) });
       setMaintenanceTask(null);
       refresh?.();
     } catch (err) {
