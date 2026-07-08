@@ -169,8 +169,7 @@ describe('OperationTeamsPanel', () => {
     expect(await screen.findByText('Já existe uma equipe cadastrada com esse nome.')).toBeInTheDocument();
   });
 
-  it('arquiva uma equipe ativa', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it('arquiva uma equipe ativa via modal de confirmação', async () => {
     const archiveMutation = mutation();
     testState.mutations['operations.team.archive'] = archiveMutation;
     render(<OperationTeamsPanel />);
@@ -178,9 +177,25 @@ describe('OperationTeamsPanel', () => {
     const row = screen.getByText('Equipe Instalação Norte').closest('[data-testid="operation-team-row"]');
     fireEvent.click(within(row).getByRole('button', { name: /Arquivar/i }));
 
+    // Modal de confirmação deve aparecer
+    const confirmBtn = screen.getByTestId('confirmation-modal-confirm');
+    expect(confirmBtn).toBeInTheDocument();
+    fireEvent.click(confirmBtn);
+
     await vi.waitFor(() => {
       expect(archiveMutation.mutateAsync).toHaveBeenCalledWith({ id: 'team-1' });
     });
+  });
+
+  it('[P0] arquivar equipe não chama window.confirm', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm');
+    render(<OperationTeamsPanel />);
+
+    const row = screen.getByText('Equipe Instalação Norte').closest('[data-testid="operation-team-row"]');
+    fireEvent.click(within(row).getByRole('button', { name: /Arquivar/i }));
+
+    expect(confirmSpy).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
   });
 
   it('oculta ações de gestão sem permissão de criação/atualização', () => {

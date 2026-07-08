@@ -32,12 +32,15 @@
     border: 1px solid var(--input-border);
     padding: 3rem;
     width: 100%;
-    max-width: 800px; /* Largura máxima padrão, pode ser sobrescrita */
+    max-width: 800px;
     box-shadow: var(--box-shadow);
     transform: scale(0.95);
     transition: transform 0.3s ease;
-    max-height: 90vh; /* Limita altura */
-    overflow-y: none; /* Adiciona scroll se necessário */
+    max-height: calc(100dvh - 48px);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
 }
 
 .modal--visible .modal__content {
@@ -74,9 +77,9 @@
 }
 
 .modal__body {
-    /* Estilos para o corpo do modal, se necessário (ex: espaçamento padrão) */
-    /* Exemplo: display: flex; flex-direction: column; gap: 2rem; */
-    /* O conteúdo específico (formulário, texto) definirá seu próprio layout interno */
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
 }
 
 /* --- Estilos para Formulários DENTRO de Modais (Genéricos) --- */
@@ -142,6 +145,10 @@
     margin-top: 2rem;
     padding-top: 2rem;
     border-top: 1px solid var(--input-border);
+    position: sticky;
+    bottom: 0;
+    background: var(--bg-secondary-color);
+    z-index: 1;
 }
 
 /* Botões genéricos do formulário modal */

@@ -33,15 +33,15 @@ const ROLE_LAYER = {
 
 const BOARD_STATUS = {
   occupied: { label: 'Ocupada', tone: 'success' },
-  available: { label: 'Disponivel', tone: 'info' },
-  maintenance: { label: 'Em manutencao', tone: 'warning' },
+  available: { label: 'Disponível', tone: 'info' },
+  maintenance: { label: 'Em manutenção', tone: 'warning' },
   reserved: { label: 'Reservada', tone: 'info' },
-  critical: { label: 'Critica', tone: 'danger' },
+  critical: { label: 'Crítica', tone: 'danger' },
 };
 
 const ACTION_TONE = {
-  danger: { state: 'critical', icon: 'crisis_alert', label: 'Critica' },
-  warning: { state: 'warning', icon: 'warning', label: 'Atencao' },
+  danger: { state: 'critical', icon: 'crisis_alert', label: 'Crítica' },
+  warning: { state: 'warning', icon: 'warning', label: 'Atenção' },
   info: { state: 'pending', icon: 'campaign', label: 'Revisar' },
   success: { state: 'healthy', icon: 'check_circle', label: 'Em ordem' },
 };
@@ -75,7 +75,8 @@ function toMapPoints(boards) {
       latitude: coords.latitude,
       longitude: coords.longitude,
       status: board.status ?? 'available',
-      region: board.regiao ?? board.regiaoId,
+      // Usar regiaoId (ID canônico) para garantir que selectedRegionId === point.region funcione
+      region: board.regiaoId ?? board.regiao,
       address: board.localizacao,
       mainImageUrl: resolveSafePlateImageUrl(board),
       images: board.images ?? board.imagens ?? [],
@@ -668,7 +669,9 @@ function DashboardPageInner() {
       </section>
 
       <section className="v4p-dashboard-bottom-grid">
-        <FeaturedBoardsTable boards={dashboard.featuredBoards} loading={isLoading} />
+        {(isLoading || (Array.isArray(dashboard.featuredBoards) && dashboard.featuredBoards.length > 0)) && (
+          <FeaturedBoardsTable boards={dashboard.featuredBoards ?? []} loading={isLoading} />
+        )}
         <ActivityList activity={dashboard.activityTimeline ?? dashboard.timeline} loading={isLoading} />
       </section>
     </div>

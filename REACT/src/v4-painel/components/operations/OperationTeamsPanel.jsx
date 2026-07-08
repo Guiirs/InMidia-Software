@@ -1,10 +1,11 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAuth } from '../../../context/AuthContext.jsx';
 import { useSyncResource } from '../../../core/sync-core/hooks/useSyncResource.js';
 import { useSyncMutation } from '../../../core/sync-core/hooks/useSyncMutation.js';
 import { V4Button, V4Card, V4EmptyState, V4Skeleton } from '../ui/index.js';
 import { getOperationErrorPresentation } from '../../utils/operationErrorMessages.js';
+import ConfirmationModal from '../../../components/ConfirmationModal/ConfirmationModal.jsx';
 import './OperationTeamsPanel.css';
 
 function emptyMember() {
@@ -226,7 +227,7 @@ function TeamRow({ team, onEdit, onArchive, canEdit, archiving }) {
   );
 }
 
-function OperationTeamsPanel() {
+function OperationTeamsPanel({ newTeamSignal = 0 }) {
   const auth = useAuth();
   const canCreate = auth?.hasPermission?.('operations.create') ?? false;
   const canUpdate = auth?.hasPermission?.('operations.update') ?? false;
@@ -241,6 +242,7 @@ function OperationTeamsPanel() {
   const [formError, setFormError] = useState(null);
   const [archivingId, setArchivingId] = useState(null);
   const [actionError, setActionError] = useState(null);
+  const [archiveConfirm, setArchiveConfirm] = useState(null);
 
   const teams = Array.isArray(teamsResource.data) ? teamsResource.data : [];
   const filteredTeams = useMemo(
@@ -252,6 +254,12 @@ function OperationTeamsPanel() {
     setFormError(null);
     setEditingTeam(null);
   }, []);
+
+  useEffect(() => {
+    if (newTeamSignal > 0 && canCreate) {
+      handleNew();
+    }
+  }, [newTeamSignal, canCreate, handleNew]);
 
   const handleEdit = useCallback((team) => {
     setFormError(null);
@@ -279,8 +287,14 @@ function OperationTeamsPanel() {
     }
   }, [createMutation, updateMutation, teamsResource]);
 
-  const handleArchive = useCallback(async (team) => {
-    if (!window.confirm(`Arquivar a equipe "${team.name}"? Equipes arquivadas não podem ser selecionadas em novas operações.`)) return;
+  const handleArchive = useCallback((team) => {
+    setArchiveConfirm(team);
+  }, []);
+
+  const handleConfirmArchive = useCallback(async () => {
+    const team = archiveConfirm;
+    setArchiveConfirm(null);
+    if (!team) return;
     setActionError(null);
     setArchivingId(team.id);
     try {
@@ -292,13 +306,14 @@ function OperationTeamsPanel() {
     } finally {
       setArchivingId(null);
     }
-  }, [archiveMutation, teamsResource]);
+  }, [archiveConfirm, archiveMutation, teamsResource]);
 
   const isLoading = teamsResource.status === 'idle' || teamsResource.status === 'loading';
   const isSaving = createMutation.isLoading || updateMutation.isLoading;
   const canManage = canCreate || canUpdate;
 
   return (
+    <>
     <V4Card
       className="v4p-teams-panel"
       title="Equipes operacionais"
@@ -369,6 +384,18 @@ function OperationTeamsPanel() {
         </div>
       )}
     </V4Card>
+
+      <ConfirmationModal
+        isOpen={Boolean(archiveConfirm)}
+        title="Arquivar equipe"
+        message={archiveConfirm ? `Arquivar a equipe "${archiveConfirm.name}"? Equipes arquivadas não podem ser selecionadas em novas operações.` : ''}
+        confirmText="Confirmar arquivamento"
+        onConfirm={handleConfirmArchive}
+        onClose={() => setArchiveConfirm(null)}
+        closeOnBackdrop={false}
+        data-testid="archive-team-confirm-modal"
+      />
+    </>
   );
 }
 

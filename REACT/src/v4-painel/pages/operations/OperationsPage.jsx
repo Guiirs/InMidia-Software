@@ -19,6 +19,7 @@ import OperationLinkResolutionQueue from '../../components/operations/OperationL
 import OperationFormModal from '../../components/operations/OperationFormModal.jsx';
 import OperationTeamsPanel from '../../components/operations/OperationTeamsPanel.jsx';
 import MaintenanceCompletionModal from '../../components/operations/MaintenanceCompletionModal.jsx';
+import ConfirmationModal from '../../../components/ConfirmationModal/ConfirmationModal.jsx';
 import OperationsProvider, { useOperations } from '../../providers/OperationsProvider.jsx';
 import { getOperationErrorPresentation } from '../../utils/operationErrorMessages.js';
 import './OperationsPage.css';
@@ -712,6 +713,7 @@ function OperationsPageInner() {
   const [createError, setCreateError] = useState(null);
   const [maintenanceError, setMaintenanceError] = useState(null);
   const [actionError, setActionError] = useState(null);
+  const [cancelConfirm, setCancelConfirm] = useState(null);
 
   const isLoading = loading && !operations.generatedAt;
   const canManageCanonicalization = auth?.hasPermission?.(PERMISSIONS.ADMIN_ACCESS) || auth?.permissions?.includes('superadmin');
@@ -797,12 +799,18 @@ function OperationsPageInner() {
     }
   }, [completeTask, maintenanceTask, refresh]);
 
-  const handleCancel = useCallback(async (id) => {
-    if (!window.confirm('Confirmar cancelamento desta operação?')) return;
+  const handleCancel = useCallback((id) => {
     if (!id) {
       setActionError('Não foi possível identificar a operação. Atualize a página e tente novamente.');
       return;
     }
+    setCancelConfirm(id);
+  }, []);
+
+  const handleConfirmCancel = useCallback(async () => {
+    const id = cancelConfirm;
+    setCancelConfirm(null);
+    if (!id) return;
     setActionError(null);
     setActioning(id);
     try {
@@ -811,9 +819,10 @@ function OperationsPageInner() {
     } catch (err) {
       console.error('[OperationsPage] Erro ao cancelar operação:', err);
       setActionError(getOperationErrorPresentation(err).message);
+    } finally {
+      setActioning(null);
     }
-    finally { setActioning(null); }
-  }, [cancelTask, refresh]);
+  }, [cancelConfirm, cancelTask, refresh]);
 
   const allTasks = operations.tasks ?? [];
 
@@ -893,6 +902,17 @@ function OperationsPageInner() {
         onConfirm={handleConfirmMaintenanceCompletion}
         saving={maintenanceSaving}
         serverError={maintenanceError}
+      />
+
+      {/* ── Modal de cancelamento de operação */}
+      <ConfirmationModal
+        isOpen={Boolean(cancelConfirm)}
+        title="Cancelar operação"
+        message="Confirmar cancelamento desta operação? Esta ação não pode ser desfeita."
+        confirmText="Confirmar cancelamento"
+        onConfirm={handleConfirmCancel}
+        onClose={() => setCancelConfirm(null)}
+        closeOnBackdrop={false}
       />
     </div>
   );

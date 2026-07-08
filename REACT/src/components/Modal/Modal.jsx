@@ -6,7 +6,6 @@ function Modal({ title, children, isOpen, onClose }) {
   // Efeito para lidar com cliques fora do modal e tecla ESC
   useEffect(() => {
     const handleOutsideClick = (event) => {
-      // Fecha se clicar diretamente no fundo (.modal)
       if (isOpen && event.target.classList.contains('modal')) {
         onClose();
       }
@@ -26,12 +25,18 @@ function Modal({ title, children, isOpen, onClose }) {
       document.removeEventListener('keydown', handleEscapeKey);
     }
 
-    // Cleanup: remove listeners quando o componente desmonta ou isOpen muda
     return () => {
       document.removeEventListener('mousedown', handleOutsideClick);
       document.removeEventListener('keydown', handleEscapeKey);
     };
-  }, [isOpen, onClose]); // Depende de isOpen e onClose
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [isOpen]);
 
   // Não renderiza nada se não estiver aberto
   if (!isOpen) {

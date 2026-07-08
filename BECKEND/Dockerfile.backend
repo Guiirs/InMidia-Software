@@ -1,0 +1,181 @@
+# syntax=docker/dockerfile:1.6
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# InMidia V4 — Backend · Dockerfile.backend
+# Base:    node:22-alpine (Active LTS — musl libc, menor footprint)
+# Build:   Multi-stage · BuildKit cache mounts · TypeScript + devDeps
+# Runtime: Non-root (appuser) · dumb-init PID 1 · NODE_ENV=production
+#
+# Diferenças vs Dockerfile (slim/Debian):
+#   - Alpine usa musl libc → módulos nativos (bcrypt) compilados no próprio
+#     stage builder com python3/make/g++ e copiados prontos para produção.
+#   - Sem MongoDB tools (mongodump) — use imagem dedicada de backup se necessário.
+#   - npm ci executado quando package-lock.json presente; npm install caso contrário.
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║  STAGE 1 · deps                                                            ║
+# ║  Instala apenas dependências de produção (--omit=dev).                     ║
+# ║  Compila módulos nativos (bcrypt) dentro do Alpine para garantir que os    ║
+# ║  binários .node sejam compatíveis com o musl libc da imagem final.         ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+FROM node:22-alpine AS deps
+
+# Ferramentas de compilação necessárias para módulos com addons nativos (bcrypt).
+# Instaladas aqui (deps) e no builder separadamente para não vazar para produção.
+RUN apk add --no-cache python3 make g++
+
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_SKIP_DOWNLOAD=true \
+    npm_config_update_notifier=false
+
+WORKDIR /app
+
+COPY package*.json ./
+
+# Detecta presença de package-lock.json:
+#   - package-lock.json presente → npm ci (instalação determinística, recomendado em CI/CD)
+#   - ausente                    → npm install (gera lockfile; cenários de bootstrap)
+# --omit=dev: exclui devDependencies — image de produção não precisa de TypeScript,
+#             Jest, ts-node etc.
+# --mount=type=cache: persiste cache do npm entre builds (BuildKit).
+RUN --mount=type=cache,target=/root/.npm \
+    if [ -f package-lock.json ]; then \
+      npm ci --omit=dev --no-audit --no-fund; \
+    else \
+      npm install --omit=dev --no-audit --no-fund; \
+    fi
+
+
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║  STAGE 2 · builder                                                         ║
+# ║  Instala TODAS as dependências (incluindo devDeps) para rodar o TypeScript ║
+# ║  compiler. TypeScript, ts-node, @types/*, tsconfig-paths e demais devDeps  ║
+# ║  são necessários neste estágio e descartados na imagem final.              ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+FROM node:22-alpine AS builder
+
+# Mesmas ferramentas de build: necessário para módulos nativos com devDeps
+# (ex.: @types não tem binários, mas outros devDeps podem compilar addons).
+RUN apk add --no-cache python3 make g++
+
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_SKIP_DOWNLOAD=true \
+    npm_config_update_notifier=false
+
+WORKDIR /app
+
+COPY package*.json ./
+
+# Install completo (com devDeps) — TypeScript e todo o toolchain de build.
+RUN --mount=type=cache,target=/root/.npm \
+    if [ -f package-lock.json ]; then \
+      npm ci --no-audit --no-fund; \
+    else \
+      npm install --no-audit --no-fund; \
+    fi
+
+# tsconfig copiado antes do src para granularidade máxima de cache de layer:
+# mudanças no tsconfig não invalidam o cache de src e vice-versa.
+COPY tsconfig.json ./
+COPY src ./src
+
+# Compila TypeScript → dist/
+# npm run build executa: tsc (ver scripts.build no package.json)
+RUN npm run build
+
+# Remove artefatos desnecessários em runtime:
+#   *.map   → source maps (information disclosure + ~30% do tamanho)
+#   *.d.ts  → declarações TypeScript (Node.js não carrega em runtime)
+# Para error tracking com source maps, use Sentry + upload no CI.
+RUN find dist -type f \( -name "*.map" -o -name "*.d.ts" \) -delete
+
+# Preserva certificados TLS customizados de MongoDB (se existirem em src/).
+RUN mkdir -p dist/shared/infra/db/certs \
+    && if [ -d src/shared/infra/db/certs ]; then \
+         cp -R src/shared/infra/db/certs/. dist/shared/infra/db/certs/; \
+       fi
+
+
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║  STAGE 3 · production                                                      ║
+# ║  Imagem final mínima. Sem ferramentas de build. Sem devDeps.               ║
+# ║  Sem código-fonte TypeScript. Sem source maps. Sem python/make/g++.        ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+FROM node:22-alpine AS production
+
+LABEL org.opencontainers.image.title="inmidia-backend" \
+      org.opencontainers.image.vendor="InMidia" \
+      org.opencontainers.image.base.name="docker.io/library/node:22-alpine"
+
+# ── Pacotes de sistema ────────────────────────────────────────────────────────
+# dumb-init : init system leve — encaminha SIGTERM corretamente ao Node.js,
+#             evitando SIGKILL e garantindo graceful shutdown em rolling deploys.
+# curl      : necessário para o HEALTHCHECK (wget não suporta -f nativamente).
+# ca-certificates: âncoras TLS atualizadas (Atlas, S3, APIs externas).
+#             Presentes no Alpine base, incluído explicitamente por clareza.
+RUN apk add --no-cache dumb-init curl ca-certificates
+
+# ── Usuário non-root ──────────────────────────────────────────────────────────
+# Princípio do menor privilégio: processo Node nunca roda como root.
+# addgroup/adduser: equivalente Alpine ao groupadd/useradd do Debian.
+# -S: system account  -H: sem home directory  -s /bin/false: sem shell login.
+RUN addgroup -g 1001 -S nodejs \
+    && adduser -u 1001 -S -G nodejs -H -s /bin/false appuser
+
+WORKDIR /app
+
+# ── Variáveis de ambiente ─────────────────────────────────────────────────────
+# NODE_ENV=production    : ativa otimizações de Express, Mongoose e afins.
+# PORT=4000              : porta padrão da API (sobrescrevível pelo orquestrador).
+# PUPPETEER_SKIP_*       : defensivo — impede download de Chromium em runtime.
+# NODE_NO_WARNINGS=1     : suprime deprecation warnings nos logs de produção.
+# npm_config_update_notifier=false: silencia checagem de atualização do npm.
+ENV NODE_ENV=production \
+    PORT=4000 \
+    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_SKIP_DOWNLOAD=true \
+    NODE_NO_WARNINGS=1 \
+    npm_config_update_notifier=false
+
+# ── Cópia dos artefatos ───────────────────────────────────────────────────────
+# node_modules do stage deps: binários nativos compilados para musl (Alpine).
+# dist/         do stage builder: JavaScript transpilado, sem source maps.
+# --chown inline: evita layer extra de `chown -R` sobre milhares de inodes.
+COPY --from=deps    --chown=appuser:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=appuser:nodejs /app/dist        ./dist
+
+# package.json necessário em runtime: module-alias lê _moduleAliases dele
+# para resolver os path aliases (@shared/, @modules/, @config/ etc.) no dist/.
+COPY --chown=appuser:nodejs package.json ./
+
+# ── Diretório de logs ─────────────────────────────────────────────────────────
+# Criado como root antes do USER para ter permissão; cedido ao appuser.
+RUN mkdir -p logs \
+    && chown appuser:nodejs logs
+
+# ── Drop de privilégios ───────────────────────────────────────────────────────
+USER appuser
+
+# Porta exposta pela API (deve coincidir com ENV PORT acima e com o config.ts).
+EXPOSE 4000
+
+# ── Healthcheck ───────────────────────────────────────────────────────────────
+# start-period=60s: janela de startup sem penalização — acomoda handshake TLS
+#                   com MongoDB Atlas e warm-up do pool de conexões.
+# interval=30s    : frequência de verificação.
+# timeout=8s      : deve ser menor que interval.
+# retries=3       : 3 falhas consecutivas → container marcado unhealthy.
+HEALTHCHECK --interval=30s --timeout=8s --start-period=60s --retries=3 \
+    CMD curl -fsS "http://localhost:${PORT}/health" || exit 1
+
+# ── Entrypoint com init system ────────────────────────────────────────────────
+# dumb-init como PID 1: encaminha SIGTERM/SIGINT ao Node.js e reapa zumbis.
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+
+# Invoca o processo diretamente (sem npm) para que dumb-init encaminhe sinais
+# ao Node sem intermediários. NODE_ENV já está setado via ENV acima, então
+# cross-env não é necessário aqui.
+# module-alias/register resolve os path aliases em runtime (lê package.json).
+# Equivalente a: npm start
+CMD ["node", "-r", "module-alias/register", "dist/shared/infra/http/server.js"]

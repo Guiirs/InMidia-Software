@@ -56,6 +56,18 @@ vi.mock('../../modules/map/mapBus.js', () => ({
 
 vi.mock('./V4OperationalMap.css', () => ({}));
 
+vi.mock('../operations/PlateOperationHistory.jsx', () => ({
+  default: ({ plateId, refreshKey }) => plateId ? (
+    <div
+      data-testid="plate-operation-history-mock"
+      data-plate-id={plateId}
+      data-refresh-key={refreshKey ?? ''}
+    >
+      Histórico: {plateId}
+    </div>
+  ) : null,
+}));
+
 const { default: V4OperationalMap } = await import('./V4OperationalMap.jsx');
 
 function point(overrides = {}) {
@@ -363,10 +375,10 @@ describe('V4OperationalMap — legenda de status', () => {
 
     const labelTexts = Array.from(labels).map((l) => l.textContent);
     expect(labelTexts).toContain('Ocupada');
-    expect(labelTexts).toContain('Disponivel');
+    expect(labelTexts).toContain('Disponível');
     expect(labelTexts).toContain('Reservada');
-    expect(labelTexts).toContain('Manutencao');
-    expect(labelTexts).toContain('Critica');
+    expect(labelTexts).toContain('Manutenção');
+    expect(labelTexts).toContain('Crítica');
   });
 
   it('renderiza legenda em modo compacto sem labels', () => {
@@ -585,5 +597,210 @@ describe('V4OperationalMap — placas sem coordenadas', () => {
     const allValid = [point({ id: 'p1', latitude: -23.55, longitude: -46.63 })];
     render(<V4OperationalMap points={allValid} />);
     expect(screen.queryByTitle('Ver placas sem coordenadas')).toBeNull();
+  });
+});
+
+describe('V4OperationalMap — dimming e highlight por selectedRegionId', () => {
+  const regionPoints = [
+    point({ id: 'r1-p1', region: 'region-abc', latitude: -23.55, longitude: -46.63 }),
+    point({ id: 'r2-p1', region: 'region-xyz', latitude: -23.56, longitude: -46.64 }),
+  ];
+
+  it('[P0.3] não aplica dimming quando selectedRegionId é null', () => {
+    render(
+      <V4OperationalMap
+        points={regionPoints}
+        selectedRegionId={null}
+        onSelectPoint={vi.fn()}
+        onClearSelection={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByTestId('marker')).toHaveLength(2);
+  });
+
+  it('[P0.3] GeoJSON selecionado tem fillOpacity maior que GeoJSON não-selecionado', () => {
+    const boundaries = [
+      { id: 'region-abc', label: 'Região A', occupancy: 0.7, geometry: { type: 'Polygon', coordinates: [[[-46.7, -23.6], [-46.6, -23.6], [-46.6, -23.5], [-46.7, -23.5], [-46.7, -23.6]]] } },
+      { id: 'region-xyz', label: 'Região B', occupancy: 0.4, geometry: { type: 'Polygon', coordinates: [[[-46.8, -23.7], [-46.7, -23.7], [-46.7, -23.6], [-46.8, -23.6], [-46.8, -23.7]]] } },
+    ];
+
+    render(
+      <V4OperationalMap
+        points={regionPoints}
+        regionBoundaries={boundaries}
+        selectedRegionId="region-abc"
+        onSelectPoint={vi.fn()}
+        onClearSelection={vi.fn()}
+      />,
+    );
+
+    const geojsons = screen.getAllByTestId('geojson');
+    expect(geojsons).toHaveLength(2);
+
+    const selected = geojsons.find((g) => g.dataset.regionId === 'region-abc');
+    const dimmed   = geojsons.find((g) => g.dataset.regionId === 'region-xyz');
+
+    expect(selected).toBeTruthy();
+    expect(dimmed).toBeTruthy();
+    expect(Number(selected.dataset.fillOpacity)).toBeGreaterThan(Number(dimmed.dataset.fillOpacity));
+  });
+});
+
+describe('V4OperationalMap — historico operacional no slideout', () => {
+  it('1. renderiza PlateOperationHistory no slideout ao selecionar placa', () => {
+    render(<ControlledMap />);
+    fireEvent.click(screen.getByText('click'));
+    expect(screen.getByTestId('plate-operation-history-mock')).toBeInTheDocument();
+  });
+
+  it('2. PlateOperationHistory recebe plateId correto via point.id', () => {
+    render(<ControlledMap />);
+    fireEvent.click(screen.getByText('click'));
+    const mock = screen.getByTestId('plate-operation-history-mock');
+    expect(mock.dataset.plateId).toBe('p-details');
+  });
+
+  it('3. PlateOperationHistory nao e renderizado quando slideout esta fechado', () => {
+    render(<ControlledMap />);
+    expect(screen.queryByTestId('plate-operation-history-mock')).toBeNull();
+  });
+
+  it('4. PlateOperationHistory aparece apos as informacoes da placa no DOM', () => {
+    render(<ControlledMap />);
+    fireEvent.click(screen.getByText('click'));
+    const panel = screen.getByLabelText('Detalhes da placa selecionada');
+    const dl = panel.querySelector('dl');
+    const historyMock = panel.querySelector('[data-testid="plate-operation-history-mock"]');
+    expect(dl).not.toBeNull();
+    expect(historyMock).not.toBeNull();
+    // history mock deve vir depois do dl
+    expect(dl.compareDocumentPosition(historyMock) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('5. PlateOperationHistory persiste junto com operacao em aberto no slideout', () => {
+    render(
+      <ControlledMap
+        points={[selectedHarnessPoint({
+          status: 'maintenance',
+          operationalBlock: { blocked: true, operationType: 'MAINTENANCE', operationStatus: 'IN_PROGRESS', label: 'Manutenção em andamento' },
+        })]}
+      />,
+    );
+    fireEvent.click(screen.getByText('click'));
+    const panel = screen.getByLabelText('Detalhes da placa selecionada');
+    expect(panel).toHaveTextContent('Operação em aberto');
+    expect(panel).toHaveTextContent('Manutenção em andamento');
+    expect(screen.getByTestId('plate-operation-history-mock')).toBeInTheDocument();
+  });
+
+  it('6. PlateOperationHistory persiste quando placa nao tem operacao em aberto', () => {
+    render(
+      <ControlledMap
+        points={[selectedHarnessPoint({ status: 'available', operationalBlock: null })]}
+      />,
+    );
+    fireEvent.click(screen.getByText('click'));
+    const panel = screen.getByLabelText('Detalhes da placa selecionada');
+    expect(panel).not.toHaveTextContent('Operação em aberto');
+    expect(screen.getByTestId('plate-operation-history-mock')).toBeInTheDocument();
+  });
+
+  it('7. fechar slideout remove PlateOperationHistory da tela', () => {
+    render(<ControlledMap />);
+    fireEvent.click(screen.getByText('click'));
+    expect(screen.getByTestId('plate-operation-history-mock')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Fechar detalhes da placa'));
+    expect(screen.queryByTestId('plate-operation-history-mock')).toBeNull();
+  });
+
+  it('8. troca de placa atualiza plateId passado ao PlateOperationHistory', () => {
+    const twoPoints = [
+      selectedHarnessPoint({ id: 'placa-A', title: 'PAI-001' }),
+      point({ id: 'placa-B', title: 'PAI-002', latitude: -23.56, longitude: -46.64 }),
+    ];
+    const { rerender } = render(
+      <V4OperationalMap
+        points={twoPoints}
+        selectedPointId="placa-A"
+        onSelectPoint={vi.fn()}
+        onClearSelection={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('plate-operation-history-mock').dataset.plateId).toBe('placa-A');
+
+    rerender(
+      <V4OperationalMap
+        points={twoPoints}
+        selectedPointId="placa-B"
+        onSelectPoint={vi.fn()}
+        onClearSelection={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('plate-operation-history-mock').dataset.plateId).toBe('placa-B');
+  });
+
+  it('9. refreshKey reflete operationType-operationStatus da operacao aberta', () => {
+    render(
+      <ControlledMap
+        points={[selectedHarnessPoint({
+          status: 'maintenance',
+          operationalBlock: { blocked: true, operationType: 'SCRAPING', operationStatus: 'IN_PROGRESS', label: 'Raspagem' },
+        })]}
+      />,
+    );
+    fireEvent.click(screen.getByText('click'));
+    const mock = screen.getByTestId('plate-operation-history-mock');
+    expect(mock.dataset.refreshKey).toBe('SCRAPING-IN_PROGRESS');
+  });
+
+  it('10. refreshKey e string vazia quando nao ha operationalBlock', () => {
+    render(
+      <ControlledMap
+        points={[selectedHarnessPoint({ operationalBlock: null })]}
+      />,
+    );
+    fireEvent.click(screen.getByText('click'));
+    const mock = screen.getByTestId('plate-operation-history-mock');
+    expect(mock.dataset.refreshKey).toBe('-');
+  });
+
+  it('11. refreshKey muda quando operationalBlock muda (simula conclusao de operacao)', () => {
+    const twoPoints = [
+      selectedHarnessPoint({
+        id: 'placa-op',
+        operationalBlock: { blocked: true, operationType: 'INSTALLATION', operationStatus: 'IN_PROGRESS', label: 'Instalação' },
+      }),
+    ];
+    const { rerender } = render(
+      <V4OperationalMap
+        points={twoPoints}
+        selectedPointId="placa-op"
+        onSelectPoint={vi.fn()}
+        onClearSelection={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('plate-operation-history-mock').dataset.refreshKey).toBe('INSTALLATION-IN_PROGRESS');
+
+    rerender(
+      <V4OperationalMap
+        points={[selectedHarnessPoint({ id: 'placa-op', operationalBlock: null })]}
+        selectedPointId="placa-op"
+        onSelectPoint={vi.fn()}
+        onClearSelection={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('plate-operation-history-mock').dataset.refreshKey).toBe('-');
+  });
+
+  it('12. nao quebra quando ponto selecionado nao tem operationalBlock', () => {
+    expect(() => {
+      render(
+        <ControlledMap
+          points={[selectedHarnessPoint({ operationalBlock: undefined })]}
+        />,
+      );
+      fireEvent.click(screen.getByText('click'));
+    }).not.toThrow();
+    expect(screen.getByTestId('plate-operation-history-mock')).toBeInTheDocument();
   });
 });

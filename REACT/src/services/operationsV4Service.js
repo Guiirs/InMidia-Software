@@ -70,6 +70,7 @@ export async function getOperationById(id) {
 }
 
 export async function getOperationsByPlate(plateId, params = {}) {
+  if (!plateId) throw new Error('getOperationsByPlate: plateId é obrigatório');
   const payload = await requestFirstAvailable('get', [v4Base(`/operations/by-plate/${plateId}`)], {
     operation: 'operations.by-plate.read',
     params,

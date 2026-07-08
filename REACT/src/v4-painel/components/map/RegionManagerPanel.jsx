@@ -3,6 +3,7 @@ import { useAuth } from '../../../context/AuthContext.jsx';
 import { useRegions } from '../../../hooks/useRegions.js';
 import * as regionService from '../../../services/regionService.js';
 import { getRegionStatusMeta } from '../../utils/regionUtils.js';
+import ConfirmationModal from '../../../components/ConfirmationModal/ConfirmationModal.jsx';
 import RegionFormModal from './RegionFormModal.jsx';
 import RegionAlertsPanel from './RegionAlertsPanel.jsx';
 import RegionList from './RegionList.jsx';
@@ -171,7 +172,7 @@ function NoSelection({ canCreate, onCreateClick }) {
 function RegionBacklogPanel({ summary, operationsSummary, alertsSummary }) {
   const backlog = summary?.operationalBacklog ?? ((operationsSummary?.pending ?? 0) + (alertsSummary?.critical ?? 0));
   const next = summary?.nextDueOperation;
-  const highestPriority = (operationsSummary?.critical ?? 0) > 0 || (alertsSummary?.critical ?? 0) > 0 ? 'Critica' : backlog > 0 ? 'Media' : 'Estavel';
+  const highestPriority = (operationsSummary?.critical ?? 0) > 0 || (alertsSummary?.critical ?? 0) > 0 ? 'Crítica' : backlog > 0 ? 'Média' : 'Estável';
 
   return (
     <section className="v4p-region-backlog" aria-label="Backlog regional">
@@ -183,9 +184,9 @@ function RegionBacklogPanel({ summary, operationsSummary, alertsSummary }) {
         <span>{backlog} itens</span>
       </header>
       <div className="v4p-region-backlog__grid">
-        <div><strong>{backlog}</strong><span>Total de pendencias</span></div>
+        <div><strong>{backlog}</strong><span>Total de pendências</span></div>
         <div><strong>{highestPriority}</strong><span>Prioridade mais alta</span></div>
-        <div><strong>{next?.plateNumber ?? 'Sem acao'}</strong><span>Proxima placa</span></div>
+        <div><strong>{next?.plateNumber ?? 'Sem ação'}</strong><span>Próxima placa</span></div>
         <div><strong>{summary?.expiredPendingRelease ?? 0}</strong><span>Expiradas pendentes</span></div>
       </div>
     </section>
@@ -232,6 +233,8 @@ function RegionManagerPanel({ onRegionSelect }) {
   const [actionError, setActionError] = useState(null);
   const [migrateLoading, setMigrateLoading] = useState(false);
   const [detachLoading, setDetachLoading]   = useState(false);
+  const [archiveConfirm, setArchiveConfirm] = useState(false);
+  const [migrateConfirm, setMigrateConfirm] = useState(false);
   const debouncedSearch = useDebounce(search, 280);
   const initialLoad = useRef(false);
 
@@ -289,10 +292,13 @@ function RegionManagerPanel({ onRegionSelect }) {
     }
   };
 
-  const handleArchive = async () => {
+  const handleArchive = () => {
     if (!selectedRegion) return;
-    const name = selectedRegion.name || selectedRegion.nome;
-    if (!window.confirm(`Arquivar o território "${name}"? Esta ação pode ser revertida pelo suporte.`)) return;
+    setArchiveConfirm(true);
+  };
+
+  const handleConfirmArchive = async () => {
+    setArchiveConfirm(false);
     setActionError(null);
     try {
       await archiveRegion(selectedRegion.id);
@@ -317,8 +323,12 @@ function RegionManagerPanel({ onRegionSelect }) {
     }
   };
 
-  const handleMigrateLegacy = async () => {
-    if (!window.confirm('Migrar territórios legados para o formato V4?\nEsta ação importa dados antigos e não pode ser desfeita.')) return;
+  const handleMigrateLegacy = () => {
+    setMigrateConfirm(true);
+  };
+
+  const handleConfirmMigrate = async () => {
+    setMigrateConfirm(false);
     setMigrateLoading(true);
     setActionError(null);
     try {
@@ -351,9 +361,9 @@ function RegionManagerPanel({ onRegionSelect }) {
             map
           </span>
           <span className="v4p-rmp__topbar-label">Centro Territorial</span>
-          <span className="v4p-rmp__topbar-sublabel">Cobertura, ocupacao e placas vinculadas</span>
-          <span className="v4p-rmp__count" aria-label={`${filteredRegions.length} territorios`}>
-            {loading ? '...' : `${filteredRegions.length} territorios`}
+          <span className="v4p-rmp__topbar-sublabel">Cobertura, ocupação e placas vinculadas</span>
+          <span className="v4p-rmp__count" aria-label={`${filteredRegions.length} territórios`}>
+            {loading ? '...' : `${filteredRegions.length} territórios`}
           </span>
         </div>
         <div className="v4p-rmp__topbar-actions">
@@ -519,6 +529,26 @@ function RegionManagerPanel({ onRegionSelect }) {
         onClose={() => setModalOpen(false)}
         onSave={handleSave}
         saving={actionLoading}
+      />
+
+      <ConfirmationModal
+        isOpen={archiveConfirm}
+        title="Arquivar território"
+        message={`Arquivar o território "${selectedRegion?.name || selectedRegion?.nome}"? Esta ação pode ser revertida pelo suporte.`}
+        confirmText="Arquivar território"
+        onConfirm={handleConfirmArchive}
+        onClose={() => setArchiveConfirm(false)}
+        closeOnBackdrop={false}
+      />
+
+      <ConfirmationModal
+        isOpen={migrateConfirm}
+        title="Migrar territórios legados"
+        message="Migrar territórios legados para o formato V4? Esta ação importa dados antigos e não pode ser desfeita."
+        confirmText="Confirmar migração"
+        onConfirm={handleConfirmMigrate}
+        onClose={() => setMigrateConfirm(false)}
+        closeOnBackdrop={false}
       />
     </div>
   );

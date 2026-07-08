@@ -7,6 +7,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { V4EmptyState } from '../ui/index.js';
 import SafeImage from '../media/SafeImage.jsx';
+import PlateOperationHistory from '../operations/PlateOperationHistory.jsx';
 import { mapBus } from '../../modules/map/mapBus.js';
 import './V4OperationalMap.css';
 
@@ -20,10 +21,10 @@ const STATUS_COLORS = {
 
 const STATUS_LABELS = {
   occupied:    'Ocupada',
-  available:   'Disponivel',
+  available:   'Disponível',
   reserved:    'Reservada',
-  maintenance: 'Manutencao',
-  critical:    'Critica',
+  maintenance: 'Manutenção',
+  critical:    'Crítica',
 };
 
 const COMMERCIAL_STATUS_LABELS = {
@@ -31,8 +32,8 @@ const COMMERCIAL_STATUS_LABELS = {
   FUTURE_RESERVED:   'Reservada futura',
   RESERVED_FUTURE:   'Reservada futura',
   RESERVED:          'Reservada',
-  MAINTENANCE:       'Manutencao',
-  AVAILABLE:         'Disponivel',
+  MAINTENANCE:       'Manutenção',
+  AVAILABLE:         'Disponível',
   OCCUPIED:          'Ocupada',
 };
 
@@ -423,6 +424,8 @@ function SelectedBoardPanel({ point, onClose }) {
   const operationalBlock = point.operationalBlock ?? point.metadata?.operationalBlock ?? null;
   const openOperationLabel = operationalBlock?.blocked === true ? (operationalBlock.label ?? 'Operação em aberto') : null;
   const teamSnapshot = operationalBlock?.blocked === true ? (operationalBlock.teamSnapshot ?? null) : null;
+  const plateId = point.id;
+  const refreshKey = `${operationalBlock?.operationType ?? ''}-${operationalBlock?.operationStatus ?? ''}`;
   const copyAddress = async () => {
     if (!point.address || !navigator.clipboard?.writeText) return;
     await navigator.clipboard.writeText(point.address);
@@ -518,6 +521,11 @@ function SelectedBoardPanel({ point, onClose }) {
           </>
         )}
       </dl>
+      <PlateOperationHistory
+        plateId={plateId}
+        refreshKey={refreshKey}
+        className="v4-geomap-slideout__history"
+      />
       <div className="v4-geomap-slideout__actions">
         <a href={`/inventario?board=${encodeURIComponent(point.id)}`}>Ver detalhes</a>
         {point.address && (

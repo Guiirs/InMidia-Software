@@ -216,15 +216,16 @@ describe('OperationsPage smoke', () => {
     expect(within(modal).getByText('Agendamento')).toBeInTheDocument();
     expect(within(modal).getByText('Detalhes específicos')).toBeInTheDocument();
     expect(within(modal).getAllByText('Observações').length).toBeGreaterThan(0);
-    expect(within(modal).getByRole('radio', { name: /^Instalação$/i })).toBeChecked();
+    // [P0.1] INSTALLATION removida do seletor — padrão agora é MAINTENANCE
+    expect(within(modal).queryByRole('radio', { name: /^Instalação$/i })).not.toBeInTheDocument();
+    expect(within(modal).getByRole('radio', { name: /^Manutenção$/i })).toBeChecked();
     expect(within(modal).getByRole('radio', { name: /^Raspagem$/i })).toBeInTheDocument();
-    expect(within(modal).getByRole('radio', { name: /^Manutenção$/i })).toBeInTheDocument();
     expect(within(modal).getByRole('radio', { name: /^Bloqueio operacional$/i })).toBeInTheDocument();
   });
 
   it('cancela usando payload objeto com o id canonico da operacao', async () => {
     const cancelTask = vi.fn().mockResolvedValue({});
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    // [P0.2] cancelamento agora usa ConfirmationModal, não window.confirm
     testState.operations = operationsContext({
       cancelTask,
       operations: {
@@ -236,9 +237,16 @@ describe('OperationsPage smoke', () => {
     renderOperations();
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
 
-    expect(cancelTask).toHaveBeenCalledWith({
-      id: 'op-123',
-      reason: 'Cancelado pelo usuário',
+    // Modal de confirmação deve aparecer — confirmar a ação
+    const confirmBtn = screen.getByTestId('confirmation-modal-confirm');
+    expect(confirmBtn).toBeInTheDocument();
+    fireEvent.click(confirmBtn);
+
+    await vi.waitFor(() => {
+      expect(cancelTask).toHaveBeenCalledWith({
+        id: 'op-123',
+        reason: 'Cancelado pelo usuário',
+      });
     });
   });
 

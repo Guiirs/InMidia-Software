@@ -98,14 +98,15 @@ describe('OperationFormModal', () => {
     expect(screen.queryByText(/Informações adicionais/i)).not.toBeInTheDocument();
   });
 
-  it('mostra os campos de novo endereço/coordenadas apenas para Instalação', () => {
+  it('redireciona INSTALLATION para MAINTENANCE quando passado via initialType', () => {
+    // INSTALLATION está desabilitada na UI; o form usa MAINTENANCE como fallback seguro
     render(<OperationFormModal open onClose={vi.fn()} onSave={vi.fn()} initialType="INSTALLATION" />);
 
-    expect(screen.queryByRole('combobox', { name: /^Placa/ })).not.toBeInTheDocument();
-    expect(screen.getByLabelText(/Novo endereço após instalação/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Nova latitude/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Nova longitude/)).toBeInTheDocument();
-    expect(screen.queryByLabelText(/Motivo/)).not.toBeInTheDocument();
+    const maintenanceBtn = screen.getByRole('radio', { name: 'Manutenção' });
+    expect(maintenanceBtn).toHaveAttribute('aria-checked', 'true');
+    expect(screen.queryByRole('radio', { name: 'Instalação' })).not.toBeInTheDocument();
+    // Campo Placa aparece pois MAINTENANCE requer placa
+    expect(screen.getByRole('combobox', { name: /^Placa/ })).toBeInTheDocument();
   });
 
   it('mostra "Motivo do bloqueio" para Bloqueio operacional', () => {
@@ -141,12 +142,27 @@ describe('OperationFormModal', () => {
     expect(screen.getByLabelText(/Motivo do bloqueio/)).toBeInTheDocument();
   });
 
-  it('oferece todos os tipos operacionais suportados pelo backend', () => {
+  it('oferece todos os tipos operacionais habilitados (sem Instalação)', () => {
     render(<OperationFormModal open onClose={vi.fn()} onSave={vi.fn()} />);
 
-    for (const label of ['Instalação', 'Raspagem', 'Limpeza', 'Retirada', 'Manutenção', 'Bloqueio operacional', 'Bloqueio de placa', 'Operação crítica', 'Inspeção', 'Outro']) {
+    for (const label of ['Raspagem', 'Limpeza', 'Retirada', 'Manutenção', 'Bloqueio operacional', 'Bloqueio de placa', 'Operação crítica', 'Inspeção', 'Outro']) {
       expect(screen.getByRole('radio', { name: label })).toBeInTheDocument();
     }
+  });
+
+  // ── Governança P0: INSTALLATION desabilitada ─────────────────────────────
+
+  it('[P0] INSTALLATION não aparece no grid de tipos de operação', () => {
+    render(<OperationFormModal open onClose={vi.fn()} onSave={vi.fn()} />);
+    expect(screen.queryByRole('radio', { name: 'Instalação' })).not.toBeInTheDocument();
+  });
+
+  it('[P0] modal abre com tipo padrão diferente de INSTALLATION', () => {
+    render(<OperationFormModal open onClose={vi.fn()} onSave={vi.fn()} />);
+    const maintenanceBtn = screen.getByRole('radio', { name: 'Manutenção' });
+    expect(maintenanceBtn).toHaveAttribute('aria-checked', 'true');
+    const scrapingBtn = screen.getByRole('radio', { name: 'Raspagem' });
+    expect(scrapingBtn).toHaveAttribute('aria-checked', 'false');
   });
 
   it('chama onClose ao clicar em Cancelar e no botão de fechar', () => {
@@ -171,13 +187,11 @@ describe('OperationFormModal', () => {
     expect(screen.getByText(/Motivo do bloqueio é obrigatório/)).toBeInTheDocument();
   });
 
-  it('envia o payload preservando os nomes de campo atuais', async () => {
+  it('envia o payload de SCRAPING com campos corretos', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
-    render(<OperationFormModal open onClose={vi.fn()} onSave={onSave} initialType="INSTALLATION" />);
+    render(<OperationFormModal open onClose={vi.fn()} onSave={onSave} initialType="SCRAPING" />);
 
-    fireEvent.change(screen.getByLabelText(/Novo endereço após instalação/), { target: { value: 'Av. Teste, 100' } });
-    fireEvent.change(screen.getByLabelText(/Nova latitude/), { target: { value: '-23.5505' } });
-    fireEvent.change(screen.getByLabelText(/Nova longitude/), { target: { value: '-46.6333' } });
+    selectBoard('07');
     fireEvent.change(screen.getByLabelText('Observações'), { target: { value: 'Tudo certo' } });
 
     fireEvent.click(screen.getByRole('button', { name: 'Criar operação' }));
@@ -185,16 +199,13 @@ describe('OperationFormModal', () => {
     expect(onSave).toHaveBeenCalledTimes(1);
     const payload = onSave.mock.calls[0][0];
     expect(payload).toMatchObject({
-      operationType: 'INSTALLATION',
+      operationType: 'SCRAPING',
       priority: 'MEDIUM',
-      newAddress: 'Av. Teste, 100',
-      newLatitude: -23.5505,
-      newLongitude: -46.6333,
+      plateId: 'board-07',
       notes: 'Tudo certo',
       domain: 'operations',
     });
-    expect(payload).not.toHaveProperty('plateId');
-    expect(payload.title).toBe('Instalação');
+    expect(payload.title).toBe('Raspagem — placa 07');
   });
 
   it('carrega placas do inventário e mostra dados amigáveis', () => {
@@ -349,8 +360,9 @@ describe('OperationFormModal', () => {
 
   it('inclui teamId no payload ao selecionar uma equipe responsável', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
-    render(<OperationFormModal open onClose={vi.fn()} onSave={onSave} initialType="INSTALLATION" />);
+    render(<OperationFormModal open onClose={vi.fn()} onSave={onSave} initialType="SCRAPING" />);
 
+    selectBoard('07');
     fireEvent.change(screen.getByLabelText('Equipe responsável'), { target: { value: 'team-1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Criar operação' }));
 
@@ -360,8 +372,9 @@ describe('OperationFormModal', () => {
 
   it('não inclui teamId no payload quando nenhuma equipe é selecionada', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
-    render(<OperationFormModal open onClose={vi.fn()} onSave={onSave} initialType="INSTALLATION" />);
+    render(<OperationFormModal open onClose={vi.fn()} onSave={onSave} initialType="SCRAPING" />);
 
+    selectBoard('07');
     fireEvent.click(screen.getByRole('button', { name: 'Criar operação' }));
 
     expect(onSave).toHaveBeenCalledTimes(1);

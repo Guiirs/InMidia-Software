@@ -137,7 +137,7 @@ function HistoryItem({ item }) {
   );
 }
 
-function PlateOperationHistory({ plateId, className = '' }) {
+function PlateOperationHistory({ plateId, refreshKey = 0, className = '' }) {
   const [state, setState] = useState({ status: 'idle', items: [], total: 0 });
 
   useEffect(() => {
@@ -156,7 +156,7 @@ function PlateOperationHistory({ plateId, className = '' }) {
         if (!cancelled) setState({ status: 'error', items: [], total: 0 });
       });
     return () => { cancelled = true; };
-  }, [plateId]);
+  }, [plateId, refreshKey]);
 
   if (!plateId) return null;
 

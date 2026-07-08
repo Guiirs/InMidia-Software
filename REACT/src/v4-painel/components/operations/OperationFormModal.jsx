@@ -4,7 +4,6 @@ import { useSyncResource } from '../../../core/sync-core/hooks/useSyncResource.j
 import './OperationFormModal.css';
 
 const OPERATION_TYPES = [
-  { value: 'INSTALLATION', label: 'Instalação', icon: 'install_desktop' },
   { value: 'SCRAPING', label: 'Raspagem', icon: 'cleaning_services' },
   { value: 'CLEANING', label: 'Limpeza', icon: 'cleaning_services' },
   { value: 'REMOVAL', label: 'Retirada', icon: 'remove_circle_outline' },
@@ -14,6 +13,13 @@ const OPERATION_TYPES = [
   { value: 'CRITICAL', label: 'Operação crítica', icon: 'crisis_alert' },
   { value: 'INSPECTION', label: 'Inspeção', icon: 'search' },
   { value: 'OTHER', label: 'Outro', icon: 'more_horiz' },
+];
+
+// INSTALLATION temporariamente desabilitada por decisão de produto.
+// Mantida aqui somente para title/label lookup em operações existentes.
+const ALL_OPERATION_TYPES = [
+  { value: 'INSTALLATION', label: 'Instalação', icon: 'install_desktop' },
+  ...OPERATION_TYPES,
 ];
 
 const PRIORITY_OPTIONS = [
@@ -39,7 +45,7 @@ const REASON_LABEL = {
 };
 
 const EMPTY_FORM = {
-  operationType: 'INSTALLATION',
+  operationType: 'MAINTENANCE',
   plateId: '',
   plateCode: '',
   scheduledAt: '',
@@ -289,17 +295,19 @@ function TeamSelector({ value, onChange, error }) {
   );
 }
 
+const SAFE_DEFAULT_TYPE = 'MAINTENANCE';
+
 function OperationFormModal({ open, onClose, onSave, saving = false, initialType, serverError = null }) {
   const [form, setForm] = useState(() => ({
     ...EMPTY_FORM,
-    operationType: initialType ?? 'INSTALLATION',
+    operationType: (initialType && initialType !== 'INSTALLATION') ? initialType : SAFE_DEFAULT_TYPE,
   }));
   const [errors, setErrors] = useState({});
   const firstRef = useRef(null);
 
   useEffect(() => {
     if (open) {
-      setForm({ ...EMPTY_FORM, operationType: initialType ?? 'INSTALLATION' });
+      setForm({ ...EMPTY_FORM, operationType: (initialType && initialType !== 'INSTALLATION') ? initialType : SAFE_DEFAULT_TYPE });
       setErrors({});
       const id = requestAnimationFrame(() => firstRef.current?.focus());
       return () => cancelAnimationFrame(id);
@@ -589,7 +597,7 @@ function OperationFormModal({ open, onClose, onSave, saving = false, initialType
 }
 
 function buildTitle(form) {
-  const typeLabel = OPERATION_TYPES.find((t) => t.value === form.operationType)?.label ?? form.operationType;
+  const typeLabel = ALL_OPERATION_TYPES.find((t) => t.value === form.operationType)?.label ?? form.operationType;
   if (form.operationType !== 'INSTALLATION' && form.plateId.trim()) return `${typeLabel} — placa ${form.plateCode || form.plateId.trim()}`;
   return typeLabel;
 }

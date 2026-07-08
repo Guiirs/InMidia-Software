@@ -1,61 +1,75 @@
 // src/components/ConfirmationModal/ConfirmationModal.jsx
 import React, { useEffect } from 'react';
-import './ConfirmationModal.css'; // Importa o CSS
+import './ConfirmationModal.css';
 
 function ConfirmationModal({
   isOpen,
-  onClose, // Função para cancelar/fechar
-  onConfirm, // Função a ser executada ao confirmar
+  onClose,
+  onConfirm,
   title = "Confirmar Ação",
   message = "Tem a certeza?",
   confirmText = "Confirmar",
   cancelText = "Cancelar",
-  confirmButtonType = "red", // 'red' (padrão) ou 'green'
-  isConfirming = false // Para mostrar estado de loading no botão Confirmar
+  confirmButtonType = "red",
+  isConfirming = false,
+  closeOnBackdrop = true,
 }) {
 
-  // Efeito para tecla ESC (similar ao Modal genérico)
   useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
     const handleEscapeKey = (event) => {
-      if (isOpen && event.key === 'Escape') {
-        onClose(); // Chama a função de fechar/cancelar
-      }
+      if (event.key === 'Escape') onClose();
     };
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscapeKey);
-    }
-    return () => {
-      document.removeEventListener('keydown', handleEscapeKey);
-    };
+    document.addEventListener('keydown', handleEscapeKey);
+    return () => document.removeEventListener('keydown', handleEscapeKey);
   }, [isOpen, onClose]);
 
   if (!isOpen) {
     return null;
   }
 
-  // Evita fechar ao clicar dentro do conteúdo
-  const handleContentClick = (e) => e.stopPropagation();
+  const handleBackdropClick = () => {
+    if (closeOnBackdrop) onClose();
+  };
 
-  // Determina a classe do botão de confirmação
   const confirmButtonClass = confirmButtonType === 'green'
     ? 'confirmation-modal-button--confirm-green'
-    : 'confirmation-modal-button--confirm'; // Padrão vermelho
+    : 'confirmation-modal-button--confirm';
 
   return (
-    // Usamos onClick no overlay para fechar ao clicar fora
-    <div className={`confirmation-modal-overlay ${isOpen ? 'confirmation-modal-overlay--visible' : ''}`} onClick={onClose}>
-      <div className="confirmation-modal-content" onClick={handleContentClick}>
-        {/* Título opcional */}
-        {title && <h3 className="confirmation-modal-title">{title}</h3>}
+    <div
+      className={`confirmation-modal-overlay ${isOpen ? 'confirmation-modal-overlay--visible' : ''}`}
+      onClick={handleBackdropClick}
+      data-testid="confirmation-modal-overlay"
+    >
+      <div
+        className="confirmation-modal-content"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? 'confirmation-modal-title' : undefined}
+      >
+        <div className="confirmation-modal-header">
+          {title && <h3 id="confirmation-modal-title" className="confirmation-modal-title">{title}</h3>}
+        </div>
 
-        <p className="confirmation-modal-message">{message}</p>
+        <div className="confirmation-modal-body">
+          <p className="confirmation-modal-message">{message}</p>
+        </div>
 
         <div className="confirmation-modal-actions">
           <button
             type="button"
             className="confirmation-modal-button confirmation-modal-button--cancel"
             onClick={onClose}
-            disabled={isConfirming} // Desabilita enquanto confirma
+            disabled={isConfirming}
           >
             {cancelText}
           </button>
@@ -63,7 +77,8 @@ function ConfirmationModal({
             type="button"
             className={`confirmation-modal-button ${confirmButtonClass}`}
             onClick={onConfirm}
-            disabled={isConfirming} // Desabilita enquanto confirma
+            disabled={isConfirming}
+            data-testid="confirmation-modal-confirm"
           >
             {isConfirming ? 'A confirmar...' : confirmText}
           </button>

@@ -344,7 +344,7 @@ describe('RegionManagerPanel — RBAC', () => {
     const { default: RegionManagerPanel } = await import('../../components/map/RegionManagerPanel.jsx');
     const html = renderToString(<RegionManagerPanel />);
     expect(html).toContain('Centro Territorial');
-    expect(html).toContain('territorios');
+    expect(html).toContain('territórios'); // [P1.8] label corrigido com acento
   });
 
   it('oculta botao Nova regiao sem regions.create', async () => {

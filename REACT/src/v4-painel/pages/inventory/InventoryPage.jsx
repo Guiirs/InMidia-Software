@@ -1,4 +1,5 @@
 import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import {
   BoardDetailsPanel,
@@ -162,6 +163,15 @@ function InventoryPageInner({ onNavigateToMap }) {
   const mapPanelWidthRef = useRef(mapPanelWidth);
   mapPanelWidthRef.current = mapPanelWidth;
   const cardsGridRef = useRef(null);
+
+  useEffect(() => {
+    if (!deletingBoard) return;
+    function onEsc(e) {
+      if (e.key === 'Escape') { setDeletingBoard(null); setDeleteError(null); }
+    }
+    document.addEventListener('keydown', onEsc);
+    return () => document.removeEventListener('keydown', onEsc);
+  }, [deletingBoard]);
 
   useEffect(() => {
     if (!mapSplitOpen || !selectedBoard?.id || !cardsGridRef.current) return;
@@ -341,8 +351,7 @@ function InventoryPageInner({ onNavigateToMap }) {
         const q = search.toLowerCase();
         return board.codigo.toLowerCase().includes(q)
           || board.nome.toLowerCase().includes(q)
-          || board.localizacao.toLowerCase().includes(q)
-          || String(board.cliente ?? '').toLowerCase().includes(q);
+          || board.localizacao.toLowerCase().includes(q);
       }
       return true;
     });
@@ -600,7 +609,7 @@ function InventoryPageInner({ onNavigateToMap }) {
         />
       )}
 
-      {deletingBoard && (
+      {deletingBoard && createPortal(
         <div
           className="v4p-edit-panel__backdrop"
           onClick={(e) => { if (e.target === e.currentTarget) { setDeletingBoard(null); setDeleteError(null); } }}
@@ -673,7 +682,8 @@ function InventoryPageInner({ onNavigateToMap }) {
               </button>
             </footer>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {saveNotice && (

@@ -15,10 +15,10 @@
   margin: auto;
   width: min(100%, 720px);
   max-width: 720px;
-  max-height: 90vh;
+  max-height: calc(100dvh - 48px);
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden;
   border: 1px solid rgba(148, 163, 184, 0.14);
   border-radius: var(--v4p-r-lg);
   background:
@@ -103,6 +103,8 @@
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   gap: 14px;
   padding: var(--v4p-card-pad-lg);
 }
@@ -449,11 +451,16 @@
 
 .v4p-op-modal__footer {
   display: flex;
+  flex: none;
   justify-content: flex-end;
   gap: var(--v4p-density-gap-sm);
-  padding-top: 12px;
+  padding: 12px var(--v4p-card-pad-lg) var(--v4p-card-pad-lg);
   border-top: 1px solid var(--v4p-border-soft);
-  margin-top: auto;
+  background: rgba(13, 20, 32, 0.96);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
 }
 
 .v4p-op-modal__btn {
@@ -507,7 +514,7 @@
   }
 
   .v4p-op-modal__dialog {
-    max-height: calc(100vh - 20px);
+    max-height: calc(100dvh - 20px);
     border-radius: var(--v4p-r-lg) var(--v4p-r-lg) var(--v4p-r-md) var(--v4p-r-md);
   }
 
@@ -521,6 +528,7 @@
 
   .v4p-op-modal__footer {
     flex-direction: column-reverse;
+    padding: 10px 16px 16px;
   }
 
   .v4p-op-modal__btn {
