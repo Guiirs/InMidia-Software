@@ -39,6 +39,12 @@ export interface IPlacaRepository {
   countByRegiao(regiaoId: string, empresaId: string): Promise<Result<number, DomainError>>;
   findByNumeroPlaca(numeroPlaca: string, empresaId: string): Promise<Result<PlacaEntity | null, DomainError>>;
   getNextOperationalNumber(empresaId: string): Promise<Result<number, DomainError>>;
+  compactOperationalNumbers(empresaId: string): Promise<Result<PlacaEntity[], DomainError>>;
+  moveOperationalNumber(
+    empresaId: string,
+    placaId: string,
+    targetNumber: number,
+  ): Promise<Result<PlacaEntity[], DomainError>>;
   reorderOperationalNumbers(
     empresaId: string,
     items: Array<{ placaId: string; numeroOperacional: number }>
@@ -639,6 +645,85 @@ export class PlacaRepository implements IPlacaRepository {
       });
 
       return Result.fail(new DatabaseError('getNextOperationalNumber', domainError.message));
+    }
+  }
+
+  async compactOperationalNumbers(empresaId: string): Promise<Result<PlacaEntity[], DomainError>> {
+    try {
+      const placas = await Placa.find({
+        empresaId,
+        statusOperacional: { $ne: 'ARCHIVED' },
+        archivedAt: { $exists: false },
+      })
+        .select('_id numeroOperacional createdAt')
+        .sort({ numeroOperacional: 1, createdAt: 1, _id: 1 })
+        .lean();
+
+      const items = placas.map((placa, index) => ({
+        placaId: String(placa._id),
+        numeroOperacional: index + 1,
+      }));
+
+      if (items.length === 0) {
+        return Result.ok([]);
+      }
+
+      return this.reorderOperationalNumbers(empresaId, items);
+    } catch (error) {
+      const domainError = toDomainError(error);
+      Log.error('[PlacaRepository] Erro ao compactar numeraÃ§Ã£o operacional', {
+        error: domainError.message,
+        empresaId,
+      });
+
+      return Result.fail(new DatabaseError('compactOperationalNumbers', domainError.message));
+    }
+  }
+
+  async moveOperationalNumber(
+    empresaId: string,
+    placaId: string,
+    targetNumber: number,
+  ): Promise<Result<PlacaEntity[], DomainError>> {
+    try {
+      if (!Number.isInteger(targetNumber) || targetNumber < 1) {
+        return Result.fail(new ValidationError([{ field: 'numeroOperacional', message: 'NÃºmero operacional invÃ¡lido' }]));
+      }
+
+      const placas = await Placa.find({
+        empresaId,
+        statusOperacional: { $ne: 'ARCHIVED' },
+        archivedAt: { $exists: false },
+      })
+        .select('_id numeroOperacional createdAt')
+        .sort({ numeroOperacional: 1, createdAt: 1, _id: 1 })
+        .lean();
+
+      const targetIndex = placas.findIndex((placa) => String(placa._id) === String(placaId));
+      if (targetIndex < 0) {
+        return Result.fail(new PlacaNotFoundError(placaId));
+      }
+
+      const nextOrder = [...placas];
+      const [moved] = nextOrder.splice(targetIndex, 1);
+      const boundedIndex = Math.min(targetNumber - 1, nextOrder.length);
+      nextOrder.splice(boundedIndex, 0, moved!);
+
+      const items = nextOrder.map((placa, index) => ({
+        placaId: String(placa._id),
+        numeroOperacional: index + 1,
+      }));
+
+      return this.reorderOperationalNumbers(empresaId, items);
+    } catch (error) {
+      const domainError = toDomainError(error);
+      Log.error('[PlacaRepository] Erro ao mover numeraÃ§Ã£o operacional', {
+        error: domainError.message,
+        placaId,
+        empresaId,
+      });
+
+      return Result.fail(new DatabaseError('moveOperationalNumber', domainError.message));
     }
   }
 

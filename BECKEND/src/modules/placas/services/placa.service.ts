@@ -204,6 +204,7 @@ export class PlacaService {
         if (!regiaoExists) return Result.fail(new NotFoundError('Região', validatedData.regiaoId));
       }
 
+      let removedMainImage = false;
       // Processar imagem — toda imagem vai para PlateMedia (fonte canônica)
       if (file) {
         const mediaResult = mediaPipelineService.processMediaAsset(file, { ownerType: 'placa', ownerId: id, empresaId });
@@ -240,13 +241,35 @@ export class PlacaService {
         await safeDeleteStoredImage(id, empresaId);
         await plateMediaService.clearActivePlateImage(id, empresaId);
         delete (validatedData as any).imagem;
+        removedMainImage = true;
       }
 
-      const result = await this.repository.update(id, validatedData, empresaId, userId);
-      if (result.isFailure) return Result.fail(result.error);
+      const requestedOperationalNumber = validatedData.numeroOperacional;
+      const updateData = { ...validatedData };
+      delete (updateData as any).numeroOperacional;
+
+      let updatedPlaca: PlacaEntity;
+      if (Object.keys(updateData).length > 0 || file || removedMainImage) {
+        const result = await this.repository.update(id, updateData, empresaId, userId);
+        if (result.isFailure) return Result.fail(result.error);
+        updatedPlaca = result.value;
+      } else {
+        updatedPlaca = placaExistente;
+      }
+
+      if (
+        requestedOperationalNumber !== undefined &&
+        requestedOperationalNumber !== placaExistente.numeroOperacional
+      ) {
+        const moveResult = await this.repository.moveOperationalNumber(empresaId, id, requestedOperationalNumber);
+        if (moveResult.isFailure) return Result.fail(moveResult.error);
+
+        const movedPlaca = moveResult.value.find((placa: any) => String(placa._id || placa.id) === String(id));
+        if (movedPlaca) updatedPlaca = movedPlaca;
+      }
 
       Log.info('[PlacaService] Placa atualizada', { placaId: id, empresaId });
-      return Result.ok(result.value);
+      return Result.ok(updatedPlaca);
     } catch (error) {
       if (error instanceof Error && error.name === 'ZodError') {
         return Result.fail(validationErrorFromZod(error));
@@ -347,6 +370,9 @@ export class PlacaService {
 
       const deleteResult = await this.repository.delete(id, empresaId);
       if (deleteResult.isFailure) return Result.fail(deleteResult.error);
+
+      const compactResult = await this.repository.compactOperationalNumbers(empresaId);
+      if (compactResult.isFailure) return Result.fail(compactResult.error);
 
       Log.info('[PlacaService] Placa deletada', { placaId: id, empresaId });
       return Result.ok(undefined);

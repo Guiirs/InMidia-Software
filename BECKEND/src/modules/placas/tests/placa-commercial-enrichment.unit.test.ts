@@ -475,6 +475,8 @@ function makeDeleteRepo(plate: any): any {
     delete: jest.fn().mockResolvedValue({ isSuccess: true, isFailure: false, value: undefined }),
     archive: jest.fn(),
     getNextOperationalNumber: jest.fn(),
+    compactOperationalNumbers: jest.fn().mockResolvedValue({ isSuccess: true, isFailure: false, value: [] }),
+    moveOperationalNumber: jest.fn(),
     reorderOperationalNumbers: jest.fn(),
   };
 }
@@ -486,6 +488,8 @@ function makeArchiveRepo(plate: any): any {
     delete: jest.fn(),
     archive: jest.fn().mockResolvedValue({ isSuccess: true, isFailure: false, value: plate }),
     getNextOperationalNumber: jest.fn(),
+    compactOperationalNumbers: jest.fn(),
+    moveOperationalNumber: jest.fn(),
     reorderOperationalNumbers: jest.fn(),
   };
 }
@@ -537,6 +541,7 @@ describe('PlacaService.deletePlaca — CommercialProjection gate', () => {
     const result = await service.deletePlaca(plateId, empresaId);
     expect(result.isSuccess).toBe(true);
     expect(repo.delete).toHaveBeenCalledWith(plateId, empresaId);
+    expect(repo.compactOperationalNumbers).toHaveBeenCalledWith(empresaId);
   });
 
   it('D5 — permite delete se MAINTENANCE', async () => {
@@ -546,6 +551,7 @@ describe('PlacaService.deletePlaca — CommercialProjection gate', () => {
     const result = await service.deletePlaca(plateId, empresaId);
     expect(result.isSuccess).toBe(true);
     expect(repo.delete).toHaveBeenCalledWith(plateId, empresaId);
+    expect(repo.compactOperationalNumbers).toHaveBeenCalledWith(empresaId);
   });
 
   it('D6 — bloqueia delete se UNKNOWN (segurança)', async () => {

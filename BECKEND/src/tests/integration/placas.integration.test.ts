@@ -388,6 +388,37 @@ describe('POST /api/v1/placas - numero operacional', () => {
   });
 });
 
+describe('PATCH /api/v1/placas/:id - numero operacional automatico', () => {
+  it('move uma placa para numero ocupado e renumera as demais automaticamente', async () => {
+    const regiao = await seedRegiao();
+    const p1 = await createTestPlaca(regiao._id.toString(), { numero_placa: 'MOV-API-1', numeroOperacional: 1 });
+    const p2 = await createTestPlaca(regiao._id.toString(), { numero_placa: 'MOV-API-2', numeroOperacional: 2 });
+    const p3 = await createTestPlaca(regiao._id.toString(), { numero_placa: 'MOV-API-3', numeroOperacional: 3 });
+    const p4 = await createTestPlaca(regiao._id.toString(), { numero_placa: 'MOV-API-4', numeroOperacional: 4 });
+
+    const res = await request(app)
+      .patch(`/api/v1/placas/${p4._id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ numeroOperacional: 2 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.numeroOperacional).toBe(2);
+
+    const list = await request(app)
+      .get('/api/v1/placas?limit=1000&sortBy=numeroOperacional&order=asc')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(list.body.data.map((placa: any) => placa.id || placa._id)).toEqual([
+      p1._id.toString(),
+      p4._id.toString(),
+      p2._id.toString(),
+      p3._id.toString(),
+    ]);
+    expect(list.body.data.map((placa: any) => placa.numeroOperacional)).toEqual([1, 2, 3, 4]);
+  });
+});
+
 describe('PATCH /api/v1/placas/reorder', () => {
   it('reorganiza sem alterar IDs internos', async () => {
     const regiao = await seedRegiao();
